@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+  <classpathentry kind="src" path="src/test/java" output="target/test-classes"/>
+  <classpathentry kind="output" path="target/classes"/>
+  <classpathentry kind="var" path="M2_REPO/javax/validation/validation-api/1.1.0.Final/validation-api-1.1.0.Final.jar"/>
+  <classpathentry kind="var" path="M2_REPO/javax/jdo/jdo-api/3.1-rc1/jdo-api-3.1-rc1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/javax/transaction/transaction-api/1.1/transaction-api-1.1.jar" sourcepath="M2_REPO/javax/transaction/transaction-api/1.1/transaction-api-1.1-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/javax/inject/javax.inject/1/javax.inject-1.jar"/>
+  <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+  <classpathentry kind="src" path="/reputationbox-fixture"/>
+  <classpathentry kind="src" path="/reputationbox-dom"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-applib/1.4.0/isis-core-applib-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/joda-time/joda-time/2.3/joda-time-2.3.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/geronimo/specs/geronimo-atinject_1.0_spec/1.0/geronimo-atinject_1.0_spec-1.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/geronimo/specs/geronimo-jcdi_1.0_spec/1.0/geronimo-jcdi_1.0_spec-1.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/com/google/guava/guava/16.0.1/guava-16.0.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/hamcrest/hamcrest-library/1.3/hamcrest-library-1.3.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar" sourcepath="M2_REPO/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3-sources.jar">
+    <attributes>
+      <attribute value="jar:file:/home/dileepa/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3-javadoc.jar!/" name="javadoc_location"/>
+    </attributes>
+  </classpathentry>
+  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-api/1.7.6/slf4j-api-1.7.6.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/objectstore/isis-objectstore-jdo-applib/1.4.1/isis-objectstore-jdo-applib-1.4.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/datanucleus/datanucleus-core/3.2.11/datanucleus-core-3.2.11.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/datanucleus/datanucleus-api-jdo/3.2.7/datanucleus-api-jdo-3.2.7.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/datanucleus/datanucleus-jdo-query/3.0.2/datanucleus-jdo-query-3.0.2.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/datanucleus/datanucleus-rdbms/3.2.10/datanucleus-rdbms-3.2.10.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/datanucleus/datanucleus-jodatime/3.2.1/datanucleus-jodatime-3.2.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-unittestsupport/1.4.0/isis-core-unittestsupport-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/junit/junit/4.11/junit-4.11.jar" sourcepath="M2_REPO/junit/junit/4.11/junit-4.11-sources.jar">
+    <attributes>
+      <attribute value="jar:file:/home/dileepa/.m2/repository/junit/junit/4.11/junit-4.11-javadoc.jar!/" name="javadoc_location"/>
+    </attributes>
+  </classpathentry>
+  <classpathentry kind="var" path="M2_REPO/org/picocontainer/picocontainer/2.14.3/picocontainer-2.14.3.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/jmock/jmock/2.6.0/jmock-2.6.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/jmock/jmock-junit4/2.6.0/jmock-junit4-2.6.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/jmock/jmock-legacy/2.6.0/jmock-legacy-2.6.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/reflections/reflections/0.9.8/reflections-0.9.8.jar"/>
+  <classpathentry kind="var" path="M2_REPO/javassist/javassist/3.12.1.GA/javassist-3.12.1.GA.jar"/>
+  <classpathentry kind="var" path="M2_REPO/dom4j/dom4j/1.6.1/dom4j-1.6.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-integtestsupport/1.4.0/isis-core-integtestsupport-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-specsupport/1.4.0/isis-core-specsupport-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-wrapper/1.4.0/isis-core-wrapper-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-runtime/1.4.0/isis-core-runtime-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-log4j/1.4.0/isis-core-log4j-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-log4j12/1.7.6/slf4j-log4j12-1.7.6.jar"/>
+  <classpathentry kind="var" path="M2_REPO/log4j/log4j/1.2.17/log4j-1.2.17.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-metamodel/1.4.0/isis-core-metamodel-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/commons-codec/commons-codec/1.9/commons-codec-1.9.jar"/>
+  <classpathentry kind="var" path="M2_REPO/commons-cli/commons-cli/1.2/commons-cli-1.2.jar" sourcepath="M2_REPO/commons-cli/commons-cli/1.2/commons-cli-1.2-sources.jar">
+    <attributes>
+      <attribute value="jar:file:/home/dileepa/.m2/repository/commons-cli/commons-cli/1.2/commons-cli-1.2-javadoc.jar!/" name="javadoc_location"/>
+    </attributes>
+  </classpathentry>
+  <classpathentry kind="var" path="M2_REPO/com/google/inject/guice/3.0/guice-3.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/aopalliance/aopalliance/1.0/aopalliance-1.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/com/google/code/gson/gson/2.2.4/gson-2.2.4.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/javassist/javassist/3.18.1-GA/javassist-3.18.1-GA.jar"/>
+  <classpathentry kind="var" path="M2_REPO/asm/asm/3.3.1/asm-3.3.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/objenesis/objenesis/1.4/objenesis-1.4.jar"/>
+  <classpathentry kind="var" path="M2_REPO/cglib/cglib-nodep/2.2.2/cglib-nodep-2.2.2.jar"/>
+  <classpathentry kind="var" path="M2_REPO/info/cukes/cucumber-java/1.1.5/cucumber-java-1.1.5.jar"/>
+  <classpathentry kind="var" path="M2_REPO/info/cukes/cucumber-core/1.1.5/cucumber-core-1.1.5.jar"/>
+  <classpathentry kind="var" path="M2_REPO/info/cukes/cucumber-html/0.2.3/cucumber-html-0.2.3.jar"/>
+  <classpathentry kind="var" path="M2_REPO/info/cukes/cucumber-jvm-deps/1.0.3/cucumber-jvm-deps-1.0.3.jar"/>
+  <classpathentry kind="var" path="M2_REPO/info/cukes/gherkin/2.12.1/gherkin-2.12.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/info/cukes/cucumber-junit/1.1.5/cucumber-junit-1.1.5.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-tck-dom/1.4.0/isis-core-tck-dom-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-security/1.4.0/isis-core-security-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-objectstore/1.4.0/isis-core-objectstore-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-bytecode-cglib/1.4.0/isis-core-bytecode-cglib-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/core/isis-core-profilestore/1.4.0/isis-core-profilestore-1.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/objectstore/isis-objectstore-jdo-datanucleus/1.4.1/isis-objectstore-jdo-datanucleus-1.4.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/isis/objectstore/isis-objectstore-jdo-metamodel/1.4.1/isis-objectstore-jdo-metamodel-1.4.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/hsqldb/hsqldb/2.3.1/hsqldb-2.3.1.jar"/>
+</classpath>
