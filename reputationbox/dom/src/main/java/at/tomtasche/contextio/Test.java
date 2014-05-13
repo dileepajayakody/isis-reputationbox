@@ -17,9 +17,9 @@ public class Test {
 		params.put("since", "0");
 		
 		//System.out.println(dokdok.allMessages("tomtasche@gmail.com", params).rawResponse.getBody());
-		
 		ContextIO gdcDemo = new ContextIO("65kd0b3k", "CetIiO0Ke0Klb2u8");
-		System.out.println(gdcDemo.allMessages("gdc2013demo@gmail.com", params));
+		//ContextIO gdcDemo = new ContextIO("", "");
+		System.out.println(gdcDemo.allMessages("gdc2013demo@gmail.com", params).rawResponse.getBody());
 		//ContextIOResponse mailResponse = gdcDemo.allMessages("gdc2013demo@gmail.com", params);
 		
 	}
