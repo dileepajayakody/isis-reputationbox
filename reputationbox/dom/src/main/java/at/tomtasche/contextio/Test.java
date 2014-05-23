@@ -1,7 +1,13 @@
 package at.tomtasche.contextio;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.nic.isis.reputation.services.EmailService;
+import org.nic.isis.reputation.viewmodels.EmailViewModel;
 
 /**
  * 
@@ -16,11 +22,15 @@ public class Test {
 		Map<String, String> params = new HashMap<String, String>();
 		params.put("since", "0");
 		
-		//System.out.println(dokdok.allMessages("tomtasche@gmail.com", params).rawResponse.getBody());
-		ContextIO gdcDemo = new ContextIO("65kd0b3k", "CetIiO0Ke0Klb2u8");
-		//ContextIO gdcDemo = new ContextIO("", "");
-		System.out.println(gdcDemo.allMessages("gdc2013demo@gmail.com", params).rawResponse.getBody());
-		//ContextIOResponse mailResponse = gdcDemo.allMessages("gdc2013demo@gmail.com", params);
+		/*ContextIO gdcDemo = new ContextIO("65kd0b3k", "CetIiO0Ke0Klb2u8");
+		String cioResponseStr = gdcDemo.allMessages("gdc2013demo@gmail.com", params).getRawResponse().getBody(); */
+
 		
+		EmailService emailService = new EmailService();
+		List<EmailViewModel> emailVms = emailService.allMessages();
+		System.out.println("number of mails received : " + emailVms.size());
+		for(EmailViewModel vm : emailVms){
+			System.out.println("messagId : " + vm.getMessageId() + " subject : " + vm.getSubject());
+		}
 	}
 }

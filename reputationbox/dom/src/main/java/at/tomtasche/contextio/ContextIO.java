@@ -68,7 +68,7 @@ public class ContextIO {
 	}
 
 	/**
-	 * Returns the 25 most recent attachments found in a mailbox. Use limit to change that number.
+	 * Returns the 25 most recent mails found in a mailbox. Use limit to change that number.
 	 * This is useful if you're polling a mailbox for new messages and want all new messages
 	 * indexed since a given timestamp.
 	 * @link http://context.io/docs/1.1/allmessages

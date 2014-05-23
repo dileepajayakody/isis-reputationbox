@@ -11,12 +11,12 @@ import org.scribe.model.Response;
  */
 public class ContextIOResponse {
 
-	int code;
-	Map<String, String> headers;
-	Map<String, String> requestHeaders;
-	Map<String, String> responseHeaders;
-	String contentType;
-	Response rawResponse;
+	private int code;
+	private Map<String, String> headers;
+	private Map<String, String> requestHeaders;
+	private Map<String, String> responseHeaders;
+	private String contentType;
+	private Response rawResponse;
 	boolean hasError;
 	
 	
@@ -48,5 +48,75 @@ public class ContextIOResponse {
 				+ responseHeaders + ", contentType=" + contentType
 				+ ", rawResponse=" + rawResponse + ", hasError=" + hasError
 				+ ", response=" + rawResponse.getBody() + "]";
+	}
+
+
+	public int getCode() {
+		return code;
+	}
+
+
+	public void setCode(int code) {
+		this.code = code;
+	}
+
+
+	public Map<String, String> getHeaders() {
+		return headers;
+	}
+
+
+	public void setHeaders(Map<String, String> headers) {
+		this.headers = headers;
+	}
+
+
+	public Map<String, String> getRequestHeaders() {
+		return requestHeaders;
+	}
+
+
+	public void setRequestHeaders(Map<String, String> requestHeaders) {
+		this.requestHeaders = requestHeaders;
+	}
+
+
+	public Map<String, String> getResponseHeaders() {
+		return responseHeaders;
+	}
+
+
+	public void setResponseHeaders(Map<String, String> responseHeaders) {
+		this.responseHeaders = responseHeaders;
+	}
+
+
+	public String getContentType() {
+		return contentType;
+	}
+
+
+	public void setContentType(String contentType) {
+		this.contentType = contentType;
+	}
+
+
+	public Response getRawResponse() {
+		return rawResponse;
+	}
+
+
+	public void setRawResponse(Response rawResponse) {
+		this.rawResponse = rawResponse;
+	}
+
+
+	public boolean isHasError() {
+		return hasError;
+	}
+
+
+	public void setHasError(boolean hasError) {
+		this.hasError = hasError;
 	}
 }
