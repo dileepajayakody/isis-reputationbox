@@ -1,7 +1,9 @@
 .classpath
 .project
+.idea
 .settings/
 target/
 *.class
 *.jar
 *.log
+*.iml
