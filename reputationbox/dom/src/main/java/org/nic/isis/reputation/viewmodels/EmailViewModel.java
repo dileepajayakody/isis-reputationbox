@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.apache.isis.applib.ViewModel;
 import org.apache.isis.applib.annotation.Hidden;
+import org.apache.isis.applib.annotation.Programmatic;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -40,6 +41,7 @@ public class EmailViewModel implements ViewModel {
 		return folderList;
 	}
 	
+	@Programmatic
 	public JSONObject getAddressObject(){
 		return (JSONObject)json.get("addresses");
 	}
