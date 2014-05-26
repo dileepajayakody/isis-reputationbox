@@ -26,7 +26,7 @@
 	</parent>
 
 	<artifactId>reputationbox-dom</artifactId>
-	<name>Simple Wicket/Restful/JDO DOM</name>
+	<name>ReputationBox DOM</name>
 
 	<build>
         <resources>
