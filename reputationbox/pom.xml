@@ -23,7 +23,7 @@
     <artifactId>reputationbox</artifactId>
     <version>1.0-SNAPSHOT</version>
 
-    <name>Simple Wicket/Restful/JDO App</name>
+    <name>ReputationBox App</name>
 
     <packaging>pom</packaging>
 

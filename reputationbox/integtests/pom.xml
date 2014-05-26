@@ -26,7 +26,7 @@
     </parent>
 
 	<artifactId>reputationbox-integtests</artifactId>
-	<name>Simple Wicket/Restful/JDO Integration Tests</name>
+	<name>ReputationBox Integration Tests</name>
 
     <build>
         <testResources>
