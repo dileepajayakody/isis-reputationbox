@@ -259,6 +259,14 @@
           </exclusions>
         </dependency>
 
+
+        <!-- seems to be necessary to run under IntelliJ :-( -->
+        <dependency>
+            <groupId>org.apache.geronimo.specs</groupId>
+            <artifactId>geronimo-servlet_2.5_spec</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
     </dependencies>
 
 </project>
