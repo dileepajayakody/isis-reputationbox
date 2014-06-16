@@ -1,4 +1,4 @@
-package at.tomtasche.contextio;
+package dom.simple;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,10 +27,16 @@ public class Test {
 
 		
 		EmailService emailService = new EmailService();
-		List<EmailViewModel> emailVms = emailService.allMessages();
+		//emailService.allMessages("gdc2013demo@gmail.com", 0, 5);
+		//emailService.calculateEmailTfIdfVectors();
+		//emailService.calculateCosineSimilarity();
+		//emailService.calculateLSA();
+		
+		/*List<EmailViewModel> emailVms = emailService.allMessages();
 		System.out.println("number of mails received : " + emailVms.size());
-		for(EmailViewModel vm : emailVms){
-			System.out.println("messagId : " + vm.getMessageId() + " subject : " + vm.getSubject());
-		}
+		for (EmailViewModel vm : emailVms) {
+			System.out.println("messagId : " + vm.getEmailMessageId()
+					+ " subject : " + vm.getSubject());
+		}*/
 	}
 }

@@ -1,5 +1,6 @@
 package org.nic.isis.reputation.dom;
 
+import java.util.Date;
 import java.util.List;
 
 import org.apache.isis.applib.annotation.Title;
@@ -14,6 +15,14 @@ public class Email {
 	private List<String> toAddresses;
 	private List<String> ccAddresses;
 	private String fromAddress;
+	private String contentType;
+	private String charSet;
+	private Date date;
+	private String gmailThreadId;
+	private List<String> folders;
+	
+	//for email analysis
+	private List<String> termList;
 	
 	@Title
 	public String getMessageId() {
@@ -96,6 +105,54 @@ public class Email {
 		this.listAddress = listAddress;
 	}
 
+	public String getContentType() {
+		return contentType;
+	}
+
+	public void setContentType(String contentType) {
+		this.contentType = contentType;
+	}
+
+	public String getCharSet() {
+		return charSet;
+	}
+
+	public void setCharSet(String charSet) {
+		this.charSet = charSet;
+	}
+
+	public Date getDate() {
+		return date;
+	}
+
+	public void setDate(Date date) {
+		this.date = date;
+	}
+
+	public String getGmailThreadId() {
+		return gmailThreadId;
+	}
+
+	public void setGmailThreadId(String gmailThreadId) {
+		this.gmailThreadId = gmailThreadId;
+	}
+
+	public List<String> getFolders() {
+		return folders;
+	}
+
+	public void setFolders(List<String> folders) {
+		this.folders = folders;
+	}
+
+	public List<String> getTermList() {
+		return termList;
+	}
+
+	public void setTermList(List<String> termList) {
+		this.termList = termList;
+	}
+
 	//to detect mailing lists
 	private String replyToAddress;
 	private String listAddress;
@@ -103,8 +160,7 @@ public class Email {
 	//feature vectors for email analysis
 	
 	
-	public Reputation calcReputation(ReputationCriteria criteria){
-		
+	public Reputation calcReputation(ReputationCriteria criteria){	
 		return null;
 	}
 }

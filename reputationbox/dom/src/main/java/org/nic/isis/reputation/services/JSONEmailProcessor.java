@@ -1,4 +1,4 @@
-package org.nic.isis.reputation.viewmodels;
+package org.nic.isis.reputation.services;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -7,48 +7,30 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import org.apache.isis.applib.ViewModel;
 import org.apache.isis.applib.annotation.Hidden;
 import org.apache.isis.applib.annotation.Programmatic;
 import org.apache.isis.applib.annotation.Title;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.nic.isis.reputation.services.EmailService;
+import org.nic.isis.reputation.viewmodels.EmailViewModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class EmailViewModel implements ViewModel {
+/**
+ * @author dileepa
+ * does JSON processing to extract email info
+ */
+public class JSONEmailProcessor {
 
 	private JSONObject json;
 	private final static Logger logger = LoggerFactory
-			.getLogger(EmailViewModel.class);
-
-	@Override
-	@Hidden
-	public void viewModelInit(String momento) {
-		String decodedJsonString;
-		try {
-			decodedJsonString = URLDecoder.decode(momento, "UTF-8");
-			this.json = new JSONObject(decodedJsonString);
-		} catch (UnsupportedEncodingException e) {
-			logger.error("Error while decoding momento string", e);
-		}
-
+			.getLogger(JSONEmailProcessor.class);
+	
+	public JSONEmailProcessor(JSONObject js){
+		this.json = js;
 	}
 
-	@Hidden
-	public String viewModelMemento() {
-		String vmMomento = "";
-		try {
-			vmMomento = URLEncoder.encode(json.toString(), "UTF-8");
-		} catch (UnsupportedEncodingException e) {
-			logger.error("Error while returning view model momento string", e);
-		}
-		return vmMomento;
-	}
-
-	@Title
 	public String getEmailMessageId() {
 		return json.getString("emailMessageId");
 	}
@@ -67,7 +49,6 @@ public class EmailViewModel implements ViewModel {
 		return folderList;
 	}
 
-	@Programmatic
 	public JSONObject getAddressObject() {
 		return (JSONObject) json.get("addresses");
 	}
@@ -121,5 +102,4 @@ public class EmailViewModel implements ViewModel {
 	public String getGmailThreadId() {
 		return json.getString("gmailThreadId");
 	}
-
 }
