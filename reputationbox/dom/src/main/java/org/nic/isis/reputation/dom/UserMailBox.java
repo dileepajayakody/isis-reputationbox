@@ -6,19 +6,20 @@ package org.nic.isis.reputation.dom;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-
 import java.util.HashMap;
-
 import java.util.List;
 import java.util.Map;
+
 import javax.jdo.annotations.IdentityType;
 import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.PrimaryKey;
 import javax.jdo.annotations.VersionStrategy;
 
 import org.apache.isis.applib.annotation.ObjectType;
+import org.apache.isis.applib.annotation.Programmatic;
 import org.nic.isis.tfidf.CosineSimilarity;
 import org.nic.isis.tfidf.TfIdf;
+
 
 
 import edu.ucla.sspace.matrix.Matrix;
@@ -52,10 +53,8 @@ public class UserMailBox {
 	private int termCount = 0;
 	//emailId: email
 	@Persistent
-	@javax.jdo.annotations.Column(allowsNull="true")
 	private Map<String,Email> allEmails = new HashMap<String,Email>();
 	@Persistent
-	@javax.jdo.annotations.Column(allowsNull="true")
 	private List<EmailContact> allEmailContacts = new ArrayList<EmailContact>() ;
 	@Persistent
 	private int lastIndexTimestamp = 0;
@@ -66,16 +65,13 @@ public class UserMailBox {
 	
 	//emailId : index
 	@Persistent
-	@javax.jdo.annotations.Column(allowsNull="true")
 	private Map<String, Integer> emailIdMap = new HashMap<String, Integer>();
 	// term: index, all terms in the documents
 	@Persistent
-	@javax.jdo.annotations.Column(allowsNull="true")
 	private Map<String, Integer> allTerms = new HashMap<String, Integer>();
 	// emailId: tfidfVector (the index of the array corresponds to the index of
 	// allTerms to get the term)
 	@Persistent
-	@javax.jdo.annotations.Column(allowsNull="true")
 	private Map<String, double[]> tfIdfEmailMap = new HashMap<String, double[]>();
 
 	public UserMailBox() {
@@ -186,23 +182,35 @@ public class UserMailBox {
 		}
 	}*/
 
-	
+	@Programmatic
+	@javax.jdo.annotations.Column(allowsNull="true")
 	public Map<String, Integer> getAllTerms() {
 		return allTerms;
 	}
-
+	
+	@Programmatic
+	@javax.jdo.annotations.Column(allowsNull="true")
 	public Map<String, double[]> getTfIdfEmailMap() {
 		return tfIdfEmailMap;
 	}
 
+	@Programmatic
+	public void setTfIdfEmailMap(Map<String, double[]> tfIdfEmailMap) {
+		this.tfIdfEmailMap = tfIdfEmailMap;
+	}
+	
+	@Programmatic
+	@javax.jdo.annotations.Column(allowsNull="true")
 	public Map<String,Email> getAllEmails() {
 		return allEmails;
 	}
 
+	@Programmatic
 	public void setAllEmails(Map<String,Email> allEmails) {
 		this.allEmails = allEmails;
 	}
-
+	
+	@javax.jdo.annotations.Column(allowsNull="true")
 	public List<EmailContact> getAllEmailContacts() {
 		return allEmailContacts;
 	}
@@ -211,9 +219,18 @@ public class UserMailBox {
 		this.allEmailContacts = allEmailContacts;
 	}
 
+	@javax.jdo.annotations.Column(allowsNull="false")
+	@PrimaryKey
 	public String getEmailId() {
 		return emailId;
 	}
+
+	@Programmatic
+	public void setAllTerms(Map<String, Integer> allTerms) {
+		this.allTerms = allTerms;
+	}
+
+	
 
 	public void setEmailId(String userId) {
 		this.emailId = userId;
