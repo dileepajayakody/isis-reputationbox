@@ -3,7 +3,6 @@ package webapp.scheduler;
 import javax.inject.Inject;
 
 import org.apache.isis.core.runtime.sessiontemplate.AbstractIsisSessionTemplate;
-import org.nic.isis.reputation.services.EmailService;
 import org.nic.isis.reputation.services.EmailSyncService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

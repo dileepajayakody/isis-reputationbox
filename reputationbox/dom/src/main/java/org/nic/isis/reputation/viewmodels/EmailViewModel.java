@@ -14,7 +14,6 @@ import org.apache.isis.applib.annotation.Title;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.nic.isis.reputation.services.EmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

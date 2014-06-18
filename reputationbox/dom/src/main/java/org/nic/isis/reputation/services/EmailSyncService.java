@@ -13,7 +13,6 @@ import org.nic.isis.reputation.dom.UserMailBox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import dom.simple.SimpleObject;
 
 public class EmailSyncService {
 
