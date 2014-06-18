@@ -33,6 +33,7 @@ public class EmailSyncService {
 		for(UserMailBox mailBox : allMailBoxes){
 			mailBox = contextIOService.synMailBox(mailBox, 20);
 			container.persist(mailBox);
+			container.flush();
 			
 		}
 	}

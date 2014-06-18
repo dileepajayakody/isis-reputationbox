@@ -1,19 +1,11 @@
 package org.nic.isis.reputation.services;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
-import org.apache.isis.applib.annotation.Hidden;
-import org.apache.isis.applib.annotation.Programmatic;
-import org.apache.isis.applib.annotation.Title;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.nic.isis.reputation.viewmodels.EmailViewModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +64,7 @@ public class JSONEmailProcessor {
 			}
 		}catch (JSONException jex){
 			logger.error(
-					"JSON Exception occured while retrieving TO addresses", jex);
+					"JSON Exception occured while retrieving TO addresses");
 		}
 		return toAddressEmails;
 	}
@@ -90,7 +82,7 @@ public class JSONEmailProcessor {
 				}
 		} catch (JSONException jex) {
 			logger.error(
-					"JSON Exception occured while retrieving CC addresses", jex);
+					"JSON Exception occured while retrieving CC addresses");
 		}
 		return ccAddressEmails;
 	}

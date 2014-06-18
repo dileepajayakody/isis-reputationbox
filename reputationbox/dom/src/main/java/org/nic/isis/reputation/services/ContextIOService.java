@@ -1,6 +1,5 @@
 package org.nic.isis.reputation.services;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -9,7 +8,6 @@ import java.util.Map;
 import javax.inject.Inject;
 
 import org.apache.isis.applib.DomainObjectContainer;
-import org.apache.isis.applib.annotation.Hidden;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.nic.isis.reputation.dom.Email;
@@ -37,6 +35,7 @@ public class ContextIOService {
 	
 	public UserMailBox synMailBox(UserMailBox mailbox, int limit) {
 		int since = mailbox.getLastIndexTimestamp();
+		logger.info("Syncing Email Account : " + mailbox.getEmailId() + " since last indexed timestamp : " + since);
 		Map<String, String> params = new HashMap<String, String>();
 		params.put("since", String.valueOf(since));
 		params.put("limit", String.valueOf(limit));
@@ -80,7 +79,9 @@ public class ContextIOService {
 				logger.error("Error while encoding Json message", e);
 			}
 		}
+		
 		mailbox.setLastIndexTimestamp(lastIndexedTimestamp);
+		logger.info(data.length() + " mails retrieved from : " + mailbox.getEmailId() + " indexed timestamp : " + lastIndexedTimestamp);
 		return mailbox;
 		
 	}
