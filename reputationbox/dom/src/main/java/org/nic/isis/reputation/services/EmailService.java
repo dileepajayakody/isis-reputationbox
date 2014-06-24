@@ -8,47 +8,55 @@ import javax.inject.Inject;
 import org.apache.isis.applib.DomainObjectContainer;
 import org.apache.isis.applib.annotation.Named;
 import org.apache.isis.applib.annotation.Programmatic;
-import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-public class EmailSyncService {
+public class EmailService {
 
 	private final static Logger logger = LoggerFactory
-			.getLogger(EmailSyncService.class);
-	
+			.getLogger(EmailService.class);
+
 	/**
 	 * sync all mailboxes with new emails since last indexed timestamp
 	 */
-	public void sync(){
+	public void syncMailBoxes() {
 		List<UserMailBox> allMailBoxes = listAllMailBoxes();
-		if (allMailBoxes == null || allMailBoxes.isEmpty()){
+		if (allMailBoxes == null || allMailBoxes.isEmpty()) {
 			logger.info("There is no mailboxes in datastore. creating a new one");
 			allMailBoxes = new ArrayList<UserMailBox>();
 			allMailBoxes.add(create("gdc2013demo@gmail.com"));
 		}
-		for(UserMailBox mailBox : allMailBoxes){
-			mailBox = contextIOService.synMailBox(mailBox, 20);
+		for (UserMailBox mailBox : allMailBoxes) {
+			mailBox = contextIOService.updateMailBox(mailBox, 20);
 			container.persist(mailBox);
 			container.flush();
-			
+
 		}
 	}
-	
+
 	@Programmatic
-	public List<UserMailBox> listAllMailBoxes(){
+	public List<UserMailBox> listAllMailBoxes() {
 		return container.allInstances(UserMailBox.class);
 	}
-	
+
 	public UserMailBox create(final String userId) {
-	        final UserMailBox mb = container.newTransientInstance(UserMailBox.class);
-	        mb.setEmailId(userId);;
-	        container.persistIfNotAlready(mb);
-	        return mb;
-	 }
-	
+		final UserMailBox mb = container
+				.newTransientInstance(UserMailBox.class);
+		mb.setEmailId(userId);
+		container.persistIfNotAlready(mb);
+		return mb;
+	}
+
+	public void connectMailBox(@Named("Email Id") String emailId,
+			@Named("Password") String password,
+			@Named("First Name") String fname, @Named("Last Name") String lname) {
+		UserMailBox newMb = contextIOService.connectMailBox(emailId, password,
+				fname, lname);
+		container.persistIfNotAlready(newMb);
+
+	}
+
 	@Inject
 	DomainObjectContainer container;
 	@Inject

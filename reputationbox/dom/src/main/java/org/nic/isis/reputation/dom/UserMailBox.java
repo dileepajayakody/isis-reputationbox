@@ -4,9 +4,8 @@
  */
 package org.nic.isis.reputation.dom;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.ArrayList;		
+import java.util.HashMap;	
 import java.util.List;
 import java.util.Map;
 
@@ -17,16 +16,7 @@ import javax.jdo.annotations.VersionStrategy;
 
 import org.apache.isis.applib.annotation.ObjectType;
 import org.apache.isis.applib.annotation.Programmatic;
-import org.nic.isis.tfidf.CosineSimilarity;
-import org.nic.isis.tfidf.TfIdf;
-
-
-
-import edu.ucla.sspace.matrix.Matrix;
-import edu.ucla.sspace.matrix.YaleSparseMatrix;
-import edu.ucla.sspace.text.DocumentPreprocessor;
-import edu.ucla.sspace.text.EnglishStemmer;
-
+import org.nic.isis.reputation.utils.EmailUtils;
 
 /**
  * @author dileepa
@@ -41,174 +31,96 @@ import edu.ucla.sspace.text.EnglishStemmer;
         column="version")
 @ObjectType("USERMAILBOX")
 public class UserMailBox {
-
+	
 	@PrimaryKey
 	@Persistent
 	private String emailId;
+	
+	@javax.jdo.annotations.Column(allowsNull="false")
+	@PrimaryKey
+	public String getEmailId() {
+		return emailId;
+	}
+
+	public void setEmailId(String userId) {
+		this.emailId = userId;
+	}
+
 	@Persistent
-	private String userName;
+	private String userFirstName;
+	
+	@javax.jdo.annotations.Column(allowsNull="true")
+	public String getUserFirstName() {
+		return userFirstName;
+	}
+
+	public void setUserFirstName(String userfname) {
+		this.userFirstName = userfname;
+	}
+	
+	@Persistent
+	private String userLastName;
+	
+	@javax.jdo.annotations.Column(allowsNull="true")
+	public String getUserLastName() {
+		return userLastName;
+	}
+
+	public void setUserLastName(String userName) {
+		this.userLastName = userName;
+	}
+
 	@Persistent
 	private int emailCount = 0;
+	
+	public int getEmailCount() {
+		return emailCount;
+	}
+
+	public void setEmailCount(int emailCount) {
+		this.emailCount = emailCount;
+	}
+	
 	@Persistent
 	private int termCount = 0;
-	//emailId: email
-	@Persistent
-	private Map<String,Email> allEmails = new HashMap<String,Email>();
-	@Persistent
-	private List<EmailContact> allEmailContacts = new ArrayList<EmailContact>() ;
+	
+	public int getTermCount() {
+		return termCount;
+	}
+
+	public void setTermCount(int termCount) {
+		this.termCount = termCount;
+	}
+	
 	@Persistent
 	private int lastIndexTimestamp = 0;
-
-	// This variable will hold all terms of each email in a list
-	// emailIdIndex:termsList
-	//private Map<String, List<String>> termsInEmails = new HashMap<String, List<String>>();
 	
-	//emailId : index
-	@Persistent
-	private Map<String, Integer> emailIdMap = new HashMap<String, Integer>();
-	// term: index, all terms in the documents
-	@Persistent
-	private Map<String, Integer> allTerms = new HashMap<String, Integer>();
-	// emailId: tfidfVector (the index of the array corresponds to the index of
-	// allTerms to get the term)
-	@Persistent
-	private Map<String, double[]> tfIdfEmailMap = new HashMap<String, double[]>();
-
-	public UserMailBox() {
-	
+	public int getLastIndexTimestamp() {
+		return lastIndexTimestamp;
 	}
 
-	public UserMailBox(String userId, String userName) {
-		this.emailId = userId;
-		this.userName = userName;
-			
+	public void setLastIndexTimestamp(int lastIndexTimestamp) {
+		this.lastIndexTimestamp = lastIndexTimestamp;
 	}
-
-	public void addEmail(Email email){
-		emailIdMap.put(email.getMessageId(),emailCount);
-		this.allEmails.put(email.getMessageId(),email);
-		emailCount++;
+	
+	
+	//emailId: email
+	@Persistent
+	private List<Email> allEmails = new ArrayList<Email>();
 		
-	}
-	
-	public List<String> parseEmail(Email email) {
-		List<String> emailTermsList = new ArrayList<String>();
-		emailTermsList.addAll(tokenizeContent(email.getSubject()));
-		emailTermsList.addAll(tokenizeContent(email.getBody()));
-
-		for (String term : emailTermsList) {
-			if (!allTerms.containsKey(term)) { // avoid duplicate entry
-				allTerms.put(term, termCount);
-				termCount++;
-			}
-		}
-		//termsInEmails.put(email.getMessageId(), emailTermsList);
-		email.setTermList(emailTermsList);
-		return emailTermsList;
-	}
-
-	
-	/**
-	 * tokenize the email content and performs various preprocessing
-	 * @param content
-	 * @return
-	 */
-	public static List<String> tokenizeContent(String content) {
-		// to get individual terms
-		DocumentPreprocessor docPreproc = new DocumentPreprocessor();
-		content = docPreproc.process(content);
-		String[] tokenizedTerms = content.replaceAll("[\\W&&[^\\s]]", "")
-				.split("\\W+");
-		//stem words to avoid same word being indexed with same meaning
-		EnglishStemmer stemmer = new EnglishStemmer();
-		for(int i=0; i < tokenizedTerms.length; i++){
-			String stemmedToken = stemmer.stem(tokenizedTerms[i]);
-			tokenizedTerms[i] = stemmedToken;
-		}
-		
-		return Arrays.asList(tokenizedTerms);
-	}
-
-	/**
-	 * Method to create termVector according to its tfidf score.
-	 */
-/*	public void calculateTfIdf() {
-		double tf; // term frequency
-		double idf; // inverse document frequency
-		double tfidf; // term frequency inverse document frequency
-		for (String emailId : termsInEmails.keySet()) {
-
-			List<String> termsInAnEmail = termsInEmails.get(emailId);
-			double[] tfidfvectors = new double[allTerms.size()];
-			int count = 0;
-			//row:term, column:email
-			Matrix tfMatrix = new YaleSparseMatrix(allTerms.size(),termsInEmails.size());
-			Matrix idfMatrix = new YaleSparseMatrix(allTerms.size(),termsInEmails.size());
-			
-			
-			
-			for (String term : allTerms.keySet()) {
-				tf = TfIdf.tfCalculator(termsInAnEmail, term);
-				idf = TfIdf.idfCalculator(termsInEmails.values(), term);
-				tfidf = tf * idf;
-				tfidfvectors[count] = tfidf;
-				count++;
-				
-			}		
-			tfIdfEmailMap.put(emailId, tfidfvectors); // storing document
-													// vectors;
-		}
-	}*/
-
-	/**
-	 * Method to calculate cosine similarity between all the documents.
-	 */
-	/*public void getCosineSimilarity() {
-		for (String emailId1 : tfIdfEmailMap.keySet()) {
-			for (String emailId2 : tfIdfEmailMap.keySet()) {
-				if (!emailId1.equalsIgnoreCase(emailId2)){
-					System.out.println("cosine similarity between email : "
-							+ emailId1
-							+ " and "
-							+ emailId2
-							+ "  =  "
-							+ CosineSimilarity.calculateCosineSimilarity(
-									tfIdfEmailMap.get(emailId1),
-									tfIdfEmailMap.get(emailId2)));
-
-				}
-				
-			}
-		}
-	}*/
-
 	@Programmatic
 	@javax.jdo.annotations.Column(allowsNull="true")
-	public Map<String, Integer> getAllTerms() {
-		return allTerms;
-	}
-	
-	@Programmatic
-	@javax.jdo.annotations.Column(allowsNull="true")
-	public Map<String, double[]> getTfIdfEmailMap() {
-		return tfIdfEmailMap;
-	}
-
-	@Programmatic
-	public void setTfIdfEmailMap(Map<String, double[]> tfIdfEmailMap) {
-		this.tfIdfEmailMap = tfIdfEmailMap;
-	}
-	
-	@Programmatic
-	@javax.jdo.annotations.Column(allowsNull="true")
-	public Map<String,Email> getAllEmails() {
+	public List<Email> getAllEmails() {
 		return allEmails;
 	}
 
 	@Programmatic
-	public void setAllEmails(Map<String,Email> allEmails) {
+	public void setAllEmails(List<Email> allEmails) {
 		this.allEmails = allEmails;
 	}
+	
+	@Persistent
+	private List<EmailContact> allEmailContacts = new ArrayList<EmailContact>() ;
 	
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public List<EmailContact> getAllEmailContacts() {
@@ -219,28 +131,10 @@ public class UserMailBox {
 		this.allEmailContacts = allEmailContacts;
 	}
 
-	@javax.jdo.annotations.Column(allowsNull="false")
-	@PrimaryKey
-	public String getEmailId() {
-		return emailId;
-	}
-
-	@Programmatic
-	public void setAllTerms(Map<String, Integer> allTerms) {
-		this.allTerms = allTerms;
-	}
-
 	
-
-	public void setEmailId(String userId) {
-		this.emailId = userId;
+	public void addEmail(Email email){
+		this.allEmails.add(email);
+		emailCount++;
 	}
-
-	public int getLastIndexTimestamp() {
-		return lastIndexTimestamp;
-	}
-
-	public void setLastIndexTimestamp(int lastIndexTimestamp) {
-		this.lastIndexTimestamp = lastIndexTimestamp;
-	}
+		
 }

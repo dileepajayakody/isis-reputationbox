@@ -1,4 +1,4 @@
-package org.nic.isis.reputation.services;
+package org.nic.isis.reputation.utils;
 
 import java.util.ArrayList;
 import java.util.Date;

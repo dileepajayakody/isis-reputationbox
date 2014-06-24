@@ -1,6 +1,7 @@
 package org.nic.isis.reputation.dom;
 
 import javax.jdo.annotations.IdentityType;
+import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.VersionStrategy;
 
 import org.apache.isis.applib.annotation.ObjectType;
@@ -15,7 +16,10 @@ import org.apache.isis.applib.annotation.ObjectType;
 @ObjectType("EMAILADDRESS")
 public class EmailAddress {
 
+	@Persistent
 	private String emailId;
+	
+	@Persistent
 	private String name;
 	
 }

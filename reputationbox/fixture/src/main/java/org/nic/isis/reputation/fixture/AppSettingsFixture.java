@@ -17,9 +17,10 @@
  *  under the License.
  */
 
-package fixture.simple;
+package org.nic.isis.reputation.fixture;
 
 import org.apache.isis.applib.fixtures.AbstractFixture;
+import org.apache.isis.applib.services.settings.ApplicationSettingsService;
 import org.apache.isis.applib.services.settings.ApplicationSettingsServiceRW;
 
 public class AppSettingsFixture extends AbstractFixture {
@@ -27,10 +28,10 @@ public class AppSettingsFixture extends AbstractFixture {
     
     @Override
     public void install() {
-
-        applicationSettingsService.newString("contextIoApiKey", "123345fdger4gfd", "passw0rd"); // last arg is default value
-
+        applicationSettingsService.newString("contextIOApiKey", "65kd0b3k", "65kd0b3k"); // last arg is default value
+        applicationSettingsService.newString("contextIOApiSecret", "CetIiO0Ke0Klb2u8", "CetIiO0Ke0Klb2u8");    
         getContainer().flush();
+        
     }
 
 

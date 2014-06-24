@@ -1,8 +1,10 @@
-package org.scribe.utils;
+package org.nic.isis.reputation.utils;
 
 import java.io.*;
 import java.net.*;
 import java.util.*;
+
+import org.scribe.utils.Preconditions;
 
 /**
  * Utils to deal with URL and url-encodings

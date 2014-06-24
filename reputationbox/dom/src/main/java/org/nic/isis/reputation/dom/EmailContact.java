@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import javax.jdo.annotations.IdentityType;
+import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.VersionStrategy;
 
 import org.apache.isis.applib.annotation.ObjectType;
@@ -18,10 +19,42 @@ import org.apache.isis.applib.annotation.ObjectType;
 @ObjectType("EMAILCONTACT")
 public class EmailContact {
 
+	@Persistent
 	private String name;
+	
+	@javax.jdo.annotations.Column(allowsNull="true")
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	@Persistent
 	private Reputation contactReputation;
+	
+	@javax.jdo.annotations.Column(allowsNull="true")
+	public Reputation getContactReputation() {
+		return contactReputation;
+	}
+
+	public void setContactReputation(Reputation contactReputation) {
+		this.contactReputation = contactReputation;
+	}
+
+	@Persistent
 	private Set<EmailAddress> emailAddresses;
 	
+	@javax.jdo.annotations.Column(allowsNull="true")
+	public Set<EmailAddress> getEmailAddresses() {
+		return emailAddresses;
+	}
+
+	public void setEmailAddresses(Set<EmailAddress> emailAddresses) {
+		this.emailAddresses = emailAddresses;
+	}
+
 	public EmailContact(){
 		emailAddresses = new HashSet<EmailAddress>();
 	}
