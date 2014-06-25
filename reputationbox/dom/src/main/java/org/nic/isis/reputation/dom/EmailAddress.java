@@ -2,6 +2,7 @@ package org.nic.isis.reputation.dom;
 
 import javax.jdo.annotations.IdentityType;
 import javax.jdo.annotations.Persistent;
+import javax.jdo.annotations.PrimaryKey;
 import javax.jdo.annotations.VersionStrategy;
 
 import org.apache.isis.applib.annotation.ObjectType;
@@ -19,7 +20,26 @@ public class EmailAddress {
 	@Persistent
 	private String emailId;
 	
+	@PrimaryKey
+	@javax.jdo.annotations.Column(allowsNull="false")
+	public String getEmailId() {
+		return emailId;
+	}
+
+	public void setEmailId(String emailId) {
+		this.emailId = emailId;
+	}
+
 	@Persistent
 	private String name;
 	
+	@javax.jdo.annotations.Column(allowsNull="true")
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
 }

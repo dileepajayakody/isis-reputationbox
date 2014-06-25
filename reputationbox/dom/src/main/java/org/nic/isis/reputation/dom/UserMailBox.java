@@ -32,12 +32,12 @@ import org.nic.isis.reputation.utils.EmailUtils;
 @ObjectType("USERMAILBOX")
 public class UserMailBox {
 	
-	@PrimaryKey
 	@Persistent
 	private String emailId;
 	
 	@javax.jdo.annotations.Column(allowsNull="false")
-	@PrimaryKey
+	
+	
 	public String getEmailId() {
 		return emailId;
 	}
@@ -103,8 +103,6 @@ public class UserMailBox {
 		this.lastIndexTimestamp = lastIndexTimestamp;
 	}
 	
-	
-	//emailId: email
 	@Persistent
 	private List<Email> allEmails = new ArrayList<Email>();
 		
@@ -130,7 +128,6 @@ public class UserMailBox {
 	public void setAllEmailContacts(List<EmailContact> allEmailContacts) {
 		this.allEmailContacts = allEmailContacts;
 	}
-
 	
 	public void addEmail(Email email){
 		this.allEmails.add(email);

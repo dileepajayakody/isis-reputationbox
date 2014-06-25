@@ -20,7 +20,7 @@ public class EmailService {
 	/**
 	 * sync all mailboxes with new emails since last indexed timestamp
 	 */
-	public void syncMailBoxes() {
+	public synchronized void syncMailBoxes() {
 		List<UserMailBox> allMailBoxes = listAllMailBoxes();
 		if (allMailBoxes == null || allMailBoxes.isEmpty()) {
 			logger.info("There is no mailboxes in datastore. creating a new one");
@@ -29,7 +29,7 @@ public class EmailService {
 		}
 		for (UserMailBox mailBox : allMailBoxes) {
 			mailBox = contextIOService.updateMailBox(mailBox, 20);
-			container.persist(mailBox);
+			container.persistIfNotAlready(mailBox);
 			container.flush();
 
 		}

@@ -13,6 +13,7 @@ import javax.inject.Inject;
 import org.apache.isis.applib.annotation.Hidden;
 import org.apache.isis.applib.annotation.Named;
 import org.apache.isis.applib.annotation.Programmatic;
+import org.apache.isis.applib.services.settings.ApplicationSetting;
 import org.apache.isis.applib.services.settings.ApplicationSettingsService;
 import org.apache.isis.applib.services.settings.ApplicationSettingsServiceRW;
 import org.json.JSONArray;
@@ -151,13 +152,17 @@ public class ContextIOService {
 	@PostConstruct
 	public void init(){
 	
-		this.key = applicationSettingsService.find("contextIOApiKey").valueAsString();
-		this.secret = applicationSettingsService.find("contextIOApiSecret").valueAsString();
-		//this.key = "65kd0b3k";
-		//this.secret = "CetIiO0Ke0Klb2u8";
+		//this.key = applicationSettingsService.find("contextIOApiKey").valueAsString();
+		//this.secret = applicationSettingsService.find("contextIOApiSecret").valueAsString();
+		this.key = "65kd0b3k";
+		this.secret = "CetIiO0Ke0Klb2u8";
 		this.ssl = true;
 		this.saveHeaders = false;
 		this.apiVersion = "1.1";
+		/*List<ApplicationSetting> appSettings = applicationSettingsService.listAll();
+		for (ApplicationSetting setting:appSettings){
+			logger.info(setting.getKey() + " : " + setting.getValueRaw() + " desc :" + setting.getDescription() );
+		}*/
 	}
 
 	public ContextIOService(){
