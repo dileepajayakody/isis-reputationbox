@@ -1,15 +1,14 @@
 package org.nic.isis.reputation.utils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import org.nic.isis.reputation.dom.Email;
-
 import edu.ucla.sspace.text.DocumentPreprocessor;
 import edu.ucla.sspace.text.EnglishStemmer;
 
-public class EmailUtils {
+import java.util.Arrays;
+import java.util.List;
+
+public final class EmailUtils {
+
+    private EmailUtils(){}
 
 	/**
 	 * tokenize the email content and performs various preprocessing

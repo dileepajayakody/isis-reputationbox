@@ -46,8 +46,47 @@ public class ContextIOService {
 	static final String ENDPOINT = "api.context.io";
 	private final static Logger logger = LoggerFactory
 			.getLogger(ContextIOService.class);
-	
-	String key;
+
+
+    //region > constructor
+    public ContextIOService(){
+        this.ssl = true;
+        this.saveHeaders = false;
+        this.apiVersion = "1.1";
+    }
+    /**
+     * Instantiate a new ContextIO object. Your OAuth consumer key and secret can be
+     * found under the "settings" tab of the developer console (https://console.context.io/#settings)
+     * @param key Your Context.IO OAuth consumer key
+     * @param secret Your Context.IO OAuth consumer secret
+     */
+    public ContextIOService(String key, String secret) {
+        this();
+        this.key = key;
+        this.secret = secret;
+    }
+    //endregion
+
+    //region > init
+    @PostConstruct
+    public void init(){
+
+        //this.key = applicationSettingsService.find("contextIOApiKey").valueAsString();
+        //this.secret = applicationSettingsService.find("contextIOApiSecret").valueAsString();
+        this.key = "65kd0b3k";
+        this.secret = "CetIiO0Ke0Klb2u8";
+        this.ssl = true;
+        this.saveHeaders = false;
+        this.apiVersion = "1.1";
+		/*List<ApplicationSetting> appSettings = applicationSettingsService.listAll();
+		for (ApplicationSetting setting:appSettings){
+			logger.info(setting.getKey() + " : " + setting.getValueRaw() + " desc :" + setting.getDescription() );
+		}*/
+    }
+    //endregion
+
+    //region > key (property, programmatic)
+    String key;
 	@Programmatic
 	public String getKey() {
 		return key;
@@ -57,7 +96,9 @@ public class ContextIOService {
 	public void setKey(String key) {
 		this.key = key;
 	}
+    //endregion
 
+    //region > secret (property, programmatic)
 	String secret;
 	@Programmatic
 	public String getSecret() {
@@ -68,22 +109,23 @@ public class ContextIOService {
 	public void setSecret(String secret) {
 		this.secret = secret;
 	}
-
-	
+    //endregion
 
 	@Programmatic
 	public void setLastResponse(ContextIOResponse lastResponse) {
 		this.lastResponse = lastResponse;
 	}
-	
+
+    //region > ssl (property, programmatic)
+	boolean ssl;
+
 	@Programmatic
 	public boolean isSsl() {
 		return ssl;
 	}
 
-	boolean ssl;
 	/**
-	 * Specify whether or not API calls should be made over a secure connection. 
+	 * Specify whether or not API calls should be made over a secure connection.
 	 * HTTPS is used on all calls by default.
 	 * @param sslOn Set to false to make calls over HTTP, true to use HTTPS
 	 */
@@ -91,7 +133,9 @@ public class ContextIOService {
 	public void setSsl(boolean ssl) {
 		this.ssl = ssl;
 	}
+    //endregion
 
+    //region > apiVersion (property, programmatic)
 	String apiVersion;
 	@Programmatic
 	public String getApiVersion() {
@@ -107,7 +151,9 @@ public class ContextIOService {
 	public void setApiVersion(String apiVersion) {
 		this.apiVersion = apiVersion;
 	}
+    //endregion
 
+    //region > saveHeaders (property, programmatic)
 	boolean saveHeaders;
 	@Programmatic
 	public boolean isSaveHeaders() {
@@ -118,7 +164,9 @@ public class ContextIOService {
 	public void setSaveHeaders(boolean saveHeaders) {
 		this.saveHeaders = saveHeaders;
 	}
+    //endregion
 
+    //region > authHeaders (property, programmatic)
 	boolean authHeaders;
 	@Programmatic
 	public boolean isAuthHeaders() {
@@ -134,8 +182,10 @@ public class ContextIOService {
 	public void setAuthHeaders(boolean authHeaders) {
 		this.authHeaders = authHeaders;
 	}
+    //endregion
 
-	ContextIOResponse lastResponse;
+    //region > lastResponse (property, programmatic, read-only)
+    ContextIOResponse lastResponse;
 	/**
 	 * Returns the ContextIOResponse object for the last API call.
 	 * @return ContextIOResponse
@@ -144,46 +194,10 @@ public class ContextIOService {
 	public ContextIOResponse getLastResponse() {
 		return lastResponse;
 	}
+    //endregion
 
-
-	 @javax.inject.Inject
-	   private ApplicationSettingsService applicationSettingsService;
-	
-	@PostConstruct
-	public void init(){
-	
-		//this.key = applicationSettingsService.find("contextIOApiKey").valueAsString();
-		//this.secret = applicationSettingsService.find("contextIOApiSecret").valueAsString();
-		this.key = "65kd0b3k";
-		this.secret = "CetIiO0Ke0Klb2u8";
-		this.ssl = true;
-		this.saveHeaders = false;
-		this.apiVersion = "1.1";
-		/*List<ApplicationSetting> appSettings = applicationSettingsService.listAll();
-		for (ApplicationSetting setting:appSettings){
-			logger.info(setting.getKey() + " : " + setting.getValueRaw() + " desc :" + setting.getDescription() );
-		}*/
-	}
-
-	public ContextIOService(){
-		this.ssl = true;
-		this.saveHeaders = false;
-		this.apiVersion = "1.1";
-	}
-	/**
-	 * Instantiate a new ContextIO object. Your OAuth consumer key and secret can be
-	 * found under the "settings" tab of the developer console (https://console.context.io/#settings)
-	 * @param key Your Context.IO OAuth consumer key
-	 * @param secret Your Context.IO OAuth consumer secret
-	 */
-	public ContextIOService(String key, String secret) {
-		this();
-		this.key = key;
-		this.secret = secret;
-	}
-
-
-	/**
+    //region > addresses (programmatic)
+    /**
 	 * Returns the 20 contacts with whom the most emails were exchanged.
 	 * @link http://context.io/docs/1.1/addresses
 	 * @param account accountId or email address of the mailbox you want to query
@@ -193,7 +207,9 @@ public class ContextIOService {
 	public ContextIOResponse addresses(String account) {
 		return get(account, "adresses.json", null);
 	}
+    //endregion
 
+    //region > allFiles (programmatic)
 	/**
 	 * Returns the 25 most recent attachments found in a mailbox. Use limit to change that number.
 	 * @link http://context.io/docs/1.1/allfiles
@@ -207,7 +223,9 @@ public class ContextIOService {
 
 		return get(account, "allfiles.json", params);
 	}
+    //endregion
 
+    //region > allMessages (programmatic)
 	/**
 	 * Returns the 25 most recent mails found in a mailbox. Use limit to change that number.
 	 * This is useful if you're polling a mailbox for new messages and want all new messages
@@ -223,7 +241,9 @@ public class ContextIOService {
 
 		return get(account, "allmessages.json", params);
 	}
+    //endregion
 
+    //region > contactFiles (programmatic)
 	/**
 	 * This call returns the latest attachments exchanged with one
 	 * or more email addresses
@@ -238,7 +258,9 @@ public class ContextIOService {
 
 		return get(account, "contactfiles.json", params);
 	}
+    //endregion
 
+    //region > contactMessages (programmatic)
 	/**
 	 * This call returns list of email messages for one or more contacts. Use the email
 	 * parameter to get emails where a contact appears in the recipients or is the sender.
@@ -254,7 +276,9 @@ public class ContextIOService {
 
 		return get(account, "contactmessages.json", params);
 	}
+    //endregion
 
+    //region > contactSearch (programmatic)
 	/**
 	 * This call search the lists of contacts.
 	 * @link http://context.io/docs/1.1/contactsearch
@@ -268,7 +292,9 @@ public class ContextIOService {
 
 		return get(account, "contactsearch.json", params);
 	}
+    //endregion
 
+    //region > diffSummary (programmatic)
 	/**
 	 * Given two files, this will return the list of insertions and deletions made
 	 * from the oldest of the two files to the newest one.
@@ -285,12 +311,14 @@ public class ContextIOService {
 
 		return get(account, "diffsummary.json", params);
 	}
+    //endregion
 
+    //region > downloadFile, fileRevisions, relatedFiles, fileSearch (programmatic)
 	/**
 	 * Returns the content a given attachment. If you want to save the attachment to
 	 * a file, set $saveAs to the destination file name. If $saveAs is left to null,
 	 * the function will return the file data.
-	 * on the 
+	 * on the
 	 * @link http://context.io/docs/1.1/downloadfile
 	 * @param account accountId or email address of the mailbox you want to query
 	 * @param params Query parameters for the API call: 'fileId'
@@ -303,7 +331,7 @@ public class ContextIOService {
 	}
 
 	/**
-	 * Returns a list of revisions attached to other emails in the 
+	 * Returns a list of revisions attached to other emails in the
 	 * mailbox for one or more given files (see fileid parameter below).
 	 * @link http://context.io/docs/1.1/filerevisions
 	 * @param account accountId or email address of the mailbox you want to query
@@ -318,7 +346,7 @@ public class ContextIOService {
 	}
 
 	/**
-	 * Returns a list of files that are related to the given file. 
+	 * Returns a list of files that are related to the given file.
 	 * Currently, relation between files is based on how similar their names are.
 	 * You must specify either the fileId of fileName parameter
 	 * @link http://context.io/docs/1.1/relatedfiles
@@ -332,9 +360,11 @@ public class ContextIOService {
 
 		return get(account, "relatedfiles.json", params);
 	}
+    //endregion
 
+    //region > fileSearch (programmatic)
 	/**
-	 * 
+	 *
 	 * @link http://context.io/docs/1.1/filesearch
 	 * @param account accountId or email address of the mailbox you want to query
 	 * @param params Query parameters for the API call: 'fileName'
@@ -346,7 +376,9 @@ public class ContextIOService {
 
 		return get(account, "filesearch.json", params);
 	}
+    //endregion
 
+    //region > IMAP account stuff(programmatic)
 	/**
 	 *
 	 * @link http://context.io/docs/1.1/imap/accountinfo
@@ -370,7 +402,34 @@ public class ContextIOService {
 		return get("", "imap/addaccount.json", params);
 	}
 
-	/**
+    /**
+     * Modify the IMAP server settings of an already indexed account
+     * @link http://context.io/docs/1.1/imap/modifyaccount
+     * @param params Query parameters for the API call: 'credentials', 'mailboxes'
+     * @return ContextIOResponse
+     */
+    @Programmatic
+    public ContextIOResponse imap_modifyAccount(String account, Map<String, String> params) {
+        params = filterParams(params, new String[] {"credentials", "mailboxes"});
+
+        return get(account, "imap/modifyaccount.json", params);
+    }
+
+    /**
+     * Remove the connection to an IMAP account
+     * @link http://context.io/docs/1.1/imap/removeaccount
+     * @return ContextIOResponse
+     */
+    @Programmatic
+    public ContextIOResponse imap_removeAccount(String account, Map<String, String> params) {
+        params = filterParams(params, new String[] {"label"});
+
+        return get(account, "imap/removeaccount.json", params);
+    }
+    //endregion
+
+    //region > IMAP settings
+    /**
 	 * Attempts to discover IMAP settings for a given email address
 	 * @link http://context.io/docs/1.1/imap/discover
 	 * @param params either a string or assoc array
@@ -384,35 +443,13 @@ public class ContextIOService {
 
 		return get("", "imap/discover.json", params);
 	}
+    //endregion
 
-	/**
-	 * Modify the IMAP server settings of an already indexed account
-	 * @link http://context.io/docs/1.1/imap/modifyaccount
-	 * @param params Query parameters for the API call: 'credentials', 'mailboxes'
-	 * @return ContextIOResponse
-	 */
-	@Programmatic
-	public ContextIOResponse imap_modifyAccount(String account, Map<String, String> params) {
-		params = filterParams(params, new String[] {"credentials", "mailboxes"});
+    //region > imap_resetStatus (programmatic)
 
-		return get(account, "imap/modifyaccount.json", params);
-	}
-
-	/**
-	 * Remove the connection to an IMAP account
-	 * @link http://context.io/docs/1.1/imap/removeaccount
-	 * @return ContextIOResponse
-	 */
-	@Programmatic
-	public ContextIOResponse imap_removeAccount(String account, Map<String, String> params) {
-		params = filterParams(params, new String[] {"label"});
-
-		return get(account, "imap/removeaccount.json", params);
-	}
-
-	/**
-	 * When Context.IO can't connect to your IMAP server, 
-	 * the IMAP server gets flagged as unavailable in our database. 
+    /**
+	 * When Context.IO can't connect to your IMAP server,
+	 * the IMAP server gets flagged as unavailable in our database.
 	 * Use this call to re-enable the syncing.
 	 * @link http://context.io/docs/1.1/imap/resetstatus
 	 * @return ContextIOResponse
@@ -423,8 +460,10 @@ public class ContextIOService {
 
 		return get(account, "imap/resetstatus.json", params);
 	}
+    //endregion
 
-	/**
+    //region > IMAP oAuth
+    /**
 	 *
 	 * @link http://context.io/docs/1.1/imap/oauthproviders
 	 */
@@ -458,8 +497,11 @@ public class ContextIOService {
 
 		return get("", "imap/oauthproviders.json", params);
 	}
+    //endregion
 
-	/**
+    //region > messageHeaders, messageInfo, messageText, search (for message)
+
+    /**
 	 * Returns the message headers of a message.
 	 * A message can be identified by the value of its Message-ID header
 	 * or by the combination of the date sent timestamp and email address
@@ -523,8 +565,11 @@ public class ContextIOService {
 
 		return get(account, "search.json", params);
 	}
+    //endregion
 
-	/**
+    //region > thread
+
+    /**
 	 * Returns message and contact information about a given email thread.
 	 * @link http://context.io/docs/1.1/threadinfo
 	 * @param account accountId or email address of the mailbox you want to query
@@ -537,8 +582,9 @@ public class ContextIOService {
 
 		return get(account, "threadinfo.json", params);
 	}
+    //endregion
 
-	
+    //region > build_baseurl, build_url
 	@Programmatic
 	public String build_baseurl() {
 		String url = "http";
@@ -553,8 +599,10 @@ public class ContextIOService {
 	public String build_url(String action) {
 		return build_baseurl() + action;
 	}
-	
-	@Programmatic
+    //endregion
+
+    //region > helpers (get, post)
+    @Programmatic
 	public ContextIOResponse[] get(String[] accounts, String action, Map<String, String> params) {
 		ContextIOResponse[] responses = new ContextIOResponse[accounts.length];
 		for (int i = 0; i < accounts.length; i++) {
@@ -621,8 +669,9 @@ public class ContextIOService {
 
 		return filteredParams;
 	}
-	
-//service methods
+    //endregion
+
+    //service methods
 	
 	/**
 	 * Updates the mailbox with new emails
@@ -789,7 +838,10 @@ public class ContextIOService {
 			return false;
 		}
 	}
-	
-	
-	
+
+    //region > dependencies
+    @javax.inject.Inject
+    private ApplicationSettingsService applicationSettingsService;
+    //endregion
+
 }
