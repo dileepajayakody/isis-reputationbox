@@ -1,11 +1,8 @@
 package org.nic.isis.reputation.dom;
 
 import java.util.Date;
-
 import javax.jdo.annotations.IdentityType;
-import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.VersionStrategy;
-
 import org.apache.isis.applib.annotation.ObjectType;
 import org.apache.isis.applib.util.ObjectContracts;
 
@@ -19,9 +16,10 @@ import org.apache.isis.applib.util.ObjectContracts;
 @ObjectType("REPUTATION")
 public class Reputation implements Comparable<Reputation>{
 
-	@Persistent
+    //region > reputationScore (property)
 	private double reputationScore;
-	
+
+    @javax.jdo.annotations.Persistent
 	public double getReputationScore() {
 		return reputationScore;
 	}
@@ -29,10 +27,12 @@ public class Reputation implements Comparable<Reputation>{
 	public void setReputationScore(double reputationScore) {
 		this.reputationScore = reputationScore;
 	}
-	
-	@Persistent
+    //endregion
+
+    //region > reputationDate (property)
 	private Date reputationDate;
-	
+
+	@javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public Date getReputationDate() {
 		return reputationDate;
@@ -41,10 +41,12 @@ public class Reputation implements Comparable<Reputation>{
 	public void setReputationDate(Date reputationDate) {
 		this.reputationDate = reputationDate;
 	}
+    //endregion
 
-	@Persistent
+    //region > reputationCriteria (property)
 	private ReputationCriteria criteria;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public ReputationCriteria getCriteria() {
 		return criteria;
@@ -53,14 +55,20 @@ public class Reputation implements Comparable<Reputation>{
 	public void setCriteria(ReputationCriteria criteria) {
 		this.criteria = criteria;
 	}
+    //endregion
 
-	@Override
+    //region > calcReputation (action)
+    public void calcReputation(ReputationCriteria criteria){
+
+    }
+    //endregion
+
+    //region > Comparable impl
+    @Override
 	public int compareTo(Reputation other) {
 		 return ObjectContracts.compare(this, other, "reputationScore");
 	}
+    //endregion
 
-	public void calcReputation(ReputationCriteria criteria){
-		
-	}
 
 }
