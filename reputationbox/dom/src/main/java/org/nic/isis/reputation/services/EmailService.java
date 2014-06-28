@@ -22,11 +22,11 @@ public class EmailService {
 	 */
 	public synchronized void syncMailBoxes() {
 		List<UserMailBox> allMailBoxes = listAllMailBoxes();
-		if (allMailBoxes == null || allMailBoxes.isEmpty()) {
+		/*if (allMailBoxes == null || allMailBoxes.isEmpty()) {
 			logger.info("There is no mailboxes in datastore. creating a new one");
 			allMailBoxes = new ArrayList<UserMailBox>();
 			allMailBoxes.add(create("gdc2013demo@gmail.com"));
-		}
+		}*/
 		for (UserMailBox mailBox : allMailBoxes) {
 			mailBox = contextIOService.updateMailBox(mailBox, 20);
 			container.persistIfNotAlready(mailBox);
@@ -40,6 +40,7 @@ public class EmailService {
 		return container.allInstances(UserMailBox.class);
 	}
 
+	@Programmatic
 	public UserMailBox create(final String userId) {
 		final UserMailBox mb = container
 				.newTransientInstance(UserMailBox.class);
@@ -53,8 +54,12 @@ public class EmailService {
 			@Named("First Name") String fname, @Named("Last Name") String lname) {
 		UserMailBox newMb = contextIOService.connectMailBox(emailId, password,
 				fname, lname);
-		container.persistIfNotAlready(newMb);
-
+		if(null != newMb){
+			container.persistIfNotAlready(newMb);
+		}else {
+			logger.info("EmailService.connectMailBox couldn't connect the mailbox for : " + emailId);
+		}
+		
 	}
 
 	@Inject

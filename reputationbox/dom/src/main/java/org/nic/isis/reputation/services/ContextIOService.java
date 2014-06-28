@@ -10,6 +10,7 @@ import java.util.Map;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
+import org.apache.isis.applib.DomainObjectContainer;
 import org.apache.isis.applib.annotation.Hidden;
 import org.apache.isis.applib.annotation.Named;
 import org.apache.isis.applib.annotation.Programmatic;
@@ -638,6 +639,8 @@ public class ContextIOService {
 		params.put("limit", String.valueOf(limit));
 		ContextIOResponse cio = this.allMessages(mailbox.getEmailId(), params);
 		
+		//if since=0 this is the intial email retrieval, need to index all emails upto now..
+		
 		JSONObject json = new JSONObject(cio.getRawResponse().getBody());
 		JSONArray data = json.getJSONArray("data");
 		int lastIndexedTimestamp= json.getInt("timestamp");
@@ -723,7 +726,6 @@ public class ContextIOService {
 		JSONObject imapResponseJson = new JSONObject(imapDiscoverResponse.getRawResponse().getBody());
 		JSONObject accountData = (JSONObject)imapResponseJson.get("data");
 		Boolean found = (Boolean)accountData.get("found");
-		logger.info("found imap settings :" + found);
 		if (found){
 			JSONObject imapObject = (JSONObject)accountData.get("imap");
 			String server = (String)imapObject.get("server");
@@ -735,7 +737,7 @@ public class ContextIOService {
 			imapSettings.put("server", server);
 			imapSettings.put("username", username);
 			imapSettings.put("port", port.toString());
-			imapSettings.put("usessl", useSSL.toString());
+			imapSettings.put("useSSL", useSSL.toString());
 			imapSettings.put("oauth", oauth.toString());	
 		}
 		return imapSettings;
@@ -744,26 +746,50 @@ public class ContextIOService {
 	public UserMailBox connectMailBox(@Named("email address")String emailId, @Named("password")String password, @Named("First Name")String fname, @Named("Last Name")String lname){
 		Map<String, String> emailParams = new HashMap<String, String>();
 		emailParams.put("email", emailId);
-		Map<String, String> imapSettings = discoverIMAPSettings(emailId);
+		emailParams.put("password", password);
 		emailParams.put("firstname", fname);
 		emailParams.put("lastname", lname);
+		
+		Map<String, String> imapSettings = discoverIMAPSettings(emailId);
+		if(imapSettings.get("useSSL").equals("true")){
+			imapSettings.remove("useSSL");
+			emailParams.put("usessl","1");
+		} else {
+			emailParams.put("usessl","0");
+		}
 		emailParams.putAll(imapSettings);
 		
+		logger.info("The parameters for imap_addAccount operation are as following");
 		for(String key: emailParams.keySet()){
 			logger.info(key + " : " + emailParams.get(key));
-		}
-		ContextIOResponse addAccountResponse = this.imap_addAccount(emailParams);
-		boolean isErrored = addAccountResponse.isHasError();
-		logger.info("email account connection is errored : " + isErrored);
-		if (!isErrored){
-			UserMailBox mb = new UserMailBox();
-			mb.setEmailId(emailId);
-			mb.setUserFirstName(fname);
-			mb.setUserLastName(lname);
-			return mb;
+		} 
+		
+		if (!isEmailAccountConnected(emailId)){
+			ContextIOResponse addAccountResponse = this.imap_addAccount(emailParams);
+			String addAccntMsg = addAccountResponse.getRawResponse().getBody();
+			logger.info("ContextIO addAccount response : " + addAccntMsg);
+			JSONObject addAccountObject = new JSONObject(addAccntMsg);
+			JSONObject addAccountDataObject = (JSONObject)addAccountObject.get("data");
+			Integer success = (Integer)addAccountDataObject.get("success");
+			
+			if (success == 1){
+				UserMailBox mb = new UserMailBox();
+				mb.setEmailId(emailId);
+				mb.setUserFirstName(fname);
+				mb.setUserLastName(lname);
+				return mb;
+			}else {
+				String feedbackCode = (String)addAccountDataObject.get("feedbackCode");
+				logger.info("ContextIO.connectMailBox(" + emailId +") failed. feedback code : " + feedbackCode);
+				return null;
+			}
 		}else {
+			logger.info("Email : " + emailId + " is already connected");
+			//must return the already connected mailbox from datastore using domainObject container
 			return null;
+			
 		}
+		
 	}
 	
 	public boolean isEmailAccountConnected(@Named("email address")String emailId){
@@ -771,13 +797,15 @@ public class ContextIOService {
 		emailParams.put("email", emailId);
 		try {
 			ContextIOResponse accountInfoResponse = this.imap_accountInfo(emailParams);
-			JSONObject accountInfoJson = new JSONObject(accountInfoResponse.getRawResponse().getBody());
+			String accountInfoResponseString = accountInfoResponse.getRawResponse().getBody();
+			logger.info("ContextIO Account Info Response : "  + accountInfoResponseString);
+			JSONObject accountInfoJson = new JSONObject(accountInfoResponseString);
 			JSONObject accountInfoDataJson = (JSONObject)accountInfoJson.get("data");
 			JSONArray emails = (JSONArray)accountInfoDataJson.get("emails");
 			if (null != emails){
 				for(int x=0 ; x < emails.length() ; x++){
 					String emailAddress = emails.getString(x);
-					logger.info(emailAddress);
+					logger.info("connected email adddresses :" + emailAddress);
 				}
 				return true;
 			} else {
@@ -791,5 +819,6 @@ public class ContextIOService {
 	}
 	
 	
-	
+	@Inject
+	DomainObjectContainer container;
 }
