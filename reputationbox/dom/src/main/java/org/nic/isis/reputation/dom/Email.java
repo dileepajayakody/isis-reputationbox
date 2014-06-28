@@ -2,12 +2,8 @@ package org.nic.isis.reputation.dom;
 
 import java.util.Date;
 import java.util.List;
-
 import javax.jdo.annotations.IdentityType;
-import javax.jdo.annotations.Persistent;
-import javax.jdo.annotations.PrimaryKey;
 import javax.jdo.annotations.VersionStrategy;
-
 import org.apache.isis.applib.annotation.ObjectType;
 import org.apache.isis.applib.annotation.Title;
 
@@ -21,11 +17,12 @@ import org.apache.isis.applib.annotation.Title;
 @ObjectType("EMAIL")
 public class Email {
 
-	@Persistent
+    //region > messageId (property)
 	private String messageId;
-	
-	@Title
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="false")
+	@Title
 	public String getMessageId() {
 		return messageId;
 	}
@@ -33,11 +30,15 @@ public class Email {
 	public void setMessageId(String messageId) {
 		this.messageId = messageId;
 	}
-	
-	//for email analysis
-	@Persistent
+    //endregion
+
+    //region > subjectTerms (collection of strings)
 	private List<String> subjectTerms;
-	
+
+    /**
+     * for email analysis
+     */
+    @javax.jdo.annotations.Persistent
 	public List<String> getSubjectTerms() {
 		return subjectTerms;
 	}
@@ -45,10 +46,12 @@ public class Email {
 	public void setSubjectTerms(List<String> subjectTerms) {
 		this.subjectTerms = subjectTerms;
 	}
+    //endregion
 
-	@Persistent
+    //region > bodyTerms (collection of strings)
+    @javax.jdo.annotations.Persistent
 	private List<String> bodyTerms;
-	
+
 	public List<String> getBodyTerms() {
 		return bodyTerms;
 	}
@@ -56,10 +59,12 @@ public class Email {
 	public void setBodyTerms(List<String> bodyTerms) {
 		this.bodyTerms = bodyTerms;
 	}
+    //endregion
 
-	@Persistent
+    //region > inReplytoMessageId (property)
 	private String inReplytoMessageId;
 
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public String getInReplytoMessageId() {
 		return inReplytoMessageId;
@@ -68,10 +73,12 @@ public class Email {
 	public void setInReplytoMessageId(String inReplytoMessageId) {
 		this.inReplytoMessageId = inReplytoMessageId;
 	}
+    //endregion
 
-	@Persistent
+    //region > subject (property)
 	private String subject;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public String getSubject() {
 		return subject;
@@ -80,10 +87,12 @@ public class Email {
 	public void setSubject(String subject) {
 		this.subject = subject;
 	}
+    //endregion
 
-	@Persistent
+    //region > reputation (property)
 	private Reputation reputation;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public Reputation getReputation() {
 		return reputation;
@@ -92,10 +101,12 @@ public class Email {
 	public void setReputation(Reputation reputation) {
 		this.reputation = reputation;
 	}
+    //endregion
 
-	@Persistent
+    //region > toAddresses (collection of strings)
 	private List<String> toAddresses;
-	
+
+    @javax.jdo.annotations.Persistent
 	public List<String> getToAddresses() {
 		return toAddresses;
 	}
@@ -103,10 +114,12 @@ public class Email {
 	public void setToAddresses(List<String> toAddresses) {
 		this.toAddresses = toAddresses;
 	}
+    //endregion
 
-	@Persistent
+    //region > ccAddresses (collection of strings)
 	private List<String> ccAddresses;
-	
+
+    @javax.jdo.annotations.Persistent
 	public List<String> getCcAddresses() {
 		return ccAddresses;
 	}
@@ -114,10 +127,12 @@ public class Email {
 	public void setCcAddresses(List<String> ccAddresses) {
 		this.ccAddresses = ccAddresses;
 	}
+    //endregion
 
-	@Persistent
+    //region > fromAddress (property)
 	private String fromAddress;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public String getFromAddress() {
 		return fromAddress;
@@ -126,10 +141,12 @@ public class Email {
 	public void setFromAddress(String fromAddress) {
 		this.fromAddress = fromAddress;
 	}
+    //endregion
 
-	@Persistent
+    //region > replyToAddress (property)
 	private String replyToAddress;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public String getReplyToAddress() {
 		return replyToAddress;
@@ -138,10 +155,12 @@ public class Email {
 	public void setReplyToAddress(String replyToAddress) {
 		this.replyToAddress = replyToAddress;
 	}
+    //endregion
 
-	@Persistent
+    //region > listAddress (property)
 	private String listAddress;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public String getListAddress() {
 		return listAddress;
@@ -150,10 +169,12 @@ public class Email {
 	public void setListAddress(String listAddress) {
 		this.listAddress = listAddress;
 	}
+    //endregion
 
-	@Persistent
+    //region > contentType (property)
 	private String contentType;
-	
+
+	@javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public String getContentType() {
 		return contentType;
@@ -162,10 +183,12 @@ public class Email {
 	public void setContentType(String contentType) {
 		this.contentType = contentType;
 	}
+    //endregion
 
-	@Persistent
+    //region > charSet (property)
 	private String charSet;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public String getCharSet() {
 		return charSet;
@@ -174,10 +197,12 @@ public class Email {
 	public void setCharSet(String charSet) {
 		this.charSet = charSet;
 	}
+    //endregion
 
-	@Persistent
+    //region > date (property)
 	private Date date;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public Date getDate() {
 		return date;
@@ -186,10 +211,12 @@ public class Email {
 	public void setDate(Date date) {
 		this.date = date;
 	}
+    //endregion
 
-	@Persistent
+    //region > gmailThreadId (property)
 	private String gmailThreadId;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public String getGmailThreadId() {
 		return gmailThreadId;
@@ -198,10 +225,12 @@ public class Email {
 	public void setGmailThreadId(String gmailThreadId) {
 		this.gmailThreadId = gmailThreadId;
 	}
+    //endregion
 
-	@Persistent
+    //region > folders (collection of strings)
 	private List<String> folders;
-	
+
+	@javax.jdo.annotations.Persistent
 	public List<String> getFolders() {
 		return folders;
 	}
@@ -209,9 +238,12 @@ public class Email {
 	public void setFolders(List<String> folders) {
 		this.folders = folders;
 	}
+    //endregion
 
-	public Reputation calcReputation(ReputationCriteria criteria){
+    //region > calcReputation (action)
+    public Reputation calcReputation(ReputationCriteria criteria){
 		//to do
 		return null;
 	}
+    //endregion
 }
