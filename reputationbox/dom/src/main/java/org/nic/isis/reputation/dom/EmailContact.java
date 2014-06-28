@@ -2,11 +2,8 @@ package org.nic.isis.reputation.dom;
 
 import java.util.HashSet;
 import java.util.Set;
-
 import javax.jdo.annotations.IdentityType;
-import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.VersionStrategy;
-
 import org.apache.isis.applib.annotation.ObjectType;
 
 @javax.jdo.annotations.PersistenceCapable(identityType=IdentityType.DATASTORE)
@@ -19,9 +16,16 @@ import org.apache.isis.applib.annotation.ObjectType;
 @ObjectType("EMAILCONTACT")
 public class EmailContact {
 
-	@Persistent
-	private String name;
-	
+    //region > constructor
+    public EmailContact(){
+        emailAddresses = new HashSet<EmailAddress>();
+    }
+    //endregion
+
+    //region > name (property)
+    private String name;
+
+	@javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public String getName() {
 		return name;
@@ -30,10 +34,12 @@ public class EmailContact {
 	public void setName(String name) {
 		this.name = name;
 	}
-	
-	@Persistent
+    //endregion
+
+    //region > contactReputation (property)
 	private Reputation contactReputation;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public Reputation getContactReputation() {
 		return contactReputation;
@@ -42,10 +48,12 @@ public class EmailContact {
 	public void setContactReputation(Reputation contactReputation) {
 		this.contactReputation = contactReputation;
 	}
+    //endregion
 
-	@Persistent
+    //region > emailAddresses (collection), addEmailAddress (action)
 	private Set<EmailAddress> emailAddresses;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public Set<EmailAddress> getEmailAddresses() {
 		return emailAddresses;
@@ -55,11 +63,9 @@ public class EmailContact {
 		this.emailAddresses = emailAddresses;
 	}
 
-	public EmailContact(){
-		emailAddresses = new HashSet<EmailAddress>();
-	}
-	
 	public void addEmailAddress(EmailAddress emailAddress){
 		emailAddresses.add(emailAddress);
 	}
+    //endregion
+
 }
