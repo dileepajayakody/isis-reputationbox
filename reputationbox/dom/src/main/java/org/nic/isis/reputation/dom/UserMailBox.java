@@ -4,19 +4,12 @@
  */
 package org.nic.isis.reputation.dom;
 
-import java.util.ArrayList;		
-import java.util.HashMap;	
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-
 import javax.jdo.annotations.IdentityType;
-import javax.jdo.annotations.Persistent;
-import javax.jdo.annotations.PrimaryKey;
 import javax.jdo.annotations.VersionStrategy;
-
 import org.apache.isis.applib.annotation.ObjectType;
 import org.apache.isis.applib.annotation.Programmatic;
-import org.nic.isis.reputation.utils.EmailUtils;
 
 /**
  * @author dileepa
@@ -31,13 +24,12 @@ import org.nic.isis.reputation.utils.EmailUtils;
         column="version")
 @ObjectType("USERMAILBOX")
 public class UserMailBox {
-	
-	@Persistent
+
+    //region > emailId (property)
 	private String emailId;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="false")
-	
-	
 	public String getEmailId() {
 		return emailId;
 	}
@@ -45,10 +37,12 @@ public class UserMailBox {
 	public void setEmailId(String userId) {
 		this.emailId = userId;
 	}
+    //endregion
 
-	@Persistent
-	private String userFirstName;
-	
+    //region > userFirstName (property)
+    private String userFirstName;
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public String getUserFirstName() {
 		return userFirstName;
@@ -57,10 +51,12 @@ public class UserMailBox {
 	public void setUserFirstName(String userfname) {
 		this.userFirstName = userfname;
 	}
-	
-	@Persistent
+    //endregion
+
+    //region > userFirstName (property)
 	private String userLastName;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public String getUserLastName() {
 		return userLastName;
@@ -69,10 +65,12 @@ public class UserMailBox {
 	public void setUserLastName(String userName) {
 		this.userLastName = userName;
 	}
+    //endregion
 
-	@Persistent
+    //region > emailCount (property)
 	private int emailCount = 0;
-	
+
+    @javax.jdo.annotations.Persistent
 	public int getEmailCount() {
 		return emailCount;
 	}
@@ -80,10 +78,12 @@ public class UserMailBox {
 	public void setEmailCount(int emailCount) {
 		this.emailCount = emailCount;
 	}
-	
-	@Persistent
+    //endregion
+
+    //region > termCount (property)
 	private int termCount = 0;
-	
+
+    @javax.jdo.annotations.Persistent
 	public int getTermCount() {
 		return termCount;
 	}
@@ -91,10 +91,12 @@ public class UserMailBox {
 	public void setTermCount(int termCount) {
 		this.termCount = termCount;
 	}
-	
-	@Persistent
+    //endregion
+
+    //region > lastIndexTimestamp (property)
 	private int lastIndexTimestamp = 0;
-	
+
+    @javax.jdo.annotations.Persistent
 	public int getLastIndexTimestamp() {
 		return lastIndexTimestamp;
 	}
@@ -102,12 +104,14 @@ public class UserMailBox {
 	public void setLastIndexTimestamp(int lastIndexTimestamp) {
 		this.lastIndexTimestamp = lastIndexTimestamp;
 	}
-	
-	@Persistent
+    //endregion
+
+    //region > allEmails (programmatic), addEmail (action)
 	private List<Email> allEmails = new ArrayList<Email>();
-		
-	@Programmatic
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
+	@Programmatic
 	public List<Email> getAllEmails() {
 		return allEmails;
 	}
@@ -116,10 +120,17 @@ public class UserMailBox {
 	public void setAllEmails(List<Email> allEmails) {
 		this.allEmails = allEmails;
 	}
-	
-	@Persistent
+
+    public void addEmail(Email email){
+        this.allEmails.add(email);
+        emailCount++;
+    }
+    //endregion
+
+    //region > allEmailContacts (collection)
 	private List<EmailContact> allEmailContacts = new ArrayList<EmailContact>() ;
-	
+
+    @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public List<EmailContact> getAllEmailContacts() {
 		return allEmailContacts;
@@ -128,10 +139,6 @@ public class UserMailBox {
 	public void setAllEmailContacts(List<EmailContact> allEmailContacts) {
 		this.allEmailContacts = allEmailContacts;
 	}
-	
-	public void addEmail(Email email){
-		this.allEmails.add(email);
-		emailCount++;
-	}
-		
+    //endregion
+
 }

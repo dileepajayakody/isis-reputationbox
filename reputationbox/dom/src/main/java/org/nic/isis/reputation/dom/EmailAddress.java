@@ -1,10 +1,7 @@
 package org.nic.isis.reputation.dom;
 
 import javax.jdo.annotations.IdentityType;
-import javax.jdo.annotations.Persistent;
-import javax.jdo.annotations.PrimaryKey;
 import javax.jdo.annotations.VersionStrategy;
-
 import org.apache.isis.applib.annotation.ObjectType;
 
 @javax.jdo.annotations.PersistenceCapable(identityType=IdentityType.DATASTORE)
@@ -17,10 +14,11 @@ import org.apache.isis.applib.annotation.ObjectType;
 @ObjectType("EMAILADDRESS")
 public class EmailAddress {
 
-	@Persistent
+    //region > emailId (property)
 	private String emailId;
-	
-	@PrimaryKey
+
+    @javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.PrimaryKey
 	@javax.jdo.annotations.Column(allowsNull="false")
 	public String getEmailId() {
 		return emailId;
@@ -29,10 +27,12 @@ public class EmailAddress {
 	public void setEmailId(String emailId) {
 		this.emailId = emailId;
 	}
+    //endregion
 
-	@Persistent
+    //region > name (property)
+	@javax.jdo.annotations.Persistent
 	private String name;
-	
+
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public String getName() {
 		return name;
@@ -41,5 +41,6 @@ public class EmailAddress {
 	public void setName(String name) {
 		this.name = name;
 	}
+    //endregion
 
 }

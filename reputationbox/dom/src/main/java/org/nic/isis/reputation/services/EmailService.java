@@ -2,20 +2,19 @@ package org.nic.isis.reputation.services;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import javax.inject.Inject;
-
-import org.apache.isis.applib.DomainObjectContainer;
-import org.apache.isis.applib.annotation.Named;
-import org.apache.isis.applib.annotation.Programmatic;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.isis.applib.DomainObjectContainer;
+import org.apache.isis.applib.annotation.Named;
+import org.apache.isis.applib.annotation.Programmatic;
 
 public class EmailService {
 
 	private final static Logger logger = LoggerFactory
 			.getLogger(EmailService.class);
+
 
 	/**
 	 * sync all mailboxes with new emails since last indexed timestamp
@@ -42,28 +41,31 @@ public class EmailService {
 
 	@Programmatic
 	public UserMailBox create(final String userId) {
-		final UserMailBox mb = container
-				.newTransientInstance(UserMailBox.class);
+		final UserMailBox mb = container.newTransientInstance(UserMailBox.class);
 		mb.setEmailId(userId);
 		container.persistIfNotAlready(mb);
 		return mb;
 	}
 
-	public void connectMailBox(@Named("Email Id") String emailId,
+	public void connectMailBox(
+            @Named("Email Id") String emailId,
 			@Named("Password") String password,
 			@Named("First Name") String fname, @Named("Last Name") String lname) {
 		UserMailBox newMb = contextIOService.connectMailBox(emailId, password,
 				fname, lname);
+
 		if(null != newMb){
 			container.persistIfNotAlready(newMb);
 		}else {
 			logger.info("EmailService.connectMailBox couldn't connect the mailbox for : " + emailId);
 		}
-		
+
 	}
 
-	@Inject
+    //region > dependencies
+    @Inject
 	DomainObjectContainer container;
 	@Inject
 	ContextIOService contextIOService;
+    //endregion
 }
