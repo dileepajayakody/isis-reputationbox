@@ -200,16 +200,16 @@ public class Email {
     //endregion
 
     //region > date (property)
-	private Date date;
+	private int sentTimestamp;
 
     @javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull="true")
-	public Date getDate() {
-		return date;
+	public int getSentTimestamp() {
+		return sentTimestamp;
 	}
 
-	public void setDate(Date date) {
-		this.date = date;
+	public void setSentTimestamp(int timestamp) {
+		this.sentTimestamp = timestamp;
 	}
     //endregion
 

@@ -25,7 +25,7 @@ http://www.quartz-scheduler.org/xml/job_scheduling_data_1_8.xsd"
 	version="1.8">
 
 	<schedule>
-		<job>
+		<!--job>
 			<name>EmailSyncServiceJob</name>
 			<group>Isis</group>
 			<description>Poll and execute email getEmails action</description>
@@ -40,23 +40,20 @@ http://www.quartz-scheduler.org/xml/job_scheduling_data_1_8.xsd"
 					<value>admin_role</value>
 				</entry>
 			</job-data-map>
-		</job>
+		</job-->
 
 		<!--
 		cron format: 
 		http://quartz-scheduler.org/documentation/quartz-2.x/tutorials/tutorial-lesson-06
 	 	-->
-		<trigger>
+		<!--trigger>
 			<cron>
 				<name>EmailSyncServiceJobEveryTenSeconds</name>
 				<job-name>EmailSyncServiceJob</job-name>
 				<job-group>Isis</job-group>
-                <!-- 
-				<cron-expression>0 1 * * * ?</cron-expression>
-                 -->
-				<cron-expression>0/10 * * * * ?</cron-expression>
+				<cron-expression>*/59 * * * * ?</cron-expression>
 			</cron>
-		</trigger>
+		</trigger-->
 
 	</schedule>
 </job-scheduling-data>
