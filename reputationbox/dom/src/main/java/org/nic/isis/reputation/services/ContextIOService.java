@@ -85,7 +85,7 @@ public class ContextIOService {
 	public void listAllMailBoxes(){
 		ContextIOResponse accountsResponse = contextio_v20.getAccounts();
 		String responseBody = accountsResponse.getRawResponse().getBody();
-		logger.info("ALL mailboxes response : " + responseBody);
+		logger.info("getAccount response : " + responseBody);
 		JSONArray accountsArray = new JSONArray(responseBody);
 		for (int i = 0; i < accountsArray.length(); i++){
 			JSONObject accountObject = (JSONObject)accountsArray.get(i);
@@ -120,31 +120,36 @@ public class ContextIOService {
 		int offset = mailbox.getEmailCount();
 		String emailAccount = mailbox.getAccountId();
 		String emailAddress = mailbox.getEmailId();
-		logger.info("Syncing Email Account : " + emailAccount + " email offset : " + offset);
+		logger.info("Syncing mailbox for : " + emailAddress + " since last indexed timestamp : " + mailbox.getLastIndexTimestamp());
+		
+		//contextio 1.1. impl
 		Map<String, String> params = new HashMap<String, String>();
+		params.put("since", String.valueOf(mailbox.getLastIndexTimestamp()));
+		params.put("limit", String.valueOf(limit));
+		ContextIOResponse cio = contextio_v11.allMessages(emailAddress, params);
+			
+		//contextio 2.0 impl 
+		//currently contextio_v2 allMessages response always returns an empty json array. 
+		//needs to be fixed, and switched to contextio2.0 api
+		/*
 		params.put("limit", String.valueOf(limit));
 		params.put("sort_order", "asc");
 		params.put("include_body", String.valueOf(1));
 		params.put("include_headers", String.valueOf(1));
-		params.put("include_flags", String.valueOf(1));
+		params.put("include_flags", String.valueOf(1));	
+		ContextIOResponse cio = contextio_v20.allMessages(emailAccount, params);			
+		*/			
+		logger.info("allmessages response : " + cio.getRawResponse().getMessage() + "\n"+ cio.getRawResponse().getBody() );
+		logger.info(cio.getRawResponse().getMessage()); 
+			
+		JSONObject json = new JSONObject(cio.getRawResponse().getBody());
+		JSONArray data = json.getJSONArray("data");
+		int lastIndexedTimestamp= json.getInt("timestamp");
 		
-		ContextIOResponse cio = contextio_v20.allMessages(emailAccount, params);
-		
-		//contextio 1.1. impl
-		//params.put("since", String.valueOf(0));
-		//params.put("limit", String.valueOf(limit));
-		//ContextIOResponse cio = contextio_v11.allMessages(emailAddress, params);
-		
-		logger.info("allmessages response : " + cio.getRawResponse().getBody() );
-		
-		//process the allmessages reply
-		JSONArray jsonArray = new JSONArray(cio.getRawResponse().getBody());
-		
-		if (jsonArray != null && jsonArray.length() > 0){
-			for (int i = 0; i < jsonArray.length(); i++) {
+		if (data != null && data.length() > 0){
+			for (int i = 0; i < data.length(); i++) {
 				//iterating over email objects
-				JSONObject jsonObj = (JSONObject) jsonArray.get(i);
-
+				JSONObject jsonObj = (JSONObject) data.get(i);
 				try {		
 					JSONEmailProcessor jsonProcessor = new JSONEmailProcessor(jsonObj);
 					String emailMessageID = jsonProcessor.getEmailMessageId();
@@ -155,7 +160,6 @@ public class ContextIOService {
 					String fromAddress = jsonProcessor.getFromAddress();
 					List<String> toAddresses = jsonProcessor.getToAddresses();
 					List<String> ccAddresses = jsonProcessor.getCCAddresses();
-					List<String> folders = jsonProcessor.getFolders();
 					
 					Email email = new Email();
 					email.setSubject(subject);
@@ -165,42 +169,35 @@ public class ContextIOService {
 					email.setFromAddress(fromAddress);
 					email.setCcAddresses(ccAddresses);
 					email.setToAddresses(toAddresses);
-					email.setFolders(folders);
-					//retrieving message content of the email
-					System.out.println("the email account : " + emailAccount);
-					//email = this.getEmailMessageContent(emailAccount, emailMessageID, email);
+					//retrieving message content of the email			
+					email = this.getEmailMessageContent(emailAddress, emailMessageID, email);
 					mailbox.addEmail(email);
-					
+						
 				} catch (Exception e) {
-					logger.error("Error while encoding Json message in UPDATE_MAILBOX method", e);
+					logger.error("Error while decoding email JSON message ", e);
 				}
 			}
-		}
-		else {
-			//no more results from contextio..persist the mailbox
 			mailbox.setSyncing(false);
-			//container.persist(mailbox);
-			
-		}
-		logger.info(jsonArray.length() + " mails retrieved from : " + mailbox.getEmailId() );
-		return mailbox;
-		
+			mailbox.setLastIndexTimestamp(lastIndexedTimestamp);
+			logger.info(data.length() + " mails retrieved from : " + mailbox.getEmailId() );
+		}	
+		return mailbox;	
 	}
 	
 	/**
 	 * add message content fields to the email passed
-	 * @param emailAccount
+	 * @param emailAddress
 	 * @param msgId
 	 * @param email
 	 * @return email with message content
 	 */
 	@Programmatic
-	public Email getEmailMessageContent(String emailAccount, String msgId, Email email){
+	public Email getEmailMessageContent(String emailAddress, String msgId, Email email){
 		Map<String, String> emailParams = new HashMap<String, String>();
 		emailParams.put("emailmessageid", msgId);
 		
 		ContextIOResponse cioMessageText = contextio_v11.messageText(
-				emailAccount, emailParams);
+				emailAddress, emailParams);
 		JSONObject messageJson = new JSONObject(cioMessageText
 				.getRawResponse().getBody());
 		
@@ -270,6 +267,7 @@ public class ContextIOService {
 		} 
 		
 		if (!isEmailAccountConnected(emailId)){
+			
 			ContextIOResponse addAccountResponse = contextio_v11.imap_addAccount(emailParams);
 			String addAccntMsg = addAccountResponse.getRawResponse().getBody();
 			logger.info("ContextIO addAccount response : " + addAccntMsg);
@@ -285,7 +283,7 @@ public class ContextIOService {
 				return mb;
 			}else {
 				String feedbackCode = (String)addAccountDataObject.get("feedbackCode");
-				logger.info("ContextIO.connectMailBox(" + emailId +") failed. feedback code : " + feedbackCode);
+				logger.error("ContextIO.connectMailBox(" + emailId +") failed. feedback code : " + feedbackCode);
 				return null;
 			}
 		}else {

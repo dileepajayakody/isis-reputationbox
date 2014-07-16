@@ -239,6 +239,17 @@ public class Email {
 		this.folders = folders;
 	}
     //endregion
+	
+	private List<EmailAttachment> emailAttachments;
+	
+	@javax.jdo.annotations.Persistent
+	public List<EmailAttachment> getEmailAttachments() {
+		return emailAttachments;
+	}
+
+	public void setEmailAttachments(List<EmailAttachment> emailAttachments) {
+		this.emailAttachments = emailAttachments;
+	}
 
     //region > calcReputation (action)
     public Reputation calcReputation(ReputationCriteria criteria){
@@ -246,4 +257,6 @@ public class Email {
 		return null;
 	}
     //endregion
+
+	
 }

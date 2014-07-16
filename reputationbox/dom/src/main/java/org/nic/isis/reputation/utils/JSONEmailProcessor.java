@@ -3,15 +3,17 @@ package org.nic.isis.reputation.utils;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.nic.isis.reputation.dom.EmailAttachment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * @author dileepa Performs JSON processing to extract email info from
- *         allmessages 2.0 API
+ *         ContextIOResponse
  */
 public class JSONEmailProcessor {
 
@@ -24,7 +26,7 @@ public class JSONEmailProcessor {
 	}
 
 	public String getEmailMessageId() {
-		return json.getString("email_message_id");
+		return json.getString("emailMessageId");
 	}
 
 	/**
@@ -52,7 +54,7 @@ public class JSONEmailProcessor {
 	}
 
 	public String getGmailThreadId() {
-		return json.getString("gmail_thread_id");
+		return json.getString("gmailThreadId");
 	}
 
 	public List<String> getFolders() {
@@ -72,18 +74,24 @@ public class JSONEmailProcessor {
 	}
 
 	public String getFromAddress() {
-		JSONObject fromAddressObject = (JSONObject) getAddressObject().get(
-				"from");
-		String email = fromAddressObject.getString("email");
-		return email;
+		if (!getAddressObject().isNull("from")){
+			JSONObject fromAddressObject = (JSONObject) getAddressObject().get(
+					"from");
+			
+			String email = fromAddressObject.getString("email");
+			return email;
+		} else {
+			return null;
+		}
+		
 	}
 
 	public List<String> getToAddresses() {
 		List<String> toAddressEmails = new ArrayList<String>();
 		try {
-			JSONArray toAddressArray = (JSONArray) getAddressObject().get("to");
-
-			if (null != toAddressArray) {
+			
+			if (!getAddressObject().isNull("to")) {
+				JSONArray toAddressArray = (JSONArray) getAddressObject().get("to");
 				for (int i = 0; i < toAddressArray.length(); i++) {
 					JSONObject toAddressObj = (JSONObject) toAddressArray
 							.get(i);
@@ -93,7 +101,7 @@ public class JSONEmailProcessor {
 			}
 
 		} catch (JSONException jex) {
-			logger.error("JSON Exception occured while retrieving TO addresses");
+			logger.error("JSON Exception occured while retrieving TO addresses", jex);
 		}
 		return toAddressEmails;
 	}
@@ -101,9 +109,10 @@ public class JSONEmailProcessor {
 	public List<String> getCCAddresses() {
 		List<String> ccAddressEmails = new ArrayList<String>();
 		try {
-			JSONArray ccAddressArray = (JSONArray) getAddressObject().get("cc");
-
-			if (ccAddressArray != null) {
+			
+			if (!getAddressObject().isNull("cc")) {
+				JSONArray ccAddressArray = (JSONArray) getAddressObject().get(
+						"cc");
 				for (int i = 0; i < ccAddressArray.length(); i++) {
 					JSONObject toAddressObj = (JSONObject) ccAddressArray
 							.get(i);
@@ -113,15 +122,33 @@ public class JSONEmailProcessor {
 			}
 
 		} catch (JSONException jex) {
-			logger.error("JSON Exception occured while retrieving CC addresses");
+			logger.error(
+					"JSON Exception occured while retrieving CC addresses", jex);
 		}
 		return ccAddressEmails;
 	}
-	
-	public JSONArray getFiles(){
-		return (JSONArray) json.get("files");
+
+	public List<EmailAttachment> getAttachments() {
+		List<EmailAttachment> attachments = new ArrayList<EmailAttachment>();
+		if (json.get("files") != null) {
+			JSONArray filesArray = (JSONArray) json.get("files");
+			EmailAttachment attachment = new EmailAttachment();
+			for (int i = 0; i < filesArray.length(); i++) {
+				JSONObject file = (JSONObject) filesArray.get(i);
+				String fileId = (String) file.get("fileId");
+				String fileName = (String) file.get("fileName");
+				Integer fileSize = (Integer) file.get("size");
+				String fileType = (String) file.get("type");
+
+				attachment.setAttachmentId(fileId);
+				attachment.setFileName(fileName);
+				attachment.setSize(fileSize);
+				attachment.setType(fileType);
+				
+				attachments.add(attachment);
+			}
+		}
+		return attachments;
 	}
-	
-	
 
 }

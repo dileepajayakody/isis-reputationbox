@@ -133,7 +133,7 @@ public class UserMailBox {
 	private List<Email> allEmails = new ArrayList<Email>();
 
 	@javax.jdo.annotations.Persistent
-	@javax.jdo.annotations.Column(allowsNull = "true")
+	@javax.jdo.annotations.Column(allowsNull = "false")
 	@Programmatic
 	public List<Email> getAllEmails() {
 		return allEmails;

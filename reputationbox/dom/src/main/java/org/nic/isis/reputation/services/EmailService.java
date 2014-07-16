@@ -28,20 +28,37 @@ public class EmailService {
 			logger.info("There is no mailboxes in test-datastore. creating test mailboxes for connected accounts in contextio");
 			allMailBoxes = new ArrayList<UserMailBox>();
 			allMailBoxes.add(create("gdc2013demo@gmail.com"));
-			allMailBoxes.add(create("reputationbox1@gmail.com"));
+			//allMailBoxes.add(create("reputationbox1@gmail.com"));
 		}
 		
-		for (UserMailBox mailBox : allMailBoxes) {
+		for (final UserMailBox mailBox : allMailBoxes) {
+			if (!mailBox.isSyncing()){
+				mailBox.setSyncing(true);
+				while (mailBox.isSyncing()){
+					contextIOService.updateMailBox(mailBox, 20);
+				}
+				container.persist(mailBox);
+				logger.info("updated the mailBox: " + mailBox.getEmailId() + " with " + mailBox.getEmailCount() + " emails");
+			}
+/*
 			if (!mailBox.isSyncing()){
 				logger.info("Starting sync mail box thread for : " + mailBox.getEmailId());
-				UserMailBoxUpdateThread updateThread = new UserMailBoxUpdateThread(mailBox, contextIOService);
-				updateThread.start();
+				Runnable mailBoxRunnable = new Runnable(){
+					@Override
+					public void run() {
+						while (mailBox.isSyncing()){
+							contextIOService.updateMailBox(mailBox, 5);
+							
+						}
+					}
+				};
 				
-			}else {
-				logger.info("mailBox : " + mailBox.getEmailId() + " is already syncing");
+				Thread mailBoxSyncThread = new Thread(mailBoxRunnable);
+				mailBoxSyncThread.start();*/
+					
 			}
 		}
-	}
+	
 
 	@Programmatic
 	public List<UserMailBox> listAllMailBoxes() {

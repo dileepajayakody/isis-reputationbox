@@ -173,7 +173,7 @@ public class ContextIOApi extends DefaultApi10a {
 	@Programmatic
 	public String build_url(String action) {
 		String  url = build_baseurl() + action;
-		logger.info("The base URL to retrieve emails : " + url);
+		logger.info("The request base url: " + url);
 		return url;
 	}
 
