@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.isis.applib.DomainObjectContainer;
 import org.apache.isis.applib.annotation.Named;
 import org.apache.isis.applib.annotation.Programmatic;
+import org.apache.isis.applib.query.QueryDefault;
 import org.datanucleus.store.rdbms.request.UpdateRequest;
 
 public class EmailService {
@@ -81,15 +82,9 @@ public class EmailService {
 		UserMailBox newMb = contextIOService.connectMailBox(emailId, password,
 				fname, lname);
 
-		if(null != newMb){
-			UserMailBoxUpdateThread mbUpdateThread = new UserMailBoxUpdateThread(newMb, contextIOService);
-			mbUpdateThread.start();
-		}else {
-			logger.info("couldn't connect the mailbox for : " + emailId);
-		}
-
 	}
 
+	
     //region > dependencies
     @Inject
 	DomainObjectContainer container;

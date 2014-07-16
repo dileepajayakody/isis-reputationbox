@@ -19,7 +19,7 @@ import org.apache.isis.applib.annotation.Programmatic;
  * 
  */
 @javax.jdo.annotations.Queries({
-		@javax.jdo.annotations.Query(name = "find_mailbox", language = "JDOQL", value = "SELECT FROM org.nic.isis.reputation.dom.UserMailBox WHERE accountId == :accountId") 
+		@javax.jdo.annotations.Query(name = "findMailbox", language = "JDOQL", value = "SELECT FROM org.nic.isis.reputation.dom.UserMailBox WHERE  emailId == : emailId") 
 		})
 @javax.jdo.annotations.PersistenceCapable(identityType = IdentityType.DATASTORE)
 @javax.jdo.annotations.DatastoreIdentity(strategy = javax.jdo.annotations.IdGeneratorStrategy.IDENTITY, column = "id")

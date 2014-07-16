@@ -14,6 +14,7 @@ import org.apache.isis.applib.DomainObjectContainer;
 import org.apache.isis.applib.annotation.Hidden;
 import org.apache.isis.applib.annotation.Named;
 import org.apache.isis.applib.annotation.Programmatic;
+import org.apache.isis.applib.query.QueryDefault;
 import org.apache.isis.applib.services.settings.ApplicationSetting;
 import org.apache.isis.applib.services.settings.ApplicationSettingsService;
 import org.apache.isis.applib.services.settings.ApplicationSettingsServiceRW;
@@ -288,11 +289,15 @@ public class ContextIOService {
 			}
 		}else {
 			logger.info("Email : " + emailId + " is already connected");
-			//TODO: must return the already connected mailbox from datastore using domainObject container
-			return null;
-			
+			return findUserMailBox(emailId);	
 		}
 		
+	}
+	
+	public UserMailBox findUserMailBox(@Named("email id") String emailId) {
+		QueryDefault<UserMailBox> query = QueryDefault.create(
+				UserMailBox.class, "findMailbox", "emailId", emailId);
+		return container.firstMatch(query);
 	}
 	
 	public boolean isEmailAccountConnected(@Named("email address")String emailId){
