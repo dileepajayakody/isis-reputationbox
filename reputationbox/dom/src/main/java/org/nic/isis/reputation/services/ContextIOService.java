@@ -22,6 +22,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.nic.isis.reputation.dom.Email;
+import org.nic.isis.reputation.dom.TextContent;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.reputation.utils.EmailUtils;
 import org.nic.isis.reputation.utils.JSONEmailProcessor;
@@ -201,9 +202,7 @@ public class ContextIOService {
 				emailAddress, emailParams);
 		JSONObject messageJson = new JSONObject(cioMessageText
 				.getRawResponse().getBody());
-		
-		logger.info("email messagetext response : " + cioMessageText.getRawResponse().getBody());
-		
+			
 		JSONArray messageData = messageJson.getJSONArray("data");
 		JSONObject messageObj = (JSONObject) messageData.get(0);
 
@@ -211,12 +210,23 @@ public class ContextIOService {
 		String charSet = messageObj.getString("charset");
 		String content = messageObj.getString("content");
 		
-		List<String> contentTokens = EmailUtils.tokenizeContent(content);
-		List<String> subjectTokens = EmailUtils.tokenizeContent(email.getSubject());
-		email.setSubjectTerms(subjectTokens);
-		email.setBodyTerms(contentTokens);
+		logger.info("passing content to EmailUtils : \n" + content);
+		TextContent bodyContent = EmailUtils.processText(content);
+		TextContent subjectContent = EmailUtils.processText(email.getSubject());
+		
+		email.setSubjectContent(subjectContent);
+		email.setBodyContent(bodyContent);
 		email.setContentType(contentType);
 		email.setCharSet(charSet);
+		
+	/*	logger.info("email : " + msgId +  " email body actual word strings : " );
+		String wordTokenStr = "";
+		List<String> wordStrings = bodyContent.getStringTokens();
+		for(String token : wordStrings){
+			wordTokenStr += token + "\n";
+		}
+		logger.info(wordTokenStr);
+*/
 		return email;
 	}
 	

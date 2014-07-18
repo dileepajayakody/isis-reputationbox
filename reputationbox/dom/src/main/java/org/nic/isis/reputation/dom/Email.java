@@ -32,32 +32,35 @@ public class Email {
 	}
     //endregion
 
-    //region > subjectTerms (collection of strings)
-	private List<String> subjectTerms;
+    //region > subjectContent (property)
+	private TextContent subjectContent;
 
     /**
      * for email analysis
      */
     @javax.jdo.annotations.Persistent
-	public List<String> getSubjectTerms() {
-		return subjectTerms;
+    @javax.jdo.annotations.Column(allowsNull="true")
+	public TextContent getSubjectContent() {
+		return subjectContent;
 	}
 
-	public void setSubjectTerms(List<String> subjectTerms) {
-		this.subjectTerms = subjectTerms;
+	public void setSubjectContent(TextContent subjectContent) {
+		this.subjectContent = subjectContent;
 	}
     //endregion
 
-    //region > bodyTerms (collection of strings)
+    //region > bodyTerms (property)
     @javax.jdo.annotations.Persistent
-	private List<String> bodyTerms;
+	private TextContent bodyContent;
 
-	public List<String> getBodyTerms() {
-		return bodyTerms;
+    @javax.jdo.annotations.Persistent
+    @javax.jdo.annotations.Column(allowsNull="true")
+	public TextContent getBodyContent() {
+		return bodyContent;
 	}
 
-	public void setBodyTerms(List<String> bodyTerms) {
-		this.bodyTerms = bodyTerms;
+	public void setBodyContent(TextContent bodyContent) {
+		this.bodyContent = bodyContent;
 	}
     //endregion
 
