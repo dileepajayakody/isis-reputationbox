@@ -113,7 +113,7 @@ public class URLUtils {
 	public static String appendParametersToQueryString(String url,
 			Map<String, String> params) {
 		Preconditions.checkNotNull(url, "Cannot append to null URL");
-		if (null != params) {
+		if (null != params && !params.isEmpty()) {
 			String queryString = URLUtils.formURLEncodeMap(params);
 			if (queryString.equals(EMPTY_STRING)) {
 				return url;

@@ -228,7 +228,7 @@ public final class EmailUtils {
 			// Discard any characters that are not accepted as tokens.
 			wordText = wordText.replaceAll(
 					"[^\\w\\s;:\\(\\)\\[\\]'!/&?\",\\.<>]", "");
-			logger.info("after replacing all unaccepted tokens : " + wordText);
+			//logger.info("email word tokens : " + wordText);
 			// stemming actual words using English Stemmer
 			st = new StringTokenizer(wordText);
 			EnglishStemmer stemmer = new EnglishStemmer();
