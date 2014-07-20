@@ -161,6 +161,7 @@ public final class EmailUtils {
 		List<String> emails = new ArrayList<String>();
 		TextContent textContent = new TextContent();
 
+		StopwordFilter stopwordFilter = new StopwordFilter();
 		logger.info("processing text : \n" + text);
 		try {
 			// Replace any HTML-encoded elements
@@ -216,8 +217,10 @@ public final class EmailUtils {
 											.equals(":D"))) {
 							emoticons.add(tok);
 						} else {
-							// logger.info("appending token : " + tok);
-							passedLine.append(tok);
+							//checking if it's a stopword
+							if(!stopwordFilter.isStopword(tok)){
+								passedLine.append(tok);
+							}
 						}
 						passedLine.append(" ");
 						// logger.info("passedLine : " + passedLine.toString());
@@ -230,6 +233,7 @@ public final class EmailUtils {
 					"[^\\w\\s;:\\(\\)\\[\\]'!/&?\",\\.<>]", "");
 			//logger.info("email word tokens : " + wordText);
 			// stemming actual words using English Stemmer
+
 			st = new StringTokenizer(wordText);
 			EnglishStemmer stemmer = new EnglishStemmer();
 			while (st.hasMoreTokens()) {
@@ -291,7 +295,7 @@ public final class EmailUtils {
 			start = source.indexOf("&", end);
 			end = source.indexOf(";", start);
 		}
-		// if there weren't any substitutions, don't both to create a new String
+		// if there weren't any substitutions, don't bother to create a new String
 		if (sb.length() == 0)
 			return source;
 
