@@ -98,16 +98,14 @@ public class ContextIOService {
 	 * @return
 	 */
 	public UserMailBox updateMailBox(UserMailBox mailbox, int limit) {
-		int offset = mailbox.getEmailCount();
-		String emailAccount = mailbox.getAccountId();
+		
+		Map<String, String> params = new HashMap<String, String>();
 		String emailAddress = mailbox.getEmailId();
 		logger.info("Syncing mailbox for : " + emailAddress
 				+ " since last indexed timestamp : "
 				+ mailbox.getLastIndexTimestamp());
 
-		// contextio 1.1. impl
-		Map<String, String> params = new HashMap<String, String>();
-
+		// contextio 1.1. impl		
 		params.put("since", String.valueOf(mailbox.getLastIndexTimestamp()));
 		params.put("limit", String.valueOf(limit));
 		ContextIOResponse cio = contextio_v11.allMessages(emailAddress, params);
@@ -115,6 +113,8 @@ public class ContextIOService {
 		// contextio 2.0 impl
 		// currently contextio_v2 allMessages response resturns a 403
 		// needs to be fixed, and switched to contextio2.0 api
+		//int offset = mailbox.getEmailCount();
+		//String emailAccount = mailbox.getAccountId();
 		/*
 		 * params.put("limit", String.valueOf(limit)); params.put("sort_order",
 		 * "asc"); params.put("include_body", String.valueOf(1));
@@ -155,22 +155,22 @@ public class ContextIOService {
 					email.setCcAddresses(ccAddresses);
 					email.setToAddresses(toAddresses);
 					// retrieving message content of the email
-					email = this.getEmailMessageContent(emailAddress,
-							emailMessageID, email);
-					email = this.getMessageHeaders(emailAddress,
-							emailMessageID, email);
+					email = this.getEmailMessageContent(emailAddress, email);
+					email = this.getMessageHeaders(emailAddress, email);
 					mailbox.addEmail(email);
 
 				} catch (Exception e) {
 					logger.error("Error while decoding email JSON message ", e);
 				}
 			}
-			mailbox.setSyncing(false);
-			mailbox.setLastIndexTimestamp(lastIndexedTimestamp);
-			logger.info(data.length() + " mails retrieved from : "
-					+ mailbox.getEmailId());
+			
+		}else {
+			//no more emails to sync
+			mailbox.setSyncing(false);	
 		}
-
+		//mailbox.setLastIndexTimestamp(lastIndexedTimestamp);
+		logger.info(data.length() + " mails retrieved from : "
+				+ mailbox.getEmailId());
 		return mailbox;
 	}
 
@@ -183,10 +183,9 @@ public class ContextIOService {
 	 * @return email with message content
 	 */
 	@Programmatic
-	public Email getEmailMessageContent(String emailAddress, String msgId,
-			Email email) {
+	public Email getEmailMessageContent(String emailAddress, Email email) {
 		Map<String, String> emailParams = new HashMap<String, String>();
-		emailParams.put("emailmessageid", msgId);
+		emailParams.put("emailmessageid", email.getMessageId());
 
 		ContextIOResponse cioMessageText = contextio_v11.messageText(
 				emailAddress, emailParams);
@@ -199,13 +198,15 @@ public class ContextIOService {
 		String contentType = messageObj.getString("type");
 		String charSet = messageObj.getString("charset");
 		String content = messageObj.getString("content");
+		TextContent textContent = EmailUtils.processText(email.getSubject() + " " + content);
 
-		logger.info("passing content to EmailUtils : \n" + content);
-		TextContent bodyContent = EmailUtils.processText(content);
-		TextContent subjectContent = EmailUtils.processText(email.getSubject());
+		Map<String, Integer> wordFrequenceVector = textContent.getStringTokens();
+		logger.info("email word frequencies for email : " + email.getMessageId());
+		for(String key : wordFrequenceVector.keySet()){
+			logger.info(key + " : " + wordFrequenceVector.get(key));
+		}
 
-		email.setSubjectContent(subjectContent);
-		email.setBodyContent(bodyContent);
+		email.setTextContent(textContent);
 		email.setContentType(contentType);
 		email.setCharSet(charSet);
 
@@ -218,18 +219,16 @@ public class ContextIOService {
 		return email;
 	}
 
-	public Email getMessageHeaders(String emailAddress, String msgId,
-			Email email) {
+	public Email getMessageHeaders(String emailAddress, Email email) {
 		Map<String, String> emailParams = new HashMap<String, String>();
-		emailParams.put("emailmessageid", msgId);
+		emailParams.put("emailmessageid", email.getMessageId());
 		ContextIOResponse cioMessageText = contextio_v11.messageHeaders(
 				emailAddress, emailParams);
 		JSONObject messageJson = new JSONObject(cioMessageText.getRawResponse()
 				.getBody());
 
-		String messageData = messageJson.getString("data");
-		logger.info("message headers for email: " + msgId + " : " + messageData);
-
+		String headersData = messageJson.getString("data");
+		email.setEmailHedears(headersData);
 		return email;
 	}
 

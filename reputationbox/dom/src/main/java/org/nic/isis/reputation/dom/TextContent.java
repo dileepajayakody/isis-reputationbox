@@ -1,5 +1,6 @@
 package org.nic.isis.reputation.dom;
 import java.util.List;
+import java.util.Map;
 
 import javax.jdo.annotations.IdentityType;
 import javax.jdo.annotations.VersionStrategy;
@@ -16,53 +17,58 @@ import org.apache.isis.applib.annotation.ObjectType;
 @ObjectType("TEXTCONTENT")
 public class TextContent {
 
-	private List<String> stringTokens;
+	private Map<String, Integer> stringTokens;
 
-	public List<String> getStringTokens() {
+	@javax.jdo.annotations.Column(allowsNull="true")
+	public Map<String, Integer> getStringTokens() {
 		return stringTokens;
 	}
 
-	public void setStringTokens(List<String> stringTokens) {
+	public void setStringTokens(Map<String, Integer> stringTokens) {
 		this.stringTokens = stringTokens;
 	}
 
-	private List<String> urls;
+	private Map<String, Integer> urls;
 
-	public List<String> getUrls() {
+	@javax.jdo.annotations.Column(allowsNull="true")
+	public Map<String, Integer> getUrls() {
 		return urls;
 	}
 
-	public void setUrls(List<String> urls) {
+	public void setUrls(Map<String, Integer> urls) {
 		this.urls = urls;
 	}
 
-	private List<String> numbers;
+	private Map<String, Integer> numbers;
 
-	public List<String> getNumbers() {
+	@javax.jdo.annotations.Column(allowsNull="true")
+	public Map<String, Integer> getNumbers() {
 		return numbers;
 	}
 
-	public void setNumbers(List<String> numbers) {
+	public void setNumbers(Map<String, Integer> numbers) {
 		this.numbers = numbers;
 	}
 
-	private List<String> emoticons;
+	private Map<String, Integer> emoticons;
 
-	public List<String> getEmoticons() {
+	@javax.jdo.annotations.Column(allowsNull="true")
+	public Map<String, Integer> getEmoticons() {
 		return emoticons;
 	}
 
-	public void setEmoticons(List<String> emoticons) {
+	public void setEmoticons(Map<String, Integer> emoticons) {
 		this.emoticons = emoticons;
 	}
 
-	private List<String> emails;
+	private Map<String, Integer> emails;
 
-	public List<String> getEmails() {
+	@javax.jdo.annotations.Column(allowsNull="true")
+	public Map<String, Integer> getEmails() {
 		return emails;
 	}
 
-	public void setEmails(List<String> emails) {
+	public void setEmails(Map<String, Integer> emails) {
 		this.emails = emails;
 	}
 

@@ -154,15 +154,15 @@ public final class EmailUtils {
 	 */
 	public static TextContent processText(String text) {
 
-		List<String> stringTokens = new ArrayList<String>();
-		List<String> urls = new ArrayList<String>();
-		List<String> numbers = new ArrayList<String>();
-		List<String> emoticons = new ArrayList<String>();
-		List<String> emails = new ArrayList<String>();
 		TextContent textContent = new TextContent();
+		Map<String, Integer> wordFrequenceMap = new HashMap<String, Integer>();
+		Map<String, Integer> urlFrequenceMap = new HashMap<String, Integer>();
+		Map<String, Integer> numbersFrequenceMap = new HashMap<String, Integer>();
+		Map<String, Integer> emailsFrequenceMap = new HashMap<String, Integer>();
+		Map<String, Integer> emoticonsFrequenceMap = new HashMap<String, Integer>();
 
 		StopwordFilter stopwordFilter = new StopwordFilter();
-		logger.info("processing text : \n" + text);
+		//logger.info("processing text : \n" + text);
 		try {
 			// Replace any HTML-encoded elements
 			text = unescapeHTML(text);
@@ -198,12 +198,12 @@ public final class EmailUtils {
 									" .");
 						} else if (tok.contains("@") && tok.contains(".")) {
 							// assume it's an email address
-							emails.add(tok);
+							addTokenToMap(emailsFrequenceMap, tok);
 						} else if (tok.startsWith("http")
 								|| tok.startsWith("ftp")) {
-							urls.add(tok);
+							addTokenToMap(urlFrequenceMap, tok);
 						} else if (tok.matches("[0-9]+")) {
-							numbers.add(tok);
+							addTokenToMap(numbersFrequenceMap, tok);
 						}
 						// basic emotions
 						else if ((tok.length() == 2 || tok.length() == 3)
@@ -215,10 +215,10 @@ public final class EmailUtils {
 										|| tok.equals(":|") || tok.equals(":[")
 										|| tok.equals(":]") || tok.equals(":X") || tok
 											.equals(":D"))) {
-							emoticons.add(tok);
+							addTokenToMap(emoticonsFrequenceMap, tok);
 						} else {
-							//checking if it's a stopword
-							if(!stopwordFilter.isStopword(tok)){
+							// checking if it's a stopword
+							if (!stopwordFilter.isStopword(tok)) {
 								passedLine.append(tok);
 							}
 						}
@@ -229,9 +229,9 @@ public final class EmailUtils {
 				}
 			}
 			// Discard any characters that are not accepted as tokens.
-			wordText = wordText.replaceAll(
-					"[^\\w\\s;:\\(\\)\\[\\]'!/&?\",\\.<>]", "");
-			//logger.info("email word tokens : " + wordText);
+			//wordText = wordText.replaceAll("[^\\w\\s;:\\(\\)\\[\\]'!/&?\",\\.<>]", "");
+			wordText = wordText.replaceAll("\\W"," ");
+			// logger.info("email word tokens : " + wordText);
 			// stemming actual words using English Stemmer
 
 			st = new StringTokenizer(wordText);
@@ -239,16 +239,16 @@ public final class EmailUtils {
 			while (st.hasMoreTokens()) {
 				String token = st.nextToken();
 				String stemmedToken = stemmer.stem(token);
-				stringTokens.add(stemmedToken);
+				wordFrequenceMap = addTokenToMap(wordFrequenceMap, stemmedToken);
 			}
 
-			textContent.setStringTokens(stringTokens);
-			textContent.setEmails(emails);
-			textContent.setEmoticons(emoticons);
-			textContent.setNumbers(numbers);
-			textContent.setUrls(urls);
+			textContent.setStringTokens(wordFrequenceMap);
+			textContent.setEmails(emailsFrequenceMap);
+			textContent.setEmoticons(emoticonsFrequenceMap);
+			textContent.setNumbers(numbersFrequenceMap);
+			textContent.setUrls(urlFrequenceMap);
 		} catch (Exception ex) {
-
+			logger.error("error processing email text", ex);
 		}
 		return textContent;
 	}
@@ -295,7 +295,8 @@ public final class EmailUtils {
 			start = source.indexOf("&", end);
 			end = source.indexOf(";", start);
 		}
-		// if there weren't any substitutions, don't bother to create a new String
+		// if there weren't any substitutions, don't bother to create a new
+		// String
 		if (sb.length() == 0)
 			return source;
 
@@ -303,6 +304,18 @@ public final class EmailUtils {
 		// last substitution until the end of the string
 		sb.append(source.substring(last));
 		return sb.toString();
+	}
+
+	private static Map<String, Integer> addTokenToMap(Map<String, Integer> map,
+			String token) {
+		if (map.containsKey(token)) {
+			Integer tokenCount = (Integer) map.get(token);
+			tokenCount = tokenCount + 1;
+			map.put(token, tokenCount);
+		} else {
+			map.put(token, new Integer(1));
+		}
+		return map;
 	}
 
 }

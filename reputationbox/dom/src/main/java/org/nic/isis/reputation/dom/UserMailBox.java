@@ -146,6 +146,7 @@ public class UserMailBox {
 
 	public void addEmail(Email email) {
 		this.allEmails.add(email);
+		this.lastIndexTimestamp = email.getSentTimestamp();
 		emailCount++;
 	}
 
