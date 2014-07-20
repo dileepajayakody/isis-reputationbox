@@ -1,7 +1,7 @@
-ReputationBox : A system to analyze importance of emails and reputation of senders
-==================================================================================
+ReputationBox 
+==============
 
-(Developed using Apache Isis framework)
+ A system to analyze importance of emails and reputation of senders (Developed using Apache Isis framework)
 ---------------------------------------
   
 ReputationBox aims to predict email importance and sender reputation by analysing your mailbox. The project is developed as a domain driven application using Apache Isis framework. 
