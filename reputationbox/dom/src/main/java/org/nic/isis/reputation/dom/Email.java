@@ -41,8 +41,8 @@ public class Email {
 		return textContent;
 	}
 
-	public void setTextContent(TextContent bodyContent) {
-		this.textContent = bodyContent;
+	public void setTextContent(TextContent text) {
+		this.textContent = text;
 	}
 
 	// endregion
@@ -250,16 +250,18 @@ public class Email {
 		this.emailAttachments = emailAttachments;
 	}
 
-	private String emailHedears;
+	private String emailHeaders;
 
-	@javax.jdo.annotations.Column(allowsNull="true")
-	public String getEmailHedears() {
-		return emailHedears;
+	@javax.jdo.annotations.Column(allowsNull="true", length=1000)
+	public String getEmailHeaders() {
+		return emailHeaders;
 	}
 
-	public void setEmailHedears(String emailHedears) {
-		this.emailHedears = emailHedears;
+	public void setEmailHeaders(String emailHedears) {
+		this.emailHeaders = emailHedears;
 	}
+	
+	
 
 	// region > calcReputation (action)
 	public Reputation calcReputation(ReputationCriteria criteria) {

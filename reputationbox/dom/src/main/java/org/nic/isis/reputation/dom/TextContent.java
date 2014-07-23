@@ -17,8 +17,19 @@ import org.apache.isis.applib.annotation.ObjectType;
 @ObjectType("TEXTCONTENT")
 public class TextContent {
 
-	private Map<String, Integer> stringTokens;
+	private String tokenStream;
+	
+	@javax.jdo.annotations.Column(allowsNull="true", length=10000)
+	public String getTokenStream() {
+		return tokenStream;
+	}
 
+	public void setTokenStream(String tokenStream) {
+		this.tokenStream = tokenStream;
+	}
+	
+	private Map<String, Integer> stringTokens;
+	
 	@javax.jdo.annotations.Column(allowsNull="true")
 	public Map<String, Integer> getStringTokens() {
 		return stringTokens;
@@ -28,48 +39,48 @@ public class TextContent {
 		this.stringTokens = stringTokens;
 	}
 
-	private Map<String, Integer> urls;
+	private Map<String, Integer> urlTokens;
 
 	@javax.jdo.annotations.Column(allowsNull="true")
-	public Map<String, Integer> getUrls() {
-		return urls;
+	public Map<String, Integer> getUrlTokens() {
+		return urlTokens;
 	}
 
-	public void setUrls(Map<String, Integer> urls) {
-		this.urls = urls;
+	public void setUrlTokens(Map<String, Integer> urls) {
+		this.urlTokens = urls;
 	}
 
-	private Map<String, Integer> numbers;
+	private Map<String, Integer> numberTokens;
 
 	@javax.jdo.annotations.Column(allowsNull="true")
-	public Map<String, Integer> getNumbers() {
-		return numbers;
+	public Map<String, Integer> getNumberTokens() {
+		return numberTokens;
 	}
 
-	public void setNumbers(Map<String, Integer> numbers) {
-		this.numbers = numbers;
+	public void setNumberTokens(Map<String, Integer> numbers) {
+		this.numberTokens = numbers;
 	}
 
-	private Map<String, Integer> emoticons;
+	private Map<String, Integer> emoticonTokens;
 
 	@javax.jdo.annotations.Column(allowsNull="true")
-	public Map<String, Integer> getEmoticons() {
-		return emoticons;
+	public Map<String, Integer> getEmoticonTokens() {
+		return emoticonTokens;
 	}
 
-	public void setEmoticons(Map<String, Integer> emoticons) {
-		this.emoticons = emoticons;
+	public void setEmoticonTokens(Map<String, Integer> emoticons) {
+		this.emoticonTokens = emoticons;
 	}
 
-	private Map<String, Integer> emails;
+	private Map<String, Integer> emailTokens;
 
 	@javax.jdo.annotations.Column(allowsNull="true")
-	public Map<String, Integer> getEmails() {
-		return emails;
+	public Map<String, Integer> getEmailTokens() {
+		return emailTokens;
 	}
 
-	public void setEmails(Map<String, Integer> emails) {
-		this.emails = emails;
+	public void setEmailTokens(Map<String, Integer> emails) {
+		this.emailTokens = emails;
 	}
 
 }

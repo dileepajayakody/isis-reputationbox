@@ -1,6 +1,9 @@
 package org.nic.isis.reputation.services;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -37,6 +40,7 @@ import org.scribe.oauth.OAuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.ucla.sspace.ri.RandomIndexing;
 import at.tomtasche.contextio.ContextIOApi;
 import at.tomtasche.contextio.ContextIOResponse;
 import at.tomtasche.contextio.ContextIO_V11;
@@ -82,7 +86,6 @@ public class ContextIOService {
 
 		contextio_v11.setSaveHeaders(true);
 		contextio_v20.setSaveHeaders(true);
-
 	}
 
 	// endregion
@@ -156,7 +159,7 @@ public class ContextIOService {
 					email.setToAddresses(toAddresses);
 					// retrieving message content of the email
 					email = this.getEmailMessageContent(emailAddress, email);
-					email = this.getMessageHeaders(emailAddress, email);
+					//email = this.getMessageHeaders(emailAddress, email);
 					mailbox.addEmail(email);
 
 				} catch (Exception e) {
@@ -181,9 +184,10 @@ public class ContextIOService {
 	 * @param msgId
 	 * @param email
 	 * @return email with message content
+	 * @throws IOException 
 	 */
 	@Programmatic
-	public Email getEmailMessageContent(String emailAddress, Email email) {
+	public Email getEmailMessageContent(String emailAddress, Email email) throws IOException {
 		Map<String, String> emailParams = new HashMap<String, String>();
 		emailParams.put("emailmessageid", email.getMessageId());
 
@@ -198,23 +202,31 @@ public class ContextIOService {
 		String contentType = messageObj.getString("type");
 		String charSet = messageObj.getString("charset");
 		String content = messageObj.getString("content");
-		TextContent textContent = EmailUtils.processText(email.getSubject() + " " + content);
-
+	
+		/*
 		Map<String, Integer> wordFrequenceVector = textContent.getStringTokens();
 		logger.info("email word frequencies for email : " + email.getMessageId());
 		for(String key : wordFrequenceVector.keySet()){
 			logger.info(key + " : " + wordFrequenceVector.get(key));
 		}
-
-		email.setTextContent(textContent);
+		*/	
+		TextContent processedEmailText = EmailUtils.processText(email.getSubject() + " " + content);
+		email.setTextContent(processedEmailText);
+		
 		email.setContentType(contentType);
 		email.setCharSet(charSet);
+		//processing semantic wordspace for email text
+		
+		
 
 		/*
-		 * logger.info("email : " + msgId + " email body actual word strings : "
-		 * ); String wordTokenStr = ""; List<String> wordStrings =
-		 * bodyContent.getStringTokens(); for(String token : wordStrings){
-		 * wordTokenStr += token + "\n"; } logger.info(wordTokenStr);
+		 * logger.info("email : " + msgId + " email body actual word strings : "); 
+		 * String wordTokenStr = ""; 
+		 * List<String> wordStrings = bodyContent.getStringTokens(); 
+		 * for(String token : wordStrings){
+		 * wordTokenStr += token + "\n"; 
+		 * } 
+		 * logger.info(wordTokenStr);
 		 */
 		return email;
 	}
@@ -228,7 +240,7 @@ public class ContextIOService {
 				.getBody());
 
 		String headersData = messageJson.getString("data");
-		email.setEmailHedears(headersData);
+		email.setEmailHeaders(headersData);
 		return email;
 	}
 
@@ -382,8 +394,11 @@ public class ContextIOService {
 	// region > dependencies
 	@javax.inject.Inject
 	private ApplicationSettingsService applicationSettingsService;
-
+	@javax.inject.Inject
+	private EmailAnalysisService emailAnalysisService;
+	
 	private ContextIO_V11 contextio_v11;
 	private ContextIO_V20 contextio_v20;
+	
 	// endregion
 }

@@ -154,6 +154,7 @@ public final class EmailUtils {
 	 */
 	public static TextContent processText(String text) {
 
+		String processedText = "";
 		TextContent textContent = new TextContent();
 		Map<String, Integer> wordFrequenceMap = new HashMap<String, Integer>();
 		Map<String, Integer> urlFrequenceMap = new HashMap<String, Integer>();
@@ -176,7 +177,6 @@ public final class EmailUtils {
 			String wordText = "";
 			while (scanner.hasNextLine()) {
 				String line = scanner.nextLine();
-				// logger.info("the line : " + line);
 				// no quoted texts in the line
 				if (!line.startsWith(">")) {
 					st = new StringTokenizer(line);
@@ -223,7 +223,6 @@ public final class EmailUtils {
 							}
 						}
 						passedLine.append(" ");
-						// logger.info("passedLine : " + passedLine.toString());
 					}
 					wordText = wordText.concat(" " + passedLine.toString());
 				}
@@ -231,25 +230,27 @@ public final class EmailUtils {
 			// Discard any characters that are not accepted as tokens.
 			//wordText = wordText.replaceAll("[^\\w\\s;:\\(\\)\\[\\]'!/&?\",\\.<>]", "");
 			wordText = wordText.replaceAll("\\W"," ");
-			// logger.info("email word tokens : " + wordText);
-			// stemming actual words using English Stemmer
-
+			
+			// stemming actual words using English Stemmer	
 			st = new StringTokenizer(wordText);
 			EnglishStemmer stemmer = new EnglishStemmer();
 			while (st.hasMoreTokens()) {
 				String token = st.nextToken();
 				String stemmedToken = stemmer.stem(token);
-				wordFrequenceMap = addTokenToMap(wordFrequenceMap, stemmedToken);
+				processedText = processedText + " " + stemmedToken;
+				//wordFrequenceMap = addTokenToMap(wordFrequenceMap, stemmedToken);
 			}
 
-			textContent.setStringTokens(wordFrequenceMap);
+			textContent.setTokenStream(processedText);
+			/*textContent.setStringTokens(wordFrequenceMap);
 			textContent.setEmails(emailsFrequenceMap);
 			textContent.setEmoticons(emoticonsFrequenceMap);
 			textContent.setNumbers(numbersFrequenceMap);
-			textContent.setUrls(urlFrequenceMap);
+			textContent.setUrls(urlFrequenceMap);*/
 		} catch (Exception ex) {
 			logger.error("error processing email text", ex);
 		}
+		
 		return textContent;
 	}
 

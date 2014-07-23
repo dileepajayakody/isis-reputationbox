@@ -4,6 +4,9 @@
  */
 package org.nic.isis.reputation.dom;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +16,7 @@ import javax.jdo.annotations.VersionStrategy;
 import org.apache.isis.applib.ViewModel;
 import org.apache.isis.applib.annotation.ObjectType;
 import org.apache.isis.applib.annotation.Programmatic;
+import org.nic.isis.ri.RandomIndexing;
 
 /**
  * @author dileepa
@@ -27,6 +31,11 @@ import org.apache.isis.applib.annotation.Programmatic;
 @ObjectType("USERMAILBOX")
 public class UserMailBox {
 
+	public UserMailBox(){
+		this.allEmailContacts = new ArrayList<EmailContact>();
+		this.allEmails = new ArrayList<Email>();
+		this.randomIndex = new RandomIndexing();
+	}
 	// contextio account id
 	private String accountId;
 
@@ -130,7 +139,7 @@ public class UserMailBox {
 
 		
 	// region > allEmails (programmatic), addEmail (action)
-	private List<Email> allEmails = new ArrayList<Email>();
+	private List<Email> allEmails;
 
 	@javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull = "false")
@@ -151,9 +160,17 @@ public class UserMailBox {
 	}
 
 	// endregion
+	
+	public synchronized void analyseEmails() throws IOException{
+		for(Email email : allEmails){
+			String processedTokenStream = email.getTextContent().getTokenStream();
+			randomIndex.processDocument(new BufferedReader(new StringReader(processedTokenStream)));		
+		}
+		randomIndex.processSpace(null);
+	} 
 
 	// region > allEmailContacts (collection)
-	private List<EmailContact> allEmailContacts = new ArrayList<EmailContact>();
+	private List<EmailContact> allEmailContacts;
 
 	@javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull = "true")
@@ -166,6 +183,19 @@ public class UserMailBox {
 	}
 
 	// endregion
+	
+	private RandomIndexing randomIndex;
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "false")
+	@Programmatic
+	public RandomIndexing getRandomIndex() {
+		return randomIndex;
+	}
+
+	public void setRandomIndex(RandomIndexing randomIndex) {
+		this.randomIndex = randomIndex;
+	}
 
 	private volatile boolean isSyncing = false;
 
@@ -176,5 +206,7 @@ public class UserMailBox {
 	public void setSyncing(boolean isSyncing) {
 		this.isSyncing = isSyncing;
 	}
+
+	
 
 }
