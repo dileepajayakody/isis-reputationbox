@@ -2,10 +2,16 @@ package org.nic.isis.reputation.dom;
 
 import java.util.Date;
 import java.util.List;
+
 import javax.jdo.annotations.IdentityType;
 import javax.jdo.annotations.VersionStrategy;
+
 import org.apache.isis.applib.annotation.ObjectType;
 import org.apache.isis.applib.annotation.Title;
+
+import edu.ucla.sspace.vector.IntegerVector;
+import edu.ucla.sspace.vector.SparseDoubleVector;
+import edu.ucla.sspace.vector.Vector;
 
 @javax.jdo.annotations.PersistenceCapable(identityType = IdentityType.DATASTORE)
 @javax.jdo.annotations.DatastoreIdentity(strategy = javax.jdo.annotations.IdGeneratorStrategy.IDENTITY, column = "id")
@@ -252,7 +258,7 @@ public class Email {
 
 	private String emailHeaders;
 
-	@javax.jdo.annotations.Column(allowsNull="true", length=1000)
+	@javax.jdo.annotations.Column(allowsNull = "true", length = 1000)
 	public String getEmailHeaders() {
 		return emailHeaders;
 	}
@@ -260,8 +266,17 @@ public class Email {
 	public void setEmailHeaders(String emailHedears) {
 		this.emailHeaders = emailHedears;
 	}
-	
-	
+
+	private int[] documentContextVector;
+
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public int[] getDocumentContextVector() {
+		return documentContextVector;
+	}
+
+	public void setDocumentContextVector(int[] documentContextVector) {
+		this.documentContextVector = documentContextVector;
+	}
 
 	// region > calcReputation (action)
 	public Reputation calcReputation(ReputationCriteria criteria) {

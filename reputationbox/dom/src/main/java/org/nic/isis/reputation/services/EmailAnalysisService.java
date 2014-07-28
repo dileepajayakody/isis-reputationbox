@@ -11,6 +11,7 @@ import javax.inject.Inject;
 
 import org.apache.isis.applib.DomainObjectContainer;
 import org.apache.isis.applib.annotation.Programmatic;
+import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,11 +25,13 @@ public class EmailAnalysisService {
 			.getLogger(EmailAnalysisService.class);
 
 	
-	public void analyseMailBoxes() throws IOException {
+	/*public void analyseMailBoxes() throws IOException {
 		List<UserMailBox> allMailBoxes = listAllMailBoxes();
 		synchronized (this) {
 			for (final UserMailBox mailBox : allMailBoxes) {
-				mailBox.analyseEmails();
+				for (Email email : mailBox.getAllEmails()){
+					mailBox.analyseEmail(email);
+				}
 				Set<String> allWords = mailBox.getRandomIndex().getWords();
 				logger.info("Printing the context vectors of emails in mailbox: " + mailBox.getEmailId());
 				for (String word : allWords) {
@@ -46,7 +49,7 @@ public class EmailAnalysisService {
 
 		}
 
-	}
+	}*/
 
 	@Programmatic
 	public List<UserMailBox> listAllMailBoxes() {

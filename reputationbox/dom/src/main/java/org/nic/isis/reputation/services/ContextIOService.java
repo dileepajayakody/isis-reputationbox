@@ -202,32 +202,12 @@ public class ContextIOService {
 		String contentType = messageObj.getString("type");
 		String charSet = messageObj.getString("charset");
 		String content = messageObj.getString("content");
-	
-		/*
-		Map<String, Integer> wordFrequenceVector = textContent.getStringTokens();
-		logger.info("email word frequencies for email : " + email.getMessageId());
-		for(String key : wordFrequenceVector.keySet()){
-			logger.info(key + " : " + wordFrequenceVector.get(key));
-		}
-		*/	
+		
 		TextContent processedEmailText = EmailUtils.processText(email.getSubject() + " " + content);
 		email.setTextContent(processedEmailText);
 		
 		email.setContentType(contentType);
 		email.setCharSet(charSet);
-		//processing semantic wordspace for email text
-		
-		
-
-		/*
-		 * logger.info("email : " + msgId + " email body actual word strings : "); 
-		 * String wordTokenStr = ""; 
-		 * List<String> wordStrings = bodyContent.getStringTokens(); 
-		 * for(String token : wordStrings){
-		 * wordTokenStr += token + "\n"; 
-		 * } 
-		 * logger.info(wordTokenStr);
-		 */
 		return email;
 	}
 
@@ -394,8 +374,6 @@ public class ContextIOService {
 	// region > dependencies
 	@javax.inject.Inject
 	private ApplicationSettingsService applicationSettingsService;
-	@javax.inject.Inject
-	private EmailAnalysisService emailAnalysisService;
 	
 	private ContextIO_V11 contextio_v11;
 	private ContextIO_V20 contextio_v20;

@@ -17,9 +17,11 @@ import org.apache.isis.applib.annotation.ObjectType;
 @ObjectType("TEXTCONTENT")
 public class TextContent {
 
+	@javax.jdo.annotations.NotPersistent
 	private String tokenStream;
 	
-	@javax.jdo.annotations.Column(allowsNull="true", length=10000)
+
+	@javax.jdo.annotations.NotPersistent
 	public String getTokenStream() {
 		return tokenStream;
 	}

@@ -146,7 +146,7 @@ public final class EmailUtils {
 	}
 
 	/**
-	 * Preprocesses the text
+	 * Preprocesses the text and generate random indexing vectors 
 	 * 
 	 * @param text
 	 *            a document to process
@@ -238,15 +238,15 @@ public final class EmailUtils {
 				String token = st.nextToken();
 				String stemmedToken = stemmer.stem(token);
 				processedText = processedText + " " + stemmedToken;
-				//wordFrequenceMap = addTokenToMap(wordFrequenceMap, stemmedToken);
+				wordFrequenceMap = addTokenToMap(wordFrequenceMap, stemmedToken);
 			}
 
 			textContent.setTokenStream(processedText);
-			/*textContent.setStringTokens(wordFrequenceMap);
-			textContent.setEmails(emailsFrequenceMap);
-			textContent.setEmoticons(emoticonsFrequenceMap);
-			textContent.setNumbers(numbersFrequenceMap);
-			textContent.setUrls(urlFrequenceMap);*/
+			textContent.setStringTokens(wordFrequenceMap);
+			textContent.setEmailTokens(emailsFrequenceMap);
+			textContent.setEmoticonTokens(emoticonsFrequenceMap);
+			textContent.setNumberTokens(numbersFrequenceMap);
+			textContent.setUrlTokens(urlFrequenceMap);
 		} catch (Exception ex) {
 			logger.error("error processing email text", ex);
 		}

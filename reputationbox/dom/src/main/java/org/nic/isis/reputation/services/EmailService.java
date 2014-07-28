@@ -2,21 +2,22 @@ package org.nic.isis.reputation.services;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 
 import javax.inject.Inject;
 
+import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.UserMailBox;
+import org.nic.isis.ri.RandomIndexing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.isis.applib.DomainObjectContainer;
 import org.apache.isis.applib.annotation.Named;
 import org.apache.isis.applib.annotation.Programmatic;
-import org.apache.isis.applib.query.QueryDefault;
-import org.datanucleus.store.rdbms.request.UpdateRequest;
 
-import edu.ucla.sspace.vector.Vector;
 
 public class EmailService {
 
@@ -37,23 +38,58 @@ public class EmailService {
 		for (UserMailBox mailBox : allMailBoxes) {
 			//for testing email update and analysis in one transaction..
 			try {
-				mailBox = contextIOService.updateMailBox(mailBox, 5);
-				mailBox.analyseEmails();
-				Set<String> allWords = mailBox.getRandomIndex().getWords();
-				logger.info("The context vectors of emails processed by Random Indexing: " + mailBox.getEmailId());
-				for (String word : allWords) {
-					Vector contextVector = mailBox.getRandomIndex().getVector(word);
-					String vectorString = "";
-					for (int i = 0; i < contextVector.length(); i++){
-						Integer val = (Integer)contextVector.getValue(i);
-						vectorString += "[" + i + " : " + val + "], ";  
-					}
-					logger.info(word + " : " + vectorString);
+				mailBox = contextIOService.updateMailBox(mailBox, 4);
+				RandomIndexing randomIndexing = new RandomIndexing(mailBox.getWordToIndexVector(), mailBox.getWordToMeaningMap());
+				//processing random indexing for emails
+				for(Email email : mailBox.getAllEmails()){
+					mailBox.processTextSemantics(email, randomIndexing);
 				}
+				mailBox.setWordToIndexVector(randomIndexing.getWordToIndexVector());
+				mailBox.setWordToMeaningMap(randomIndexing.getWordToMeaningVector());
+				
+				logger.info("The context vectors of emails processed by Random Indexing: " + mailBox.getEmailId());
+				List<int[]> documentVectors = new ArrayList<int[]>();
+				for(Email email : mailBox.getAllEmails()){
+					int[] docVector = email.getDocumentContextVector();
+					documentVectors.add(docVector);
+					
+					String vectorString = "[";
+					for (int i = 0; i < docVector.length; i++){
+						int	 val = docVector[i];
+						vectorString +=  val + ", ";  
+					}
+					vectorString += "]";
+					logger.info(email.getMessageId() + " : " + vectorString);
+				}	
+				
+				/*LinkClustering linkClustering = new LinkClustering();
+				SparseMatrix m = Matrices.asSparseMatrix(documentVectors);
+				Assignments a = linkClustering.cluster(m, new Properties());
+			    Assignment[] assignments = a.assignments();
+			      for (int i = 0; i < assignments.length; ++i) 
+			          System.out.printf("Email %d is in clusters %s%n",
+			                            i, Arrays.toString(assignments[i].assignments()));
+*/
+				/*for(Email email : mailBox.getAllEmails()){
+					for (Email innerEmail : mailBox.getAllEmails()){
+						if (!email.getMessageId().equalsIgnoreCase(innerEmail.getMessageId())){
+							DoubleVector v1 = email.getDocumentContextVector();
+							DoubleVector v2 = innerEmail.getDocumentContextVector();
+							double similarity = Similarity.cosineSimilarity(v1, v2);
+							logger.info(" Similarity of EMAIL_1 : " + email.getSubject() + " and \n EMAIL_2 : " + innerEmail.getSubject() + " =  " + similarity);
+							logger.info("EMAIL_1 tokens : " + email.getTextContent().getTokenStream());
+							logger.info("EMAIL_2 tokens : " + innerEmail.getTextContent().getTokenStream() + " \n\n");
+						}
+						
+					}
+				}*/
+				
 			} catch (Exception e) {
 				logger.error("Error occurred  " , e);
 			}
-			container.persist(mailBox);
+			
+			
+			container.persistIfNotAlready(mailBox);
 			
 			/*if (!mailBox.isSyncing()) {
 				mailBox.setSyncing(true);
