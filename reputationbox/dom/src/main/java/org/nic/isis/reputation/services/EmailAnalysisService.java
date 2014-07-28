@@ -24,33 +24,6 @@ public class EmailAnalysisService {
 	private final static Logger logger = LoggerFactory
 			.getLogger(EmailAnalysisService.class);
 
-	
-	/*public void analyseMailBoxes() throws IOException {
-		List<UserMailBox> allMailBoxes = listAllMailBoxes();
-		synchronized (this) {
-			for (final UserMailBox mailBox : allMailBoxes) {
-				for (Email email : mailBox.getAllEmails()){
-					mailBox.analyseEmail(email);
-				}
-				Set<String> allWords = mailBox.getRandomIndex().getWords();
-				logger.info("Printing the context vectors of emails in mailbox: " + mailBox.getEmailId());
-				for (String word : allWords) {
-					Vector contextVector = mailBox.getRandomIndex().getVector(word);
-					String vectorString = "";
-					for (int i = 0; i < contextVector.length(); i++){
-						Integer val = (Integer)contextVector.getValue(i);
-						vectorString += "[" + i + " : " + val + "], ";  
-					}
-					logger.info(word + " : " + vectorString);
-				}
-
-				container.persist(mailBox);
-			}
-
-		}
-
-	}*/
-
 	@Programmatic
 	public List<UserMailBox> listAllMailBoxes() {
 		return container.allInstances(UserMailBox.class);
