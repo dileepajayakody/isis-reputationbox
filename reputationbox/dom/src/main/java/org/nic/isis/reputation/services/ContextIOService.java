@@ -130,7 +130,6 @@ public class ContextIOService {
 
 		JSONObject json = new JSONObject(cio.getRawResponse().getBody());
 		JSONArray data = json.getJSONArray("data");
-		int lastIndexedTimestamp = json.getInt("timestamp");
 
 		if (data != null && data.length() > 0) {
 			for (int i = 0; i < data.length(); i++) {
@@ -171,7 +170,6 @@ public class ContextIOService {
 			//no more emails to sync
 			mailbox.setSyncing(false);	
 		}
-		//mailbox.setLastIndexTimestamp(lastIndexedTimestamp);
 		logger.info(data.length() + " mails retrieved from : "
 				+ mailbox.getEmailId());
 		return mailbox;

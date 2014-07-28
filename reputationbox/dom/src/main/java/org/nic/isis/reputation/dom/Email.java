@@ -32,9 +32,7 @@ public class Email {
 	public void setMessageId(String messageId) {
 		this.messageId = messageId;
 	}
-
-	// endregion
-
+	
 	// endregion
 
 	// region > textContent (property)

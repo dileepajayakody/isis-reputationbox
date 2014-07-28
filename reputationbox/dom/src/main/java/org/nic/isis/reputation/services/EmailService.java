@@ -18,7 +18,6 @@ import org.apache.isis.applib.DomainObjectContainer;
 import org.apache.isis.applib.annotation.Named;
 import org.apache.isis.applib.annotation.Programmatic;
 
-
 public class EmailService {
 
 	private final static Logger logger = LoggerFactory
@@ -34,73 +33,53 @@ public class EmailService {
 			allMailBoxes = new ArrayList<UserMailBox>();
 			allMailBoxes.add(create("gdc2013demo@gmail.com"));
 		}
-		
+
 		for (UserMailBox mailBox : allMailBoxes) {
-			//for testing email update and analysis in one transaction..
+			// for testing email update and analysis in one transaction..
 			try {
-				mailBox = contextIOService.updateMailBox(mailBox, 4);
-				RandomIndexing randomIndexing = new RandomIndexing(mailBox.getWordToIndexVector(), mailBox.getWordToMeaningMap());
-				//processing random indexing for emails
-				for(Email email : mailBox.getAllEmails()){
+				if (!mailBox.isSyncing()) {
+					mailBox.setSyncing(true);
+					//iterate all emails upto now
+					while (mailBox.isSyncing()) {
+						mailBox = contextIOService.updateMailBox(mailBox, 20);
+					}
+					logger.info("updated the mailBox: " + mailBox.getEmailId()
+							+ " with " + mailBox.getEmailCount() + " emails");
+				}
+				//mailBox = contextIOService.updateMailBox(mailBox, 4);
+				
+				RandomIndexing randomIndexing = new RandomIndexing(
+						mailBox.getWordToIndexVector(),
+						mailBox.getWordToMeaningMap());
+				// email text analysis using random indexing for emails
+				for (Email email : mailBox.getAllEmails()) {
 					mailBox.processTextSemantics(email, randomIndexing);
 				}
-				mailBox.setWordToIndexVector(randomIndexing.getWordToIndexVector());
-				mailBox.setWordToMeaningMap(randomIndexing.getWordToMeaningVector());
-				
-				logger.info("The context vectors of emails processed by Random Indexing: " + mailBox.getEmailId());
+				mailBox.setWordToIndexVector(randomIndexing
+						.getWordToIndexVector());
+				mailBox.setWordToMeaningMap(randomIndexing
+						.getWordToMeaningVector());
+
+				logger.info("The context vectors of emails processed by Random Indexing: "
+						+ mailBox.getEmailId());
 				List<int[]> documentVectors = new ArrayList<int[]>();
-				for(Email email : mailBox.getAllEmails()){
+				for (Email email : mailBox.getAllEmails()) {
 					int[] docVector = email.getDocumentContextVector();
 					documentVectors.add(docVector);
-					
+
 					String vectorString = "[";
-					for (int i = 0; i < docVector.length; i++){
-						int	 val = docVector[i];
-						vectorString +=  val + ", ";  
+					for (int i = 0; i < docVector.length; i++) {
+						int val = docVector[i];
+						vectorString += val + ", ";
 					}
 					vectorString += "]";
 					logger.info(email.getMessageId() + " : " + vectorString);
-				}	
-				
-				/*LinkClustering linkClustering = new LinkClustering();
-				SparseMatrix m = Matrices.asSparseMatrix(documentVectors);
-				Assignments a = linkClustering.cluster(m, new Properties());
-			    Assignment[] assignments = a.assignments();
-			      for (int i = 0; i < assignments.length; ++i) 
-			          System.out.printf("Email %d is in clusters %s%n",
-			                            i, Arrays.toString(assignments[i].assignments()));
-*/
-				/*for(Email email : mailBox.getAllEmails()){
-					for (Email innerEmail : mailBox.getAllEmails()){
-						if (!email.getMessageId().equalsIgnoreCase(innerEmail.getMessageId())){
-							DoubleVector v1 = email.getDocumentContextVector();
-							DoubleVector v2 = innerEmail.getDocumentContextVector();
-							double similarity = Similarity.cosineSimilarity(v1, v2);
-							logger.info(" Similarity of EMAIL_1 : " + email.getSubject() + " and \n EMAIL_2 : " + innerEmail.getSubject() + " =  " + similarity);
-							logger.info("EMAIL_1 tokens : " + email.getTextContent().getTokenStream());
-							logger.info("EMAIL_2 tokens : " + innerEmail.getTextContent().getTokenStream() + " \n\n");
-						}
-						
-					}
-				}*/
-				
-			} catch (Exception e) {
-				logger.error("Error occurred  " , e);
-			}
-			
-			
-			container.persistIfNotAlready(mailBox);
-			
-			/*if (!mailBox.isSyncing()) {
-				mailBox.setSyncing(true);
-				while (mailBox.isSyncing()) {
-					contextIOService.updateMailBox(mailBox, 20);
 				}
-				container.persist(mailBox);
-				logger.info("updated the mailBox: " + mailBox.getEmailId()
-						+ " with " + mailBox.getEmailCount() + " emails");
-			}*/
 
+			} catch (Exception e) {
+				logger.error("Error occurred  ", e);
+			}
+			container.persist(mailBox);
 		}
 	}
 

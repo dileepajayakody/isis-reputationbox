@@ -44,6 +44,7 @@ public class UserMailBox {
 	public UserMailBox() {
 		this.allEmailContacts = new ArrayList<EmailContact>();
 		this.allEmails = new ArrayList<Email>();
+		//required setup for email text analysis using RandomIndexing
 		RandomIndexVectorGenerator indexVectorGenerator = 
                 new RandomIndexVectorGenerator(RandomIndexing.DEFAULT_VECTOR_LENGTH, System.getProperties());
 		this.wordToIndexVector = new GeneratorMap<TernaryVector>(
@@ -123,19 +124,6 @@ public class UserMailBox {
 
 	// endregion
 
-	// region > termCount (property)
-	private int termCount = 0;
-
-	@javax.jdo.annotations.Persistent
-	public int getTermCount() {
-		return termCount;
-	}
-
-	public void setTermCount(int termCount) {
-		this.termCount = termCount;
-	}
-
-	// endregion
 
 	// region > lastIndexTimestamp (property)
 	// last index timestamp of the context.io call
