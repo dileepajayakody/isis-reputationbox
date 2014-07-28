@@ -37,7 +37,7 @@ public class EmailService {
 		for (UserMailBox mailBox : allMailBoxes) {
 			// for testing email update and analysis in one transaction..
 			try {
-				if (!mailBox.isSyncing()) {
+				/*if (!mailBox.isSyncing()) {
 					mailBox.setSyncing(true);
 					//iterate all emails upto now
 					while (mailBox.isSyncing()) {
@@ -45,8 +45,8 @@ public class EmailService {
 					}
 					logger.info("updated the mailBox: " + mailBox.getEmailId()
 							+ " with " + mailBox.getEmailCount() + " emails");
-				}
-				//mailBox = contextIOService.updateMailBox(mailBox, 4);
+				}*/
+				mailBox = contextIOService.updateMailBox(mailBox, 100);
 				
 				RandomIndexing randomIndexing = new RandomIndexing(
 						mailBox.getWordToIndexVector(),
