@@ -11,26 +11,24 @@ import java.util.List;
 import java.util.Map;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.processing.Messager;
-import javax.inject.Inject;
 
 import org.apache.isis.applib.DomainObjectContainer;
-import org.apache.isis.applib.annotation.Hidden;
 import org.apache.isis.applib.annotation.Named;
 import org.apache.isis.applib.annotation.Programmatic;
 import org.apache.isis.applib.query.QueryDefault;
-import org.apache.isis.applib.services.settings.ApplicationSetting;
 import org.apache.isis.applib.services.settings.ApplicationSettingsService;
 import org.apache.isis.applib.services.settings.ApplicationSettingsServiceRW;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.nic.isis.reputation.dom.Email;
+import org.nic.isis.reputation.dom.EmailFlag;
 import org.nic.isis.reputation.dom.TextContent;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.reputation.utils.EmailUtils;
 import org.nic.isis.reputation.utils.JSONEmailProcessor;
 import org.nic.isis.reputation.utils.URLUtils;
+import org.nic.isis.ri.RandomIndexing;
 import org.scribe.builder.ServiceBuilder;
 import org.scribe.model.OAuthRequest;
 import org.scribe.model.Response;
@@ -40,7 +38,6 @@ import org.scribe.oauth.OAuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import edu.ucla.sspace.ri.RandomIndexing;
 import at.tomtasche.contextio.ContextIOApi;
 import at.tomtasche.contextio.ContextIOResponse;
 import at.tomtasche.contextio.ContextIO_V11;
@@ -77,7 +74,8 @@ public class ContextIOService {
 		contextio_v11.setSecret(secret);
 		contextio_v20.setSecret(secret);
 
-		String accountId = "53214991facaddd22d812863";
+		// String accountId = "53214991facaddd22d812863";
+		String accountId = "53ad36843bcc88b437df1fab";
 		contextio_v11.setAccountId(accountId);
 		contextio_v20.setAccountId(accountId);
 
@@ -91,7 +89,6 @@ public class ContextIOService {
 	// endregion
 
 	// service methods
-
 	/**
 	 * Updates the mailbox with new emails
 	 * 
@@ -101,40 +98,33 @@ public class ContextIOService {
 	 * @return
 	 */
 	public UserMailBox updateMailBox(UserMailBox mailbox, int limit) {
-		
-		Map<String, String> params = new HashMap<String, String>();
-		String emailAddress = mailbox.getEmailId();
-		logger.info("Syncing mailbox for : " + emailAddress
-				+ " since last indexed timestamp : "
-				+ mailbox.getLastIndexTimestamp());
 
-		// contextio 1.1. impl		
-		params.put("since", String.valueOf(mailbox.getLastIndexTimestamp()));
-		params.put("limit", String.valueOf(limit));
-		ContextIOResponse cio = contextio_v11.allMessages(emailAddress, params);
+		Map<String, String> params = new HashMap<String, String>();
 
 		// contextio 2.0 impl
-		// currently contextio_v2 allMessages response resturns a 403
-		// needs to be fixed, and switched to contextio2.0 api
-		//int offset = mailbox.getEmailCount();
-		//String emailAccount = mailbox.getAccountId();
-		/*
-		 * params.put("limit", String.valueOf(limit)); params.put("sort_order",
-		 * "asc"); params.put("include_body", String.valueOf(1));
-		 * params.put("include_headers", String.valueOf(1));
-		 * params.put("include_flags", String.valueOf(1));
-		 * 
-		 * ContextIOResponse cio = contextio_v20.getAllMessages(emailAccount,
-		 * params);
-		 */
+		int offset = mailbox.getEmailCount();
+		String emailAccount = mailbox.getAccountId();
+		params.put("offset", String.valueOf(offset));
+		params.put("limit", String.valueOf(limit));
+		params.put("sort_order", "asc");
+		params.put("include_body", String.valueOf(1));
+		params.put("include_headers", String.valueOf(1));
+		params.put("include_flags", String.valueOf(1));
 
-		JSONObject json = new JSONObject(cio.getRawResponse().getBody());
-		JSONArray data = json.getJSONArray("data");
+		ContextIOResponse cio = contextio_v20.getAllMessages(emailAccount,
+				params);
 
-		if (data != null && data.length() > 0) {
-			for (int i = 0; i < data.length(); i++) {
+		JSONArray emailData = new JSONArray(cio.getRawResponse().getBody());
+
+		if (emailData != null && emailData.length() > 0) {
+			//initializing a random indexing object with mailbox's word semantics
+			RandomIndexing randomIndexing = new RandomIndexing(
+					mailbox.getWordToIndexVector(),
+					mailbox.getWordToMeaningMap());
+			
+			for (int i = 0; i < emailData.length(); i++) {
 				// iterating over emails
-				JSONObject emailObject = (JSONObject) data.get(i);
+				JSONObject emailObject = (JSONObject) emailData.get(i);
 				try {
 					JSONEmailProcessor jsonProcessor = new JSONEmailProcessor(
 							emailObject);
@@ -147,6 +137,13 @@ public class ContextIOService {
 					String fromAddress = jsonProcessor.getFromAddress();
 					List<String> toAddresses = jsonProcessor.getToAddresses();
 					List<String> ccAddresses = jsonProcessor.getCCAddresses();
+					List<String> emailFlags = jsonProcessor.getFlags();
+					String body = jsonProcessor.getBodyContent();
+
+					// process the content
+					TextContent bodyTextContent = EmailUtils.processText(body);
+					TextContent subjectTextContent = EmailUtils
+							.processText(subject);
 
 					Email email = new Email();
 					email.setSubject(subject);
@@ -156,36 +153,49 @@ public class ContextIOService {
 					email.setFromAddress(fromAddress);
 					email.setCcAddresses(ccAddresses);
 					email.setToAddresses(toAddresses);
+					email.setEmailFlags(emailFlags);
+					email.setSubjectContent(subjectTextContent);
+					email.setBodyContent(bodyTextContent);
 					// retrieving message content of the email
-					email = this.getEmailMessageContent(emailAddress, email);
-					//email = this.getMessageHeaders(emailAddress, email);
-					mailbox.addEmail(email);
+					// email = this.getEmailMessageContent(emailAddress, email);
+					// email = this.getMessageHeaders(emailAddress, email);
+					
+					//building email semantic vectors on the go
+					randomIndexing = emailAnalysisService.processTextSemantics(email, randomIndexing);
+					mailbox.addEmail(email);				
 
 				} catch (Exception e) {
 					logger.error("Error while decoding email JSON message ", e);
 				}
 			}
-			
-		}else {
-			//no more emails to sync
-			mailbox.setSyncing(false);	
+			//saving new word semantics vectors in the mailbox
+			mailbox.setWordToIndexVector(randomIndexing
+					.getWordToIndexVector());
+			mailbox.setWordToMeaningMap(randomIndexing
+					.getWordToMeaningVector());
+
+		} else {
+			// no more emails to sync
+			mailbox.setSyncing(false);
 		}
-		logger.info(data.length() + " mails retrieved from : "
-				+ mailbox.getEmailId());
+		logger.info(emailData.length() + " mails retrieved from : "
+				+ mailbox.getEmailId() + "from offset : " + offset);
+		
 		return mailbox;
 	}
 
 	/**
-	 * add message content fields to the email passed
+	 * add message content fields to the email passed using contextio V1.1 API
 	 * 
 	 * @param emailAddress
 	 * @param msgId
 	 * @param email
 	 * @return email with message content
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	@Programmatic
-	public Email getEmailMessageContent(String emailAddress, Email email) throws IOException {
+	public Email getEmailMessageContent(String emailAddress, Email email)
+			throws IOException {
 		Map<String, String> emailParams = new HashMap<String, String>();
 		emailParams.put("emailmessageid", email.getMessageId());
 
@@ -200,10 +210,14 @@ public class ContextIOService {
 		String contentType = messageObj.getString("type");
 		String charSet = messageObj.getString("charset");
 		String content = messageObj.getString("content");
-		
-		TextContent processedEmailText = EmailUtils.processText(email.getSubject() + " " + content);
-		email.setTextContent(processedEmailText);
-		
+
+		TextContent processedBodyContent = EmailUtils.processText(content);
+		email.setBodyContent(processedBodyContent);
+
+		TextContent processedSubjectContent = EmailUtils.processText(email
+				.getSubject());
+		email.setSubjectContent(processedSubjectContent);
+
 		email.setContentType(contentType);
 		email.setCharSet(charSet);
 		return email;
@@ -347,18 +361,6 @@ public class ContextIOService {
 		ContextIOResponse accountsResponse = contextio_v20.getAccounts();
 	}
 
-	public void listThreads() {
-		contextio_v20.getAllThreads(contextio_v20.getAccountId(), null);
-	}
-
-	public void listMessages() {
-		contextio_v20.getAllMessages(contextio_v20.getAccountId(), null);
-	}
-
-	public void listContacts() {
-		contextio_v20.getAllContacts(contextio_v20.getAccountId(), null);
-	}
-
 	public void testDiscovery() {
 		Map<String, String> emailParams = new HashMap<String, String>();
 		emailParams.put("source_type", "IMAP");
@@ -366,15 +368,15 @@ public class ContextIOService {
 		ContextIOResponse discoveryRes = contextio_v20.discovery(emailParams);
 	}
 
-	@Inject
+	@javax.inject.Inject
 	DomainObjectContainer container;
-
 	// region > dependencies
 	@javax.inject.Inject
 	private ApplicationSettingsService applicationSettingsService;
-	
+	@javax.inject.Inject
+	EmailAnalysisService emailAnalysisService;
 	private ContextIO_V11 contextio_v11;
 	private ContextIO_V20 contextio_v20;
-	
+
 	// endregion
 }

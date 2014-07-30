@@ -8,6 +8,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.nic.isis.reputation.dom.EmailAttachment;
+import org.nic.isis.reputation.dom.EmailFlag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,14 +27,14 @@ public class JSONEmailProcessor {
 	}
 
 	public String getEmailMessageId() {
-		return json.getString("emailMessageId");
+		return json.getString("email_message_id");
 	}
 
 	/**
 	 * @return Unique and persistent id assigned by Context.IO to the message,
 	 */
 	public String getPersistentMessageId() {
-		return json.getString("message_id");
+		return json.getString("message_id");	
 	}
 
 	public String getGmailMessageId() {
@@ -48,13 +49,18 @@ public class JSONEmailProcessor {
 		int date = json.getInt("date");
 		return date;
 	}
-
+	
+	public int getDateReceived(){
+		int dateReceived = json.getInt("date_received");
+		return dateReceived;
+	}
+	
 	public String getSubject() {
 		return json.getString("subject");
 	}
 
 	public String getGmailThreadId() {
-		return json.getString("gmailThreadId");
+		return json.getString("gmail_thread_id");
 	}
 
 	public List<String> getFolders() {
@@ -128,6 +134,32 @@ public class JSONEmailProcessor {
 		return ccAddressEmails;
 	}
 
+	public List<String> getFlags(){
+		List<String> flags = new ArrayList<String>();
+		if(json.get("flags") != null){
+			JSONArray flagsArray = (JSONArray)json.get("flags");
+			for(int i = 0; i < flagsArray.length(); i++){
+				String flag = flagsArray.getString(i);
+				/*EmailFlag flagObject = new EmailFlag();
+				boolean isSeen = flag.getBoolean("seen");
+				boolean isAnswered = flag.getBoolean("answered");
+				boolean isFlagged = flag.getBoolean("flagged");
+				boolean isDeleted = flag.getBoolean("deleted");
+				boolean isDraft = flag.getBoolean("draft");
+				boolean isNonJunk = flag.getBoolean("nonjunk");
+				flagObject.setSeen(isSeen);
+				flagObject.setAnswered(isAnswered);
+				flagObject.setFlagged(isFlagged);
+				flagObject.setDeleted(isDeleted);
+				flagObject.setDraft(isDraft);
+				flagObject.setNonJunk(isNonJunk);
+				*/
+				flags.add(flag);
+			}
+		}
+		return flags;
+	}
+
 	public List<EmailAttachment> getAttachments() {
 		List<EmailAttachment> attachments = new ArrayList<EmailAttachment>();
 		if (json.get("files") != null) {
@@ -135,8 +167,8 @@ public class JSONEmailProcessor {
 			EmailAttachment attachment = new EmailAttachment();
 			for (int i = 0; i < filesArray.length(); i++) {
 				JSONObject file = (JSONObject) filesArray.get(i);
-				String fileId = (String) file.get("fileId");
-				String fileName = (String) file.get("fileName");
+				String fileId = (String) file.get("file_id");
+				String fileName = (String) file.get("file_name");
 				Integer fileSize = (Integer) file.get("size");
 				String fileType = (String) file.get("type");
 
@@ -149,6 +181,21 @@ public class JSONEmailProcessor {
 			}
 		}
 		return attachments;
+	}
+	
+	public String getBodyContent(){
+		JSONArray bodyArray = (JSONArray)json.get("body");
+		//return only the first body item
+		JSONObject bodyObject = (JSONObject)bodyArray.get(0);
+		String content = bodyObject.getString("content");
+		
+		//List<String> bodyContents = new ArrayList<String>();
+		/*for(int i = 0; i < bodyArray.length(); i++){
+			JSONObject bodyObject = (JSONObject)bodyArray.get(i);
+			String content = bodyObject.getString("content");
+			bodyContents.add(content);
+		}*/
+		return content;
 	}
 
 }

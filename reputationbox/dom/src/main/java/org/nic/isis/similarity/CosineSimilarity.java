@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package org.nic.isis.tfidf;
+package org.nic.isis.similarity;
 
 /**
  * Cosine similarity calculator class
@@ -16,7 +16,7 @@ public class CosineSimilarity {
      * @param docVector2 : document vector 2 (b)
      * @return 
      */
-    public static double calculateCosineSimilarity(double[] docVector1, double[] docVector2) {
+    public static double calculateCosineSimilarity(int[] docVector1, int[] docVector2) {
         double dotProduct = 0.0;
         double magnitude1 = 0.0;
         double magnitude2 = 0.0;

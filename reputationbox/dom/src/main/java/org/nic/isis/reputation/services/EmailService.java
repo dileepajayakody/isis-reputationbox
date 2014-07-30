@@ -31,11 +31,10 @@ public class EmailService {
 		if (allMailBoxes == null || allMailBoxes.isEmpty()) {
 			logger.info("There is no mailboxes in test-datastore. creating test mailboxes for connected accounts in contextio");
 			allMailBoxes = new ArrayList<UserMailBox>();
-			allMailBoxes.add(create("gdc2013demo@gmail.com"));
+			allMailBoxes.add(createSample());
 		}
 
 		for (UserMailBox mailBox : allMailBoxes) {
-			// for testing email update and analysis in one transaction..
 			try {
 				/*if (!mailBox.isSyncing()) {
 					mailBox.setSyncing(true);
@@ -46,20 +45,8 @@ public class EmailService {
 					logger.info("updated the mailBox: " + mailBox.getEmailId()
 							+ " with " + mailBox.getEmailCount() + " emails");
 				}*/
-				mailBox = contextIOService.updateMailBox(mailBox, 100);
+				mailBox = contextIOService.updateMailBox(mailBox,10);
 				
-				RandomIndexing randomIndexing = new RandomIndexing(
-						mailBox.getWordToIndexVector(),
-						mailBox.getWordToMeaningMap());
-				// email text analysis using random indexing for emails
-				for (Email email : mailBox.getAllEmails()) {
-					mailBox.processTextSemantics(email, randomIndexing);
-				}
-				mailBox.setWordToIndexVector(randomIndexing
-						.getWordToIndexVector());
-				mailBox.setWordToMeaningMap(randomIndexing
-						.getWordToMeaningVector());
-
 				logger.info("The context vectors of emails processed by Random Indexing: "
 						+ mailBox.getEmailId());
 				List<int[]> documentVectors = new ArrayList<int[]>();
@@ -89,19 +76,22 @@ public class EmailService {
 	}
 
 	@Programmatic
-	public UserMailBox create(final String userId) {
+	//sample mailbox
+	public UserMailBox createSample() {
 		UserMailBox mb = container.newTransientInstance(UserMailBox.class);
-		mb.setEmailId(userId);
-		mb.setAccountId("53214991facaddd22d812863");
+		mb.setEmailId("gdc2013demo@gmail.com");
+		mb.setAccountId("530f0d8eb4810fd65d6d2149");
 		container.persistIfNotAlready(mb);
 		return mb;
 	}
 
-	public void connectMailBox(@Named("Email Id") String emailId,
+	@Programmatic
+	public UserMailBox connectMailBox(@Named("Email Id") String emailId,
 			@Named("Password") String password,
 			@Named("First Name") String fname, @Named("Last Name") String lname) {
 		UserMailBox newMb = contextIOService.connectMailBox(emailId, password,
 				fname, lname);
+		return newMb;
 
 	}
 

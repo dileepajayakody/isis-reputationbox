@@ -113,7 +113,7 @@ public class ContextIO_V20 extends ContextIOApi {
 
 		baseUrl = URLUtils.appendParametersToQueryString(baseUrl, params);
 
-		logger.info("ContextIO 2.0 Request URL : " + baseUrl);
+		logger.info("Request url : " + baseUrl);
 
 		OAuthRequest request = null;
 		if ("GET".equals(method)) {
@@ -129,25 +129,12 @@ public class ContextIO_V20 extends ContextIOApi {
 
 		lastResponse = new ContextIOResponse(oauthResponse.getCode(),
 				request.getHeaders(), oauthResponse.getHeaders(), oauthResponse);
-		logger.info("The request headers for contextio 2.0 : ");
-		for (String k : request.getHeaders().keySet()) {
-			logger.info("key : " + k + " value : "
-					+ request.getHeaders().get(k));
-		}
-
-		logger.info("oauth response from contextio 2.0 : ");
-		for (String key : oauthResponse.getHeaders().keySet()) {
-			logger.info("oauth header key : " + key + "  value : "
-					+ oauthResponse.getHeaders().get(key));
-		}
-		logger.info("oauth response msg: " + oauthResponse.getMessage());
-		logger.info("oauth response code: " + oauthResponse.getCode());
-		logger.info("oauth response body: " + oauthResponse.getBody());
-
-		logger.info("The response from contextio 2.0 : "
-				+ lastResponse.getRawResponse().getBody());
+		
+		/*logger.info("The response from contextio 2.0 : "
+				+ lastResponse.getRawResponse().getBody());*/
+		
 		if (lastResponse.isHasError()) {
-			logger.info("LAST response errored : " + lastResponse.getCode());
+			logger.info("Last response errored : " + lastResponse.getCode());
 			return null;
 		} else {
 			return lastResponse;

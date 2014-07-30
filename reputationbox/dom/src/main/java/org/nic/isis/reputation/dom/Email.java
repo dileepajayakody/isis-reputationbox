@@ -35,21 +35,37 @@ public class Email {
 	
 	// endregion
 
-	// region > textContent (property)
+	// region > bodyContent (property)
 	@javax.jdo.annotations.Persistent
-	private TextContent textContent;
+	private TextContent bodyContent;
 
 	@javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull = "true")
-	public TextContent getTextContent() {
-		return textContent;
+	public TextContent getBodyContent() {
+		return bodyContent;
 	}
 
-	public void setTextContent(TextContent text) {
-		this.textContent = text;
+	public void setBodyContent(TextContent text) {
+		this.bodyContent = text;
 	}
 
 	// endregion
+
+	// region > subjectContent (property)
+	@javax.jdo.annotations.Persistent
+	private TextContent subjectContent;
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public TextContent getSubjectContent() {
+		return subjectContent;
+	}
+
+	public void setSubjectContent(TextContent text) {
+		this.subjectContent = text;
+	}
+
+		// endregion
 
 	// region > inReplytoMessageId (property)
 	private String inReplytoMessageId;
@@ -252,6 +268,18 @@ public class Email {
 
 	public void setEmailAttachments(List<EmailAttachment> emailAttachments) {
 		this.emailAttachments = emailAttachments;
+	}
+
+	private List<String> emailFlags;
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<String> getEmailFlags() {
+		return emailFlags;
+	}
+
+	public void setEmailFlags(List<String> emailFlags) {
+		this.emailFlags = emailFlags;
 	}
 
 	private String emailHeaders;

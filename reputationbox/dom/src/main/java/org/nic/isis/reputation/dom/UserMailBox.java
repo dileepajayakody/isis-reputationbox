@@ -163,28 +163,6 @@ public class UserMailBox {
 
 	// endregion
 
-	/**
-	 * processes the semantic vectors for the content of the email using random indexing
-	 * @param email
-	 * @param randomIndex
-	 * @throws IOException
-	 */
-	public void processTextSemantics(Email email, RandomIndexing randomIndex) throws IOException {
-		String processedTokenStream = email.getTextContent().getTokenStream();
-		randomIndex.processDocument(new BufferedReader(new StringReader(
-				processedTokenStream)));
-		int[] docSemanticVector = new int[randomIndex.getVectorLength()];
-		for (String word : email.getTextContent().getStringTokens().keySet()) {
-			int[] semanticVector = randomIndex.getContextVector(word);
-			int frequency = email.getTextContent().getStringTokens().get(word);
-				//add the semantic vector of the word * the no. of times its mentioned in the doc
-				docSemanticVector = RandomIndexing.addVectors(
-						docSemanticVector, semanticVector, frequency);
-
-		}
-		email.setDocumentContextVector(docSemanticVector);
-	}
-
 	// region > allEmailContacts (collection)
 	private List<EmailContact> allEmailContacts;
 

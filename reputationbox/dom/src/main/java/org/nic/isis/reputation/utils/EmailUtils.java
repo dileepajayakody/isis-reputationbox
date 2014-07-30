@@ -146,7 +146,7 @@ public final class EmailUtils {
 	}
 
 	/**
-	 * Preprocesses the text and generate random indexing vectors 
+	 * Preprocesses the text content
 	 * 
 	 * @param text
 	 *            a document to process
