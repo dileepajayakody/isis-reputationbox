@@ -37,6 +37,6 @@ public class CosineSimilarity {
         } else {
             return 0.0;
         }
-        return cosineSimilarity;
+        return cosineSimilarity == Double.NaN ? 0:cosineSimilarity;
     }
 }

@@ -204,7 +204,7 @@ public class UserMailBox {
 
 	
 	/**
-     * A mapping from each word to the vector the represents its semantics
+     * A mapping from each word to it's context vector
      */
     private Map<String, int[]> wordToMeaningMap;
     
@@ -216,5 +216,6 @@ public class UserMailBox {
 	public Map<String, int[]> getWordToMeaningMap() {
 		return wordToMeaningMap;
 	}
+	
 
 }

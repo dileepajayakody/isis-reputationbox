@@ -40,28 +40,31 @@ public class EmailService {
 					mailBox.setSyncing(true);
 					//iterate all emails upto now
 					while (mailBox.isSyncing()) {
-						mailBox = contextIOService.updateMailBox(mailBox, 20);
+						mailBox = contextIOService.updateMailBox(mailBox, 10);
 					}
 					logger.info("updated the mailBox: " + mailBox.getEmailId()
 							+ " with " + mailBox.getEmailCount() + " emails");
 				}*/
+				
 				mailBox = contextIOService.updateMailBox(mailBox,10);
 				
 				logger.info("The context vectors of emails processed by Random Indexing: "
 						+ mailBox.getEmailId());
-				List<int[]> documentVectors = new ArrayList<int[]>();
 				for (Email email : mailBox.getAllEmails()) {
 					int[] docVector = email.getDocumentContextVector();
-					documentVectors.add(docVector);
-
+					
 					String vectorString = "[";
 					for (int i = 0; i < docVector.length; i++) {
 						int val = docVector[i];
 						vectorString += val + ", ";
 					}
 					vectorString += "]";
-					logger.info(email.getMessageId() + " : " + vectorString);
+					logger.info(email.getMessageId() + " : subject:  " + email.getSubject()+ " vector : \n" + vectorString);
 				}
+				
+				emailAnalysisService.calculateCosineSimilarityofEmails(mailBox);
+				
+				
 
 			} catch (Exception e) {
 				logger.error("Error occurred  ", e);
@@ -100,5 +103,7 @@ public class EmailService {
 	DomainObjectContainer container;
 	@Inject
 	ContextIOService contextIOService;
+	@Inject
+	EmailAnalysisService emailAnalysisService;
 	// endregion
 }

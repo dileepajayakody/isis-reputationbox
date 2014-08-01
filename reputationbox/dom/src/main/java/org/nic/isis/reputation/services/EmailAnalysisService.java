@@ -3,6 +3,7 @@ package org.nic.isis.reputation.services;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -14,6 +15,7 @@ import org.apache.isis.applib.annotation.Programmatic;
 import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.ri.RandomIndexing;
+import org.nic.isis.similarity.CosineSimilarity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,11 +37,20 @@ public class EmailAnalysisService {
 	 * @throws IOException
 	 */
 	public RandomIndexing processTextSemantics(Email email, RandomIndexing randomIndex) throws IOException {
-		String processedTokenStream = email.getBodyContent().getTokenStream();
+		//processing subject and body seperately as 2 documents
+		String processedSubjectTokenStream = email.getSubjectContent().getTokenStream();
+		randomIndex.processDocument(new BufferedReader(new StringReader(processedSubjectTokenStream)));
+		
+		String processedBodyTokenStream = email.getBodyContent().getTokenStream();
 		randomIndex.processDocument(new BufferedReader(new StringReader(
-				processedTokenStream)));
+				processedBodyTokenStream)));
+		
 		int[] docSemanticVector = new int[randomIndex.getVectorLength()];
-		for (String word : email.getBodyContent().getStringTokens().keySet()) {
+		List<String> allWords = new ArrayList<String>();
+		allWords.addAll(email.getBodyContent().getStringTokens().keySet());
+		allWords.addAll(email.getSubjectContent().getStringTokens().keySet());
+		
+		for (String word : allWords) {
 			int[] semanticVector = randomIndex.getContextVector(word);
 			int frequency = email.getBodyContent().getStringTokens().get(word);
 				//add the semantic vector of the word * the no. of times its mentioned in the doc
@@ -51,6 +62,20 @@ public class EmailAnalysisService {
 		return randomIndex;
 	}
 	
+	public void calculateCosineSimilarityofEmails(UserMailBox mb){
+		List<Email> emails = mb.getAllEmails();
+		for(Email email : emails){
+			for (Email innerEmail : emails){
+				if (!email.getMessageId().equalsIgnoreCase(innerEmail.getMessageId())){
+					int[] v1 = email.getDocumentContextVector();
+					int[] v2 = innerEmail.getDocumentContextVector();
+					double similarity = CosineSimilarity.calculateCosineSimilarity(v1, v2);
+					logger.info(" Similarity of EMAIL_1 : " + email.getSubject() + " and \n EMAIL_2 : " + innerEmail.getSubject() + " =  " + similarity);
+				}
+			}
+		}
+
+	}
 	// region > dependencies
 	@Inject
 	DomainObjectContainer container;
