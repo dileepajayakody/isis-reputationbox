@@ -293,14 +293,14 @@ public class Email {
 		this.emailHeaders = emailHedears;
 	}
 
-	private int[] documentContextVector;
+	private double[] documentContextVector;
 
 	@javax.jdo.annotations.Column(allowsNull = "true")
-	public int[] getDocumentContextVector() {
+	public double[] getDocumentContextVector() {
 		return documentContextVector;
 	}
 
-	public void setDocumentContextVector(int[] documentContextVector) {
+	public void setDocumentContextVector(double[] documentContextVector) {
 		this.documentContextVector = documentContextVector;
 	}
 

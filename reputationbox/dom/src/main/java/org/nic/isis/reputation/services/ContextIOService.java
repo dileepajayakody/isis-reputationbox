@@ -146,6 +146,7 @@ public class ContextIOService {
 							.processText(subject);
 
 					Email email = new Email();
+					
 					email.setSubject(subject);
 					email.setMessageId(emailMessageID);
 					email.setGmailThreadId(gmailThreadID);
@@ -165,7 +166,7 @@ public class ContextIOService {
 					mailbox.addEmail(email);				
 
 				} catch (Exception e) {
-					logger.error("Error while decoding email JSON message ", e);
+					logger.error("Error while decoding email JSON message", e);
 				}
 			}
 			//saving new word semantics vectors in the mailbox
@@ -179,7 +180,7 @@ public class ContextIOService {
 			mailbox.setSyncing(false);
 		}
 		logger.info(emailData.length() + " mails retrieved from : "
-				+ mailbox.getEmailId() + "from offset : " + offset);
+				+ mailbox.getEmailId() + " from offset : " + offset);
 		
 		return mailbox;
 	}

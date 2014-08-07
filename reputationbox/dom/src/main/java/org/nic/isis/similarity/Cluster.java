@@ -6,16 +6,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.ri.RandomIndexing;
 
 
 public class Cluster {
   
   private String id;
-  private Map<String,int[]> docs = new HashMap<String,int[]>();
-  private List<String> docIds = new ArrayList<String>();
+  private Map<String,Email> emails = new HashMap<String,Email>();
+  private List<String> emailIds = new ArrayList<String>();
   
-  private int[] centroid = null;
+  private double[] centroid = null;
   
   public Cluster(String id) {
     this.id = id;
@@ -25,38 +26,38 @@ public class Cluster {
     return id;
   }
   
-  public Set<String> getDocumentIds() {
-    return docs.keySet();
+  public Set<String> getEmailIds() {
+    return emails.keySet();
   }
 
-  public String getDocumentId(int pos) {
-    return docIds.get(pos);
+  public String getEmailId(int pos) {
+    return emailIds.get(pos);
   }
   
-  public int[] getDocument(String documentName) {
-    return docs.get(documentName);
+  public Email getEmail(String messageId) {
+    return emails.get(messageId);
   }
 
-  public int[] getDocument(int pos) {
-    return docs.get(docIds.get(pos));
+  public Email getEmail(int pos) {
+    return emails.get(emailIds.get(pos));
   }
   
-  public void addDocument(String docName, int[] docMatrix) {
-    docs.put(docName, docMatrix);
-    docIds.add(docName);
+  public void addDocument(String docName, Email email) {
+    emails.put(docName, email);
+    emailIds.add(docName);
   }
 
   public void removeDocument(String docName) {
-    docs.remove(docName);
-    docIds.remove(docName);
+    emails.remove(docName);
+    emailIds.remove(docName);
   }
 
   public int size() {
-    return docs.size();
+    return emails.size();
   }
   
   public boolean contains(String docName) {
-    return docs.containsKey(docName);
+    return emails.containsKey(docName);
   }
   
   /**
@@ -65,17 +66,18 @@ public class Cluster {
    * 
    * @return the centroid of the cluster
    */
-  public int[] getCentroid() {
-    if (docs.size() == 0) {
+  public double[] getCentroid() {
+    if (emails.size() == 0) {
       return null;
     }
-    int[] d = docs.get(docIds.get(0));
-    centroid = new int[d.length]; 
-    for (String docName : docs.keySet()) {
-      int[] docArray = docs.get(docName);
-      centroid = RandomIndexing.addArrays(centroid, docArray);
+    double[] d = emails.get(emailIds.get(0)).getDocumentContextVector();
+    double[] tempVector = new double[d.length];
+    for (String docName : emails.keySet()) {
+      double[] emailContextVector = emails.get(docName).getDocumentContextVector();
+      tempVector = RandomIndexing.addArrays(tempVector, emailContextVector);
     }
-    centroid = RandomIndexing.devideArray(centroid, docs.size());
+    centroid = new double[d.length]; 
+    centroid = RandomIndexing.devideArray(tempVector, emails.size());
     return centroid;
   }
 
@@ -87,7 +89,7 @@ public class Cluster {
    * @param doc the document to be compared for similarity.
    * @return the similarity of the centroid of the cluster to the document
    */
-  public double getSimilarity(int[] doc) {
+  public double getSimilarity(double[] doc) {
     if (centroid != null) {
     	double similarity = CosineSimilarity.calculateCosineSimilarity(centroid, doc);
     	return similarity;
@@ -97,6 +99,6 @@ public class Cluster {
   
   @Override
   public String toString() {
-    return id + ":" + docs.keySet().toString();
+    return id + ":" + emails.keySet().toString();
   }
 }

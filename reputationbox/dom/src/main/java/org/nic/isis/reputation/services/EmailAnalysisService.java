@@ -15,7 +15,9 @@ import org.apache.isis.applib.annotation.Programmatic;
 import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.ri.RandomIndexing;
+import org.nic.isis.similarity.Cluster;
 import org.nic.isis.similarity.CosineSimilarity;
+import org.nic.isis.similarity.KMeansClustering;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,18 +47,26 @@ public class EmailAnalysisService {
 		randomIndex.processDocument(new BufferedReader(new StringReader(
 				processedBodyTokenStream)));
 		
-		int[] docSemanticVector = new int[randomIndex.getVectorLength()];
+		double[] docSemanticVector = new double[randomIndex.getVectorLength()];
 		List<String> allWords = new ArrayList<String>();
 		allWords.addAll(email.getBodyContent().getStringTokens().keySet());
 		allWords.addAll(email.getSubjectContent().getStringTokens().keySet());
-		
+		//calculating the sum of all words semantic vectors in the document
 		for (String word : allWords) {
-			int[] semanticVector = randomIndex.getContextVector(word);
-			int frequency = email.getBodyContent().getStringTokens().get(word);
+			double[] wordSemanticVector = randomIndex.getContextVector(word);
+			
+			if(null != email.getBodyContent().getStringTokens().get(word)){
+				int frequency = email.getBodyContent().getStringTokens().get(word);
 				//add the semantic vector of the word * the no. of times its mentioned in the doc
-				docSemanticVector = RandomIndexing.addVectors(
-						docSemanticVector, semanticVector, frequency);
-
+				docSemanticVector = RandomIndexing.addArrays(
+						docSemanticVector, wordSemanticVector, frequency);
+			}
+			if(null != email.getSubjectContent().getStringTokens().get(word)){
+				int frequency = email.getSubjectContent().getStringTokens().get(word);
+				//add the semantic vector of the word * the no. of times its mentioned in the doc
+				docSemanticVector = RandomIndexing.addArrays(
+						docSemanticVector, wordSemanticVector, frequency);
+			}
 		}
 		email.setDocumentContextVector(docSemanticVector);
 		return randomIndex;
@@ -67,11 +77,26 @@ public class EmailAnalysisService {
 		for(Email email : emails){
 			for (Email innerEmail : emails){
 				if (!email.getMessageId().equalsIgnoreCase(innerEmail.getMessageId())){
-					int[] v1 = email.getDocumentContextVector();
-					int[] v2 = innerEmail.getDocumentContextVector();
+					double[] v1 = email.getDocumentContextVector();
+					double[] v2 = innerEmail.getDocumentContextVector();
 					double similarity = CosineSimilarity.calculateCosineSimilarity(v1, v2);
 					logger.info(" Similarity of EMAIL_1 : " + email.getSubject() + " and \n EMAIL_2 : " + innerEmail.getSubject() + " =  " + similarity);
 				}
+			}
+		}
+
+	}
+	
+	public void kMeansClusterEmails(UserMailBox mb){
+		KMeansClustering kmeans = new KMeansClustering();
+		List<Email> allEmails = mb.getAllEmails();
+		List<Cluster> clusters = kmeans.cluster(allEmails);
+		for(Cluster cluster : clusters){
+			logger.info("Cluster ID : " + cluster.getId());
+			int clusterSize = cluster.size();
+			for(int i = 0; i < clusterSize; i++){
+				Email email = cluster.getEmail(i);
+				logger.info("Email subject : " + email.getSubject());
 			}
 		}
 

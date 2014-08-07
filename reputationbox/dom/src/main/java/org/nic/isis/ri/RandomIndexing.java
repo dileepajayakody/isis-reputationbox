@@ -21,44 +21,22 @@
 
 package org.nic.isis.ri;
 
-import edu.ucla.sspace.common.Filterable;
-import edu.ucla.sspace.common.SemanticSpace;
-import edu.ucla.sspace.index.IntegerVectorGenerator;
 import edu.ucla.sspace.index.PermutationFunction;
-import edu.ucla.sspace.index.RandomIndexVectorGenerator;
 import edu.ucla.sspace.index.TernaryPermutationFunction;
 import edu.ucla.sspace.text.IteratorFactory;
-import edu.ucla.sspace.util.GeneratorMap;
-import edu.ucla.sspace.vector.CompactSparseIntegerVector;
-import edu.ucla.sspace.vector.DenseIntVector;
-import edu.ucla.sspace.vector.DoubleVector;
-import edu.ucla.sspace.vector.IntegerVector;
-import edu.ucla.sspace.vector.SparseVector;
 import edu.ucla.sspace.vector.TernaryVector;
-import edu.ucla.sspace.vector.Vectors;
+
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.Serializable;
-import java.lang.reflect.Constructor;
 import java.util.ArrayDeque;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
-import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
-
-import javax.inject.Named;
-import javax.jdo.annotations.IdentityType;
-import javax.jdo.annotations.VersionStrategy;
-
-import org.apache.isis.applib.annotation.ObjectType;
 
 /**
  * Modified RandomIndexing class based on the S-Space library class 
@@ -137,7 +115,7 @@ public class RandomIndexing {
 	/**
 	 * A mapping from each word to the int[] that the represents its semantics
 	 */
-	private Map<String, int[]> wordsToMeaningMap;
+	private Map<String, double[]> wordsToMeaningMap;
 
 	/**
 	 * The number of dimensions for the semantic and index vectors.
@@ -172,7 +150,7 @@ public class RandomIndexing {
 	 * wordToIndexVector and wordToMeaning map
 	 */
 	public RandomIndexing(Map<String, TernaryVector> indexVectors,
-			Map<String, int[]> contextVectors) {
+			Map<String, double[]> contextVectors) {
 		vectorLength = DEFAULT_VECTOR_LENGTH;
 		windowSize = DEFAULT_WINDOW_SIZE;
 		usePermutations = false;
@@ -203,8 +181,8 @@ public class RandomIndexing {
 	 * 
 	 * @return the {@code SemanticVector} for the provide word.
 	 */
-	private int[] getSemanticVector(String word) {
-		int[] v = wordsToMeaningMap.get(word);
+	private double[] getSemanticVector(String word) {
+		double[] v = wordsToMeaningMap.get(word);
 		if (v == null) {
 			// lock on the word in case multiple threads attempt to add it at
 			// once
@@ -213,7 +191,7 @@ public class RandomIndexing {
 				// for the lock
 				v = wordsToMeaningMap.get(word);
 				if (v == null) {
-					v = new int[vectorLength];
+					v = new double[vectorLength];
 					wordsToMeaningMap.put(word, v);
 				}
 			}
@@ -224,8 +202,8 @@ public class RandomIndexing {
 	/**
 	 * returns the context vector for the word
 	 */
-	public int[] getContextVector(String word) {
-		int[] v = wordsToMeaningMap.get(word);
+	public double[] getContextVector(String word) {
+		double[] v = wordsToMeaningMap.get(word);
 		if (v == null) {
 			return null;
 		}
@@ -275,7 +253,7 @@ public class RandomIndexing {
 	 * @return a mapping from the current set of tokens to the context vector
 	 *         calculated for them
 	 */
-	public Map<String, int[]> getWordToMeaningVector() {
+	public Map<String, double[]> getWordToMeaningVector() {
 		return wordsToMeaningMap;
 	}
 
@@ -316,7 +294,7 @@ public class RandomIndexing {
 					&& !focusWord.equals(IteratorFactory.EMPTY_TOKEN);
 
 			if (calculateSemantics) {
-				int[] focusMeaning = getSemanticVector(focusWord);
+				double[] focusMeaning = getSemanticVector(focusWord);
 
 				// Sum up the index vector for all the surrounding words. If
 				// permutations are enabled, permute the index vector based on
@@ -394,7 +372,7 @@ public class RandomIndexing {
 	 * This is a special case addition operation that only iterates over the
 	 * non-zero values of the index vector.
 	 */
-	private static void add(int[] semantics, TernaryVector index) {
+	private static void add(double[] semantics, TernaryVector index) {
 		// Lock on the semantic vector to avoid a race condition with another
 		// thread updating its semantics. Use the vector to avoid a class-level
 		// lock, which would limit the concurrency.
@@ -410,6 +388,49 @@ public class RandomIndexing {
 	}
 
 	/**
+	 * Math function to add (vector2 * frequency) to vector1
+	 * 
+	 * @param vector1
+	 * @param vector2
+	 * @param frequency : to multiply vector2 by frequency and add to vector1
+	 * @return
+	 */
+	public static double[] addArrays(double[] vector1, double[] vector2, int frequency) {
+		if (vector2.length != vector1.length)
+			throw new IllegalArgumentException(
+					"int arrays of different sizes cannot be added");
+
+		int length = vector2.length;
+		for (int i = 0; i < length; ++i) {
+			double value = (vector2[i] * frequency) + vector1[i];
+			vector1[i] = value;
+		}
+		return vector1;
+	}
+	
+	/**
+	 * Math function to add (vector2 to vector1
+	 * 
+	 * @param vector1
+	 * @param vector2
+	 * @param frequency : to multiply vector2 by frequency and add to vector1
+	 * @return
+	 */
+	public static double[] addArrays(double[] vector1, double[] vector2) {
+		if (vector2.length != vector1.length)
+			throw new IllegalArgumentException(
+					"int arrays of different sizes cannot be added");
+
+		int length = vector2.length;
+		for (int i = 0; i < length; ++i) {
+			double value = vector2[i] + vector1[i];
+			vector1[i] = value;
+		}
+		return vector1;
+	}
+	
+	
+	/**
 	 * Math function to add vector2 to vector1
 	 * 
 	 * @param vector1
@@ -417,16 +438,13 @@ public class RandomIndexing {
 	 * @param frequency
 	 * @return
 	 */
-	public static int[] addVectors(int[] vector1, int[] vector2, int frequency) {
-		if (vector2.length != vector1.length)
-			throw new IllegalArgumentException(
-					"int arrays of different sizes cannot be added");
-
-		int length = vector2.length;
+	public static double[] devideArray(double[] vector, int divisionFactor) {
+		int length = vector.length;
+		double[] resultVector = new double[length];
 		for (int i = 0; i < length; ++i) {
-			int value = (vector2[i] * frequency) + vector1[i];
-			vector1[i] = value;
+			double value = vector[i] / divisionFactor;
+			resultVector[i] = value;
 		}
-		return vector1;
+		return resultVector;
 	}
 }

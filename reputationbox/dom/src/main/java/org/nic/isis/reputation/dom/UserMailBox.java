@@ -49,7 +49,7 @@ public class UserMailBox {
                 new RandomIndexVectorGenerator(RandomIndexing.DEFAULT_VECTOR_LENGTH, System.getProperties());
 		this.wordToIndexVector = new GeneratorMap<TernaryVector>(
                 indexVectorGenerator);
-		this.wordToMeaningMap = new HashMap<String, int[]>();
+		this.wordToMeaningMap = new HashMap<String, double[]>();
 	}
 
 	// contextio account id
@@ -206,14 +206,14 @@ public class UserMailBox {
 	/**
      * A mapping from each word to it's context vector
      */
-    private Map<String, int[]> wordToMeaningMap;
+    private Map<String, double[]> wordToMeaningMap;
     
-    public void setWordToMeaningMap(Map<String, int[]> wordToMeaning) {
+    public void setWordToMeaningMap(Map<String, double[]> wordToMeaning) {
 		this.wordToMeaningMap = wordToMeaning;
 	}
 
     @javax.jdo.annotations.Column(allowsNull = "true")
-	public Map<String, int[]> getWordToMeaningMap() {
+	public Map<String, double[]> getWordToMeaningMap() {
 		return wordToMeaningMap;
 	}
 	
