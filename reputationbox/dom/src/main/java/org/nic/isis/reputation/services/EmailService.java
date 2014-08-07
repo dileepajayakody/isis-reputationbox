@@ -39,7 +39,7 @@ public class EmailService {
 				if (!mailBox.isSyncing()) {
 					mailBox.setSyncing(true);
 					//iterate all emails from the beginning
-					while (mailBox.isSyncing() && mailBox.getEmailCount() < 30) {
+					while (mailBox.isSyncing() && mailBox.getEmailCount() < 50) {
 						mailBox = contextIOService.updateMailBox(mailBox, 10);
 					}
 					logger.info("updated the mailBox: " + mailBox.getEmailId()
@@ -58,7 +58,7 @@ public class EmailService {
 						vectorString += val + ", ";
 					}
 					vectorString += "]";
-					logger.info(email.getMessageId() + " : subject:  " + email.getSubject()+ " vector : \n" + vectorString);
+				//	logger.info(email.getMessageId() + " : subject:  " + email.getSubject()+ " vector : \n" + vectorString);
 				}
 						
 			} catch (Exception e) {

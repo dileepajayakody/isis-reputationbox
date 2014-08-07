@@ -73,6 +73,11 @@ public class ContextIO_V20 extends ContextIOApi {
 		return get(null, "accounts", null);
 	}
 
+	public ContextIOResponse getFolders(String accountId){
+		return get(accountId, "sources/0/folders", null);
+	}
+	
+
 	// endregion
 
 	// region > addAccount (programmatic)

@@ -92,13 +92,16 @@ public class EmailAnalysisService {
 		List<Email> allEmails = mb.getAllEmails();
 		List<Cluster> clusters = kmeans.cluster(allEmails);
 		for(Cluster cluster : clusters){
-			logger.info("Cluster ID : " + cluster.getId());
+			logger.info("Cluster ID : " + cluster.getId() + "===========================================");
 			int clusterSize = cluster.size();
 			for(int i = 0; i < clusterSize; i++){
 				Email email = cluster.getEmail(i);
-				logger.info("Email subject : " + email.getSubject());
+				List<String> flags = email.getEmailFlags();
+				logger.info("Email subject : " + email.getSubject() + " flags " + flags.toString());
+				
 			}
 		}
+		
 
 	}
 	// region > dependencies

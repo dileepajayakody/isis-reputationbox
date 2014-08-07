@@ -310,5 +310,14 @@ public class Email {
 		return null;
 	}
 	// endregion
+	
+	public static final String ANSWERED = "/Answered";
+	public static final String SEEN = "/Seen";
+	public static final String FLAGGED = "/Flagged";
+	public static final String DELETED = "/Deleted";
+	public static final String DRAFT = "/Draft";
+	
+	
+	
 
 }

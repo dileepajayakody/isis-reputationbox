@@ -362,13 +362,6 @@ public class ContextIOService {
 		ContextIOResponse accountsResponse = contextio_v20.getAccounts();
 	}
 
-	public void testDiscovery() {
-		Map<String, String> emailParams = new HashMap<String, String>();
-		emailParams.put("source_type", "IMAP");
-		emailParams.put("email", "dileepajayakody@gmail.com");
-		ContextIOResponse discoveryRes = contextio_v20.discovery(emailParams);
-	}
-
 	@javax.inject.Inject
 	DomainObjectContainer container;
 	// region > dependencies
