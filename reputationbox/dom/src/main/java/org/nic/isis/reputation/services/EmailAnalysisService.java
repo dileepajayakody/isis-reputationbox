@@ -17,7 +17,7 @@ import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.ri.RandomIndexing;
 import org.nic.isis.similarity.Cluster;
 import org.nic.isis.similarity.CosineSimilarity;
-import org.nic.isis.similarity.KMeansClustering;
+import org.nic.isis.similarity.KMeansCluster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,7 +88,7 @@ public class EmailAnalysisService {
 	}
 	
 	public void kMeansClusterEmails(UserMailBox mb){
-		KMeansClustering kmeans = new KMeansClustering();
+		KMeansCluster kmeans = new KMeansCluster();
 		List<Email> allEmails = mb.getAllEmails();
 		List<Cluster> clusters = kmeans.cluster(allEmails);
 		for(Cluster cluster : clusters){

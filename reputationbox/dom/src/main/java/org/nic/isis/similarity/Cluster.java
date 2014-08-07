@@ -86,19 +86,15 @@ public class Cluster {
   /**
    * Returns the cosine similarity between the centroid of this cluster
    * and the new document.
-   * @param doc the document to be compared for similarity.
+   * @param docVector the document to be compared for similarity.
    * @return the similarity of the centroid of the cluster to the document
    */
-  public double getSimilarity(double[] doc) {
+  public double getSimilarity(double[] docVector) {
     if (centroid != null) {
-    	double similarity = CosineSimilarity.calculateCosineSimilarity(centroid, doc);
+    	double similarity = CosineSimilarity.calculateCosineSimilarity(centroid, docVector);
     	return similarity;
     }
     return 0.0D;
   }
   
-  @Override
-  public String toString() {
-    return id + ":" + emails.keySet().toString();
-  }
 }
