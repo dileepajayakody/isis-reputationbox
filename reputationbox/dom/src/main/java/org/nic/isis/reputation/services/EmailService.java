@@ -38,7 +38,7 @@ public class EmailService {
 			try {
 				if (!mailBox.isSyncing()) {
 					mailBox.setSyncing(true);
-					//iterate all emails from the beginning
+					//iterate all emails from the beginning (upto 50 for testing..)
 					while (mailBox.isSyncing() && mailBox.getEmailCount() < 50) {
 						mailBox = contextIOService.updateMailBox(mailBox, 10);
 					}
@@ -47,10 +47,10 @@ public class EmailService {
 				}
 				
 				//mailBox = contextIOService.updateMailBox(mailBox,10);			
-				logger.info("The context vectors of emails processed by Random Indexing: "
+				/*logger.info("The recipient vectors of emails processed by Random Indexing: "
 						+ mailBox.getEmailId());
 				for (Email email : mailBox.getAllEmails()) {
-					double[] docVector = email.getDocumentContextVector();
+					double[] docVector = email.getRecipientContextVector();
 					
 					String vectorString = "[";
 					for (int i = 0; i < docVector.length; i++) {
@@ -58,16 +58,17 @@ public class EmailService {
 						vectorString += val + ", ";
 					}
 					vectorString += "]";
-				//	logger.info(email.getMessageId() + " : subject:  " + email.getSubject()+ " vector : \n" + vectorString);
-				}
+					logger.info(email.getMessageId() + " : subject:  " + email.getSubject()+ " vector : \n" + vectorString);
+				}*/
 						
 			} catch (Exception e) {
 				logger.error("Error occurred  ", e);
 			}
-			
-			//emailAnalysisService.calculateCosineSimilarityofEmails(mailBox);
-			emailAnalysisService.kMeansClusterEmails(mailBox);
-			container.persist(mailBox);
+			logger.info("emails clustered according to text cooccurence");
+			emailAnalysisService.kMeansClusterText(mailBox);
+			logger.info("emails clustered according to recipient cooccurence");
+			emailAnalysisService.kMeansClusterRecipients(mailBox);
+			container.persistIfNotAlready(mailBox);
 		}
 	}
 

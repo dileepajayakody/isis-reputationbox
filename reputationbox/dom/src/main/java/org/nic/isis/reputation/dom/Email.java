@@ -19,6 +19,12 @@ import edu.ucla.sspace.vector.Vector;
 @ObjectType("EMAIL")
 public class Email {
 
+	public static final String ANSWERED = "/Answered";
+	public static final String SEEN = "/Seen";
+	public static final String FLAGGED = "/Flagged";
+	public static final String DELETED = "/Deleted";
+	public static final String DRAFT = "/Draft";
+	
 	// region > messageId (property)
 	private String messageId;
 
@@ -293,31 +299,33 @@ public class Email {
 		this.emailHeaders = emailHedears;
 	}
 
-	private double[] documentContextVector;
+	private double[] textContextVector;
 
 	@javax.jdo.annotations.Column(allowsNull = "true")
-	public double[] getDocumentContextVector() {
-		return documentContextVector;
+	public double[] getTextContextVector() {
+		return textContextVector;
 	}
 
-	public void setDocumentContextVector(double[] documentContextVector) {
-		this.documentContextVector = documentContextVector;
+	public void setTextContextVector(double[] txtContextVector) {
+		this.textContextVector = txtContextVector;
 	}
 
+	private double[] recipientContextVector;
+	
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getRecipientContextVector() {
+		return recipientContextVector;
+	}
+
+	public void setRecipientContextVector(double[] recipientContextVector) {
+		this.recipientContextVector = recipientContextVector;
+	}
+	
 	// region > calcReputation (action)
 	public Reputation calcReputation(ReputationCriteria criteria) {
 		// to do
 		return null;
 	}
 	// endregion
-	
-	public static final String ANSWERED = "/Answered";
-	public static final String SEEN = "/Seen";
-	public static final String FLAGGED = "/Flagged";
-	public static final String DELETED = "/Deleted";
-	public static final String DRAFT = "/Draft";
-	
-	
-	
 
 }

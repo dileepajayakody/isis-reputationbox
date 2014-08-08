@@ -50,6 +50,9 @@ public class UserMailBox {
 		this.wordToIndexVector = new GeneratorMap<TernaryVector>(
                 indexVectorGenerator);
 		this.wordToMeaningMap = new HashMap<String, double[]>();
+		
+		this.recipientToIndexVector = new GeneratorMap<TernaryVector>(indexVectorGenerator);
+		this.recipientToMeaningMap = new HashMap<String, double[]>();
 	}
 
 	// contextio account id
@@ -213,9 +216,39 @@ public class UserMailBox {
 	}
 
     @javax.jdo.annotations.Column(allowsNull = "true")
-	public Map<String, double[]> getWordToMeaningMap() {
-		return wordToMeaningMap;
+   	public Map<String, double[]> getWordToMeaningMap() {
+   		return wordToMeaningMap;
+   	}
+    
+    /**
+     * A mapping from each recipient to an index vector
+     */
+ 	private Map<String,TernaryVector> recipientToIndexVector;
+ 	
+ 	@javax.jdo.annotations.Column(allowsNull = "true")
+ 	public Map<String,TernaryVector> getRecipientToIndexVector() {
+ 		return recipientToIndexVector;
+ 	}
+
+ 	public void setRecipientToIndexVector(Map<String,TernaryVector> recipientToIndexVector) {
+ 		this.recipientToIndexVector = recipientToIndexVector;
+ 	}
+ 	
+ 	/**
+     * A mapping from each recipient to it's context vector
+     */
+    private Map<String, double[]> recipientToMeaningMap;
+    
+    public void setRecipientToMeaningMap(Map<String, double[]> recipientToMeaning) {
+		this.recipientToMeaningMap = recipientToMeaning;
 	}
+    
+    @javax.jdo.annotations.Column(allowsNull = "true")
+   	public Map<String, double[]> getRecipientToMeaningMap() {
+   		return recipientToMeaningMap;
+   	}
+    
+   
 	
 
 }

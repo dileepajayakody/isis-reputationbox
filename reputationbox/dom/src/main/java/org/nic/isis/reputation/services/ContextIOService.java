@@ -117,10 +117,14 @@ public class ContextIOService {
 		JSONArray emailData = new JSONArray(cio.getRawResponse().getBody());
 
 		if (emailData != null && emailData.length() > 0) {
-			//initializing a random indexing object with mailbox's word semantics
-			RandomIndexing randomIndexing = new RandomIndexing(
+			//initializing a random indexing object with mailbox's text semantics
+			RandomIndexing textIndexing = new RandomIndexing(
 					mailbox.getWordToIndexVector(),
 					mailbox.getWordToMeaningMap());
+			//initializing a random indexing object with mailbox's recipient semantics
+			RandomIndexing recipientIndexing = new RandomIndexing(
+					mailbox.getRecipientToIndexVector(),
+					mailbox.getRecipientToMeaningMap());
 			
 			for (int i = 0; i < emailData.length(); i++) {
 				// iterating over emails
@@ -161,19 +165,24 @@ public class ContextIOService {
 					// email = this.getEmailMessageContent(emailAddress, email);
 					// email = this.getMessageHeaders(emailAddress, email);
 					
-					//building email semantic vectors on the go
-					randomIndexing = emailAnalysisService.processTextSemantics(email, randomIndexing);
+					//building context vectors for text and recipients on the go
+					textIndexing = emailAnalysisService.processTextSemantics(email, textIndexing);
+					recipientIndexing = emailAnalysisService.processRecipientSemantics(email, recipientIndexing);
 					mailbox.addEmail(email);				
 
 				} catch (Exception e) {
 					logger.error("Error while decoding email JSON message", e);
 				}
 			}
-			//saving new word semantics vectors in the mailbox
-			mailbox.setWordToIndexVector(randomIndexing
+			//saving new text vectors in the mailbox
+			mailbox.setWordToIndexVector(textIndexing
 					.getWordToIndexVector());
-			mailbox.setWordToMeaningMap(randomIndexing
+			mailbox.setWordToMeaningMap(textIndexing
 					.getWordToMeaningVector());
+			
+			//saving new recipient vectors in the mailbox
+			mailbox.setRecipientToIndexVector(recipientIndexing.getWordToIndexVector());
+			mailbox.setRecipientToMeaningMap(recipientIndexing.getWordToMeaningVector());
 
 		} else {
 			// no more emails to sync

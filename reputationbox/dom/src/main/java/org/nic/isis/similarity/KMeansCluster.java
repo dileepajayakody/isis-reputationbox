@@ -11,6 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class KMeansCluster {
+	public final static String TEXT_CLUSTER_TYPE = "TEXT_CLUSTER";
+	public final static String RECIPIENT_CLUSTER_TYPE = "RECIPIENT_CLUSTER";
+
 	private final static Logger logger = LoggerFactory
 			.getLogger(KMeansCluster.class);
 
@@ -20,7 +23,7 @@ public class KMeansCluster {
 		this.initialClusterAssignments = documentNames;
 	}
 
-	public List<Cluster> cluster(List<Email> emailCollection) {
+	public List<Cluster> cluster(List<Email> emailCollection, String clusterType) {
 		int numDocs = emailCollection.size();
 		int numClusters = 0;
 		if (initialClusterAssignments == null) {
@@ -40,7 +43,7 @@ public class KMeansCluster {
 		// build initial clusters
 		List<Cluster> clusters = new ArrayList<Cluster>();
 		for (int i = 0; i < numClusters; i++) {
-			Cluster cluster = new Cluster("C" + i);
+			Cluster cluster = new Cluster("C" + i, clusterType);
 			cluster.addDocument(initialClusterAssignments[i],
 					emailCollection.get(i));
 			clusters.add(cluster);
@@ -66,10 +69,17 @@ public class KMeansCluster {
 				double maxSimilarity = Double.MIN_VALUE;
 				Email email = emailCollection.get(i);
 				String messageId = email.getMessageId();
-				email.getDocumentContextVector();
+				email.getTextContextVector();
 				for (int j = 0; j < numClusters; j++) {
-					double similarity = clusters.get(j).getSimilarity(
-							email.getDocumentContextVector());
+					double similarity = 0.0D;
+					if (TEXT_CLUSTER_TYPE.equals(clusterType)) {
+						similarity = clusters.get(j).getSimilarity(
+								email.getTextContextVector());
+					} else if (RECIPIENT_CLUSTER_TYPE.equals(clusterType)) {
+						similarity = clusters.get(j).getSimilarity(
+								email.getRecipientContextVector());
+					}
+
 					if (similarity > maxSimilarity) {
 						bestCluster = j;
 						maxSimilarity = similarity;
