@@ -354,7 +354,9 @@ public class RandomIndexing {
 
 		document.close();
 	}
-
+	
+	
+	
 	/**
 	 * {@inheritDoc} Note that all words will still have an index vector
 	 * assigned to them, which is necessary to properly compute the semantics.
@@ -372,7 +374,7 @@ public class RandomIndexing {
 	 * This is a special case addition operation that only iterates over the
 	 * non-zero values of the index vector.
 	 */
-	private static void add(double[] semantics, TernaryVector index) {
+	public static double[] add(double[] semantics, TernaryVector index) {
 		// Lock on the semantic vector to avoid a race condition with another
 		// thread updating its semantics. Use the vector to avoid a class-level
 		// lock, which would limit the concurrency.
@@ -385,6 +387,7 @@ public class RandomIndexing {
 				semantics[n] = semantics[n] - 1;
 
 		}
+		return semantics;
 	}
 
 	/**

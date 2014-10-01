@@ -5,14 +5,13 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
-import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
 import org.apache.isis.applib.DomainObjectContainer;
 import org.apache.isis.applib.annotation.Programmatic;
 import org.nic.isis.reputation.dom.Email;
+import org.nic.isis.reputation.dom.EmailFlag;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.ri.RandomIndexing;
 import org.nic.isis.similarity.Cluster;
@@ -20,6 +19,8 @@ import org.nic.isis.similarity.CosineSimilarity;
 import org.nic.isis.similarity.KMeansCluster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import edu.ucla.sspace.vector.TernaryVector;
 
 public class EmailAnalysisService {
 
@@ -52,7 +53,7 @@ public class EmailAnalysisService {
 		textIndex.processDocument(new BufferedReader(new StringReader(
 				processedBodyTokenStream)));
 
-		double[] docSemanticVector = new double[textIndex.getVectorLength()];
+		double[] textContextVector = new double[textIndex.getVectorLength()];
 		List<String> allWords = new ArrayList<String>();
 		allWords.addAll(email.getBodyContent().getStringTokens().keySet());
 		allWords.addAll(email.getSubjectContent().getStringTokens().keySet());
@@ -65,7 +66,7 @@ public class EmailAnalysisService {
 						.get(word);
 				// add the semantic vector of the word * the no. of times its
 				// mentioned in the doc
-				docSemanticVector = RandomIndexing.addArrays(docSemanticVector,
+				textContextVector = RandomIndexing.addArrays(textContextVector,
 						wordSemanticVector, frequency);
 			}
 			if (null != email.getSubjectContent().getStringTokens().get(word)) {
@@ -73,51 +74,73 @@ public class EmailAnalysisService {
 						.get(word);
 				// add the semantic vector of the word * the no. of times its
 				// mentioned in the doc
-				docSemanticVector = RandomIndexing.addArrays(docSemanticVector,
+				textContextVector = RandomIndexing.addArrays(textContextVector,
 						wordSemanticVector, frequency);
 			}
 		}
-		email.setTextContextVector(docSemanticVector);
+		email.setTextContextVector(textContextVector);
 		return textIndex;
 	}
 
+	/**
+	 * processes the semantic vectors for the associated email addresses using
+	 * random indexing
+	 * 
+	 * @param email
+	 * @param recipientIndex
+	 * @throws IOException
+	 */
 	public RandomIndexing processRecipientSemantics(Email email,
 			RandomIndexing recipientIndex) throws IOException {
 		List<String> toAddresses = email.getToAddresses();
 		List<String> ccAddresses = email.getCcAddresses();
 		String toAddressStr = "";
 		for (String toAddress : toAddresses) {
-			toAddressStr += toAddress;
+			toAddressStr += " " + toAddress;
 		}
 
 		String ccAddressStr = "";
 		for (String ccAddress : ccAddresses) {
-			ccAddressStr += ccAddress;
+			ccAddressStr += " " + ccAddress;
 		}
 		recipientIndex.processDocument(new BufferedReader(new StringReader(
 				toAddressStr)));
 		recipientIndex.processDocument(new BufferedReader(new StringReader(
 				ccAddressStr)));
 
-		double[] docSemanticVector = new double[recipientIndex
+		double[] recipientContextVector = new double[recipientIndex
 				.getVectorLength()];
 		for (String toAddress : toAddresses) {
-			double[] toAddressContextVector = recipientIndex
-					.getContextVector(toAddress);
-			if(toAddressContextVector != null){
-				docSemanticVector = RandomIndexing.addArrays(docSemanticVector,
-						toAddressContextVector);
+			// double[] toAddressContextVector =
+			// recipientIndex.getContextVector(toAddress);
+			TernaryVector toAddressIndexVector = recipientIndex
+					.getWordToIndexVector().get(toAddress);
+			if (toAddressIndexVector != null) {
+
+				/*
+				 * logger.info("vector for toAddress : " + toAddress); String
+				 * vectorString = "["; for (int i = 0; i <
+				 * toAddressContextVector.length; i++) { double val =
+				 * toAddressContextVector[i]; vectorString += val + ", "; }
+				 * vectorString += "]"; logger.info(toAddress
+				 * +" context vector : " + vectorString);
+				 */
+
+				recipientContextVector = RandomIndexing.add(
+						recipientContextVector, toAddressIndexVector);
 			}
 		}
 		for (String ccAddress : ccAddresses) {
 			double[] ccAddressContextVector = recipientIndex
 					.getContextVector(ccAddress);
-			if (ccAddressContextVector != null){
-				docSemanticVector = RandomIndexing.addArrays(docSemanticVector,
-						ccAddressContextVector);
+			TernaryVector ccAddressIndexVector = recipientIndex
+					.getWordToIndexVector().get(ccAddress);
+			if (ccAddressIndexVector != null) {
+				recipientContextVector = RandomIndexing.add(
+						recipientContextVector, ccAddressIndexVector);
 			}
 		}
-		email.setRecipientContextVector(docSemanticVector);
+		email.setRecipientContextVector(recipientContextVector);
 		return recipientIndex;
 	}
 
@@ -145,6 +168,7 @@ public class EmailAnalysisService {
 		List<Email> allEmails = mb.getAllEmails();
 		List<Cluster> clusters = kmeans.cluster(allEmails,
 				KMeansCluster.TEXT_CLUSTER_TYPE);
+
 		for (Cluster cluster : clusters) {
 			logger.info(" ");
 			logger.info("Cluster ID : " + cluster.getId()
@@ -152,10 +176,7 @@ public class EmailAnalysisService {
 			int clusterSize = cluster.size();
 			for (int i = 0; i < clusterSize; i++) {
 				Email email = cluster.getEmail(i);
-				List<String> flags = email.getEmailFlags();
-				logger.info("Email subject : " + email.getSubject()
-						+ " | flags : " + flags.toString());
-
+				logger.info("Email subject : " + email.getSubject());
 			}
 		}
 
@@ -182,6 +203,34 @@ public class EmailAnalysisService {
 			}
 		}
 
+	}
+
+	/**
+	 * Analyse level of response and importance of the emails in the cluster
+	 */
+	public void analyseCluster(Cluster cluster) {
+		int clusterSize = cluster.size();
+		
+		for (int i = 0; i < clusterSize; i++) {
+			Email email = cluster.getEmail(i);
+			EmailFlag flags = email.getEmailFlags();
+			if (flags.isAnswered()) {
+				cluster.addMessageAnswered();
+				//calculate the response time for the email
+				String receivedMessageId = email.getMessageId();
+				
+			}
+			if (flags.isFlagged()) {
+				cluster.addMessageFlagged();
+			}
+			if (flags.isSeen()){
+				cluster.addMessageSeen();
+			}
+			if(flags.isDeleted()){
+				cluster.addMessageDeleted();
+			}
+
+		}
 	}
 
 	// region > dependencies

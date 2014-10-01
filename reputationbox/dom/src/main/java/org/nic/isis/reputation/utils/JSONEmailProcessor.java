@@ -134,30 +134,29 @@ public class JSONEmailProcessor {
 		return ccAddressEmails;
 	}
 
-	public List<String> getFlags(){
-		List<String> flags = new ArrayList<String>();
+	public EmailFlag getFlags(){
 		if(json.get("flags") != null){
 			JSONArray flagsArray = (JSONArray)json.get("flags");
+			EmailFlag flagObject = new EmailFlag();
 			for(int i = 0; i < flagsArray.length(); i++){
 				String flag = flagsArray.getString(i);
-				/*EmailFlag flagObject = new EmailFlag();
-				boolean isSeen = flag.getBoolean("seen");
-				boolean isAnswered = flag.getBoolean("answered");
-				boolean isFlagged = flag.getBoolean("flagged");
-				boolean isDeleted = flag.getBoolean("deleted");
-				boolean isDraft = flag.getBoolean("draft");
-				boolean isNonJunk = flag.getBoolean("nonjunk");
-				flagObject.setSeen(isSeen);
-				flagObject.setAnswered(isAnswered);
-				flagObject.setFlagged(isFlagged);
-				flagObject.setDeleted(isDeleted);
-				flagObject.setDraft(isDraft);
-				flagObject.setNonJunk(isNonJunk);
-				*/
-				flags.add(flag);
+				if(flag.equalsIgnoreCase("\\Seen")){
+					flagObject.setSeen(true);
+				} else if(flag.equalsIgnoreCase("\\Answered")){
+					flagObject.setAnswered(true);
+				} else if(flag.equalsIgnoreCase("\\Flagged")){
+					flagObject.setFlagged(true);
+				} else if(flag.equalsIgnoreCase("\\Deleted")){
+					flagObject.setDeleted(true);
+				} else if(flag.equalsIgnoreCase("\\Draft")){
+					flagObject.setDraft(true);
+				} else if(flag.equalsIgnoreCase("\\Nonjunk")){
+					flagObject.setNonJunk(true);
+				}  
 			}
+			return flagObject;
 		}
-		return flags;
+		return null;
 	}
 
 	public List<EmailAttachment> getAttachments() {

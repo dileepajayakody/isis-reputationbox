@@ -41,6 +41,28 @@ public class Email {
 	
 	// endregion
 
+	
+	private boolean isReceivedMail = false;
+	@javax.jdo.annotations.Persistent
+	public boolean isReceivedMail() {
+		return isReceivedMail;
+	}
+
+	public void setReceivedMail(boolean isReceivedMail) {
+		this.isReceivedMail = isReceivedMail;
+	}
+	
+	private boolean isSentMail = false;
+	@javax.jdo.annotations.Persistent
+	public boolean isSentMail() {
+		return isSentMail;
+	}
+
+	public void setSentMail(boolean isSentMail) {
+		this.isSentMail = isSentMail;
+	}
+
+	
 	// region > bodyContent (property)
 	@javax.jdo.annotations.Persistent
 	private TextContent bodyContent;
@@ -261,6 +283,16 @@ public class Email {
 
 	public void setFolders(List<String> folders) {
 		this.folders = folders;
+		//process folders to see if it's a received or sent email
+		if(folders.contains("INBOX")){
+			//received email
+			isReceivedMail = true;
+		}
+		
+		else if (folders.contains("[Gmail]/Sent Mail")){
+			//sent email
+			isSentMail = true;
+		}
 	}
 
 	// endregion
@@ -276,16 +308,16 @@ public class Email {
 		this.emailAttachments = emailAttachments;
 	}
 
-	private List<String> emailFlags;
+	private EmailFlag emailFlag;
 	
 	@javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull = "true")
-	public List<String> getEmailFlags() {
-		return emailFlags;
+	public EmailFlag getEmailFlags() {
+		return emailFlag;
 	}
 
-	public void setEmailFlags(List<String> emailFlags) {
-		this.emailFlags = emailFlags;
+	public void setEmailFlags(EmailFlag emailFlag) {
+		this.emailFlag = emailFlag;
 	}
 
 	private String emailHeaders;
@@ -327,5 +359,5 @@ public class Email {
 		return null;
 	}
 	// endregion
-
+	
 }

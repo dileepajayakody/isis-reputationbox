@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.isis.applib.annotation.Programmatic;
 import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.ri.RandomIndexing;
 
@@ -16,7 +17,15 @@ public class Cluster {
 	private List<String> emailIds = new ArrayList<String>();
 	private double[] centroid = null;
 	private String clusterType;
+	
+	private int noOfMessagesAnswered;
+	private int noOfMessagesSeen;
+	//flagged as important
+	private int noOfMessagesFlagged;
+	private int noOfMessagesDeleted;
 
+
+	
 	public String getClusterType() {
 		return clusterType;
 	}
@@ -110,6 +119,7 @@ public class Cluster {
 	 *            the document to be compared for similarity.
 	 * @return the similarity of the centroid of the cluster to the document
 	 */
+	@Programmatic
 	public double getSimilarity(double[] docVector) {
 		if (centroid != null) {
 			double similarity = CosineSimilarity.calculateCosineSimilarity(
@@ -119,4 +129,51 @@ public class Cluster {
 		return 0.0D;
 	}
 
+	public int getNoOfMessagesAnswered() {
+		return noOfMessagesAnswered;
+	}
+
+	public void setNoOfMessagesAnswered(int noOfMessagesAnswered) {
+		this.noOfMessagesAnswered = noOfMessagesAnswered;
+	}
+
+	public int getNoOfMessagesSeen() {
+		return noOfMessagesSeen;
+	}
+
+	public void setNoOfMessagesSeen(int noOfMessagesSeen) {
+		this.noOfMessagesSeen = noOfMessagesSeen;
+	}
+
+	public int getNoOfMessagesFlagged() {
+		return noOfMessagesFlagged;
+	}
+
+	public void setNoOfMessagesFlagged(int noOfMessagesFlagged) {
+		this.noOfMessagesFlagged = noOfMessagesFlagged;
+	}
+
+	public int getNoOfMessagesDeleted() {
+		return noOfMessagesDeleted;
+	}
+
+	public void setNoOfMessagesDeleted(int noOfMessagesDeleted) {
+		this.noOfMessagesDeleted = noOfMessagesDeleted;
+	}
+	
+	public void addMessageFlagged(){
+		this.noOfMessagesFlagged++;
+	}
+	
+	public void addMessageSeen(){
+		this.noOfMessagesSeen++;
+	}
+
+	public void addMessageAnswered(){
+		this.noOfMessagesAnswered++;
+	}
+	
+	public void addMessageDeleted(){
+		this.noOfMessagesDeleted++;
+	}
 }

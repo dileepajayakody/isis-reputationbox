@@ -45,29 +45,18 @@ public class EmailService {
 					logger.info("updated the mailBox: " + mailBox.getEmailId()
 							+ " with " + mailBox.getEmailCount() + " emails");
 				}
-				
-				//mailBox = contextIOService.updateMailBox(mailBox,10);			
-				/*logger.info("The recipient vectors of emails processed by Random Indexing: "
-						+ mailBox.getEmailId());
-				for (Email email : mailBox.getAllEmails()) {
-					double[] docVector = email.getRecipientContextVector();
-					
-					String vectorString = "[";
-					for (int i = 0; i < docVector.length; i++) {
-						double val = docVector[i];
-						vectorString += val + ", ";
-					}
-					vectorString += "]";
-					logger.info(email.getMessageId() + " : subject:  " + email.getSubject()+ " vector : \n" + vectorString);
-				}*/
 						
 			} catch (Exception e) {
 				logger.error("Error occurred  ", e);
 			}
-			logger.info("emails clustered according to text cooccurence");
+			
+			//need to run the analysis as a separate process in a periodical approach
+			//Should we cluster all emails from beginning or just within a particular time-window
+			logger.info("Emails clustered according to text cooccurence");
 			emailAnalysisService.kMeansClusterText(mailBox);
-			logger.info("emails clustered according to recipient cooccurence");
+			logger.info("Emails clustered according to recipient cooccurence");
 			emailAnalysisService.kMeansClusterRecipients(mailBox);
+			
 			container.persistIfNotAlready(mailBox);
 		}
 	}
@@ -81,8 +70,9 @@ public class EmailService {
 	//sample mailbox
 	public UserMailBox createSample() {
 		UserMailBox mb = container.newTransientInstance(UserMailBox.class);
-		mb.setEmailId("gdc2013demo@gmail.com");
-		mb.setAccountId("530f0d8eb4810fd65d6d2149");
+		mb.setEmailId("dileepajayakody@gmail.com");
+		//mb.setAccountId("530f0d8eb4810fd65d6d2149");
+		mb.setAccountId("542a4e2e8c157f9741090c95");
 		container.persistIfNotAlready(mb);
 		return mb;
 	}

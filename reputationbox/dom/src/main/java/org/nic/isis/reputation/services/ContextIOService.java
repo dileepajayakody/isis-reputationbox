@@ -64,18 +64,15 @@ public class ContextIOService {
 		contextio_v11 = new ContextIO_V11();
 		contextio_v20 = new ContextIO_V20();
 
-		String key = "65kd0b3k";
-		// String key = "2n38y7uw";
+		String key = "samplekey";
 		contextio_v11.setKey(key);
 		contextio_v20.setKey(key);
 
-		String secret = "CetIiO0Ke0Klb2u8";
-		// String secret = " NzkC9fCpgpo3DtLj";
+		String secret = "sample secret";
 		contextio_v11.setSecret(secret);
 		contextio_v20.setSecret(secret);
 
-		// String accountId = "53214991facaddd22d812863";
-		String accountId = "53ad36843bcc88b437df1fab";
+		String accountId = "sample account id";
 		contextio_v11.setAccountId(accountId);
 		contextio_v20.setAccountId(accountId);
 
@@ -106,144 +103,123 @@ public class ContextIOService {
 		String emailAccount = mailbox.getAccountId();
 		params.put("offset", String.valueOf(offset));
 		params.put("limit", String.valueOf(limit));
-		params.put("sort_order", "asc");
+		params.put("sort_order", "desc");
 		params.put("include_body", String.valueOf(1));
 		params.put("include_headers", String.valueOf(1));
 		params.put("include_flags", String.valueOf(1));
+		// get emails in inbox
+		params.put("folder", "[Gmail]/INBOX");
 
-		ContextIOResponse cio = contextio_v20.getAllMessages(emailAccount,
-				params);
+		try {
+			ContextIOResponse cio = contextio_v20.getAllMessages(emailAccount,
+					params);
+			int httpResponseCode = cio.getCode();
+			// check if the http response returns an error: eg: 401
+			if (httpResponseCode != 200) {
+				logger.error(" Email response from ContextIO returns a :"
+						+ httpResponseCode);
+			} else {
+				JSONArray emailData = new JSONArray(cio.getRawResponse()
+						.getBody());
 
-		JSONArray emailData = new JSONArray(cio.getRawResponse().getBody());
+				if (emailData != null && emailData.length() > 0) {
+					// initializing a random indexing object with mailbox's text
+					// semantics
+					RandomIndexing textIndexing = new RandomIndexing(
+							mailbox.getWordToIndexVector(),
+							mailbox.getWordToMeaningMap());
+					// initializing a random indexing object with mailbox's
+					// recipient semantics
+					RandomIndexing recipientIndexing = new RandomIndexing(
+							mailbox.getRecipientToIndexVector(),
+							mailbox.getRecipientToMeaningMap());
 
-		if (emailData != null && emailData.length() > 0) {
-			//initializing a random indexing object with mailbox's text semantics
-			RandomIndexing textIndexing = new RandomIndexing(
-					mailbox.getWordToIndexVector(),
-					mailbox.getWordToMeaningMap());
-			//initializing a random indexing object with mailbox's recipient semantics
-			RandomIndexing recipientIndexing = new RandomIndexing(
-					mailbox.getRecipientToIndexVector(),
-					mailbox.getRecipientToMeaningMap());
-			
-			for (int i = 0; i < emailData.length(); i++) {
-				// iterating over emails
-				JSONObject emailObject = (JSONObject) emailData.get(i);
-				try {
-					JSONEmailProcessor jsonProcessor = new JSONEmailProcessor(
-							emailObject);
-					String emailMessageID = jsonProcessor.getEmailMessageId();
-					String gmailThreadID = jsonProcessor.getGmailThreadId();
-					// String gmailMessageID =
-					// jsonProcessor.getGmailMessageId();
-					String subject = jsonProcessor.getSubject();
-					int messageTimestamp = jsonProcessor.getMessageDate();
-					String fromAddress = jsonProcessor.getFromAddress();
-					List<String> toAddresses = jsonProcessor.getToAddresses();
-					List<String> ccAddresses = jsonProcessor.getCCAddresses();
-					List<String> emailFlags = jsonProcessor.getFlags();
-					String body = jsonProcessor.getBodyContent();
+					for (int i = 0; i < emailData.length(); i++) {
+						// iterating over emails
+						JSONObject emailObject = (JSONObject) emailData.get(i);
+						try {
+							JSONEmailProcessor jsonProcessor = new JSONEmailProcessor(
+									emailObject);
+							String emailMessageID = jsonProcessor
+									.getEmailMessageId();
+							String gmailThreadID = jsonProcessor
+									.getGmailThreadId();
+							// String gmailMessageID =
+							// jsonProcessor.getGmailMessageId();
+							String subject = jsonProcessor.getSubject();
+							int messageTimestamp = jsonProcessor
+									.getMessageDate();
+							String fromAddress = jsonProcessor.getFromAddress();
+							List<String> toAddresses = jsonProcessor
+									.getToAddresses();
+							List<String> ccAddresses = jsonProcessor
+									.getCCAddresses();
+							EmailFlag emailFlags = jsonProcessor.getFlags();
+							String body = jsonProcessor.getBodyContent();
 
-					// process the content
-					TextContent bodyTextContent = EmailUtils.processText(body);
-					TextContent subjectTextContent = EmailUtils
-							.processText(subject);
+							// process the content
+							TextContent bodyTextContent = EmailUtils
+									.processText(body);
+							TextContent subjectTextContent = EmailUtils
+									.processText(subject);
 
-					Email email = new Email();
-					
-					email.setSubject(subject);
-					email.setMessageId(emailMessageID);
-					email.setGmailThreadId(gmailThreadID);
-					email.setSentTimestamp(messageTimestamp);
-					email.setFromAddress(fromAddress);
-					email.setCcAddresses(ccAddresses);
-					email.setToAddresses(toAddresses);
-					email.setEmailFlags(emailFlags);
-					email.setSubjectContent(subjectTextContent);
-					email.setBodyContent(bodyTextContent);
-					// retrieving message content of the email
-					// email = this.getEmailMessageContent(emailAddress, email);
-					// email = this.getMessageHeaders(emailAddress, email);
-					
-					//building context vectors for text and recipients on the go
-					textIndexing = emailAnalysisService.processTextSemantics(email, textIndexing);
-					recipientIndexing = emailAnalysisService.processRecipientSemantics(email, recipientIndexing);
-					mailbox.addEmail(email);				
+							Email email = new Email();
 
-				} catch (Exception e) {
-					logger.error("Error while decoding email JSON message", e);
+							email.setSubject(subject);
+							email.setMessageId(emailMessageID);
+							email.setGmailThreadId(gmailThreadID);
+							email.setSentTimestamp(messageTimestamp);
+							email.setFromAddress(fromAddress);
+							email.setCcAddresses(ccAddresses);
+							email.setToAddresses(toAddresses);
+							email.setEmailFlags(emailFlags);
+							email.setSubjectContent(subjectTextContent);
+							email.setBodyContent(bodyTextContent);
+
+							// building context vectors for text and recipients
+							// on the go
+							textIndexing = emailAnalysisService
+									.processTextSemantics(email, textIndexing);
+							recipientIndexing = emailAnalysisService
+									.processRecipientSemantics(email,
+											recipientIndexing);
+							mailbox.addEmail(email);
+							logger.info("adding email ["
+									+ mailbox.getEmailCount() + " ] subject: "
+									+ email.getSubject());
+
+						} catch (Exception e) {
+							logger.error(
+									"Error while decoding email JSON message",
+									e);
+						}
+					}
+					// saving new text vectors in the mailbox
+					mailbox.setWordToIndexVector(textIndexing
+							.getWordToIndexVector());
+					mailbox.setWordToMeaningMap(textIndexing
+							.getWordToMeaningVector());
+
+					// saving new recipient vectors in the mailbox
+					mailbox.setRecipientToIndexVector(recipientIndexing
+							.getWordToIndexVector());
+					mailbox.setRecipientToMeaningMap(recipientIndexing
+							.getWordToMeaningVector());
+
+				} else {
+					// no more emails to sync
+					mailbox.setSyncing(false);
 				}
+				logger.info(emailData.length() + " mails retrieved from : "
+						+ mailbox.getEmailId() + " from offset : " + offset);
+
 			}
-			//saving new text vectors in the mailbox
-			mailbox.setWordToIndexVector(textIndexing
-					.getWordToIndexVector());
-			mailbox.setWordToMeaningMap(textIndexing
-					.getWordToMeaningVector());
-			
-			//saving new recipient vectors in the mailbox
-			mailbox.setRecipientToIndexVector(recipientIndexing.getWordToIndexVector());
-			mailbox.setRecipientToMeaningMap(recipientIndexing.getWordToMeaningVector());
-
-		} else {
-			// no more emails to sync
-			mailbox.setSyncing(false);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			logger.error("Error while updating mailbox", e);
 		}
-		logger.info(emailData.length() + " mails retrieved from : "
-				+ mailbox.getEmailId() + " from offset : " + offset);
-		
+
 		return mailbox;
-	}
-
-	/**
-	 * add message content fields to the email passed using contextio V1.1 API
-	 * 
-	 * @param emailAddress
-	 * @param msgId
-	 * @param email
-	 * @return email with message content
-	 * @throws IOException
-	 */
-	@Programmatic
-	public Email getEmailMessageContent(String emailAddress, Email email)
-			throws IOException {
-		Map<String, String> emailParams = new HashMap<String, String>();
-		emailParams.put("emailmessageid", email.getMessageId());
-
-		ContextIOResponse cioMessageText = contextio_v11.messageText(
-				emailAddress, emailParams);
-		JSONObject messageJson = new JSONObject(cioMessageText.getRawResponse()
-				.getBody());
-
-		JSONArray messageData = messageJson.getJSONArray("data");
-		JSONObject messageObj = (JSONObject) messageData.get(0);
-
-		String contentType = messageObj.getString("type");
-		String charSet = messageObj.getString("charset");
-		String content = messageObj.getString("content");
-
-		TextContent processedBodyContent = EmailUtils.processText(content);
-		email.setBodyContent(processedBodyContent);
-
-		TextContent processedSubjectContent = EmailUtils.processText(email
-				.getSubject());
-		email.setSubjectContent(processedSubjectContent);
-
-		email.setContentType(contentType);
-		email.setCharSet(charSet);
-		return email;
-	}
-
-	public Email getMessageHeaders(String emailAddress, Email email) {
-		Map<String, String> emailParams = new HashMap<String, String>();
-		emailParams.put("emailmessageid", email.getMessageId());
-		ContextIOResponse cioMessageText = contextio_v11.messageHeaders(
-				emailAddress, emailParams);
-		JSONObject messageJson = new JSONObject(cioMessageText.getRawResponse()
-				.getBody());
-
-		String headersData = messageJson.getString("data");
-		email.setEmailHeaders(headersData);
-		return email;
 	}
 
 	public Map<String, String> discoverIMAPSettings(String emailId) {
