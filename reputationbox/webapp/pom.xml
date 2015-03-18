@@ -38,368 +38,255 @@
 			</plugin>
 
 			<!-- mvn package -->
-			 <plugin>
-                <groupId>org.simplericity.jettyconsole</groupId>
-                <artifactId>jetty-console-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>createconsole</goal>
-                        </goals>
-                        <configuration>
-                            <backgroundImage>${basedir}/src/main/jettyconsole/isis-banner.png</backgroundImage>
-                            <destinationFile>${project.build.directory}/${project.build.finalName}-jetty-console.jar</destinationFile>
-                        </configuration>
-                        <phase>package</phase>
-                    </execution>
-                </executions>
-            </plugin>
+			<plugin>
+				<groupId>org.simplericity.jettyconsole</groupId>
+				<artifactId>jetty-console-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>createconsole</goal>
+						</goals>
+						<configuration>
+							<backgroundImage>${basedir}/src/main/jettyconsole/isis-banner.png</backgroundImage>
+						</configuration>
+						<phase>package</phase>
+					</execution>
+				</executions>
+			</plugin>
 
 			<!-- prereqs: mvn package -->
+			<!-- mvn antrun:run -->
 			<plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>1.8</version>
-                  <executions>
-                    <execution>
-                      <phase>validate</phase>
-                      <goals>
-                        <goal>maven-version</goal>
-                      </goals>
-                    </execution>
-                  </executions>
-            </plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<configuration>
+					<tasks>
+						<exec executable="java" failonerror="true">
+							<arg value="-jar" />
+							<arg
+								value="${project.build.directory}/${project.build.finalName}-jetty-console.war" />
+						</exec>
+					</tasks>
+				</configuration>
+			</plugin>
 
 			<plugin>
-                <artifactId>maven-war-plugin</artifactId>
-                <configuration>
-                    <warName>simple</warName>
-                    <archive>
-                        <manifest>
-                            <addClasspath>false</addClasspath>
-                        </manifest>
-                        <manifestEntries>
-                            <Build-Time>${maven.build.timestamp}</Build-Time>
-                            <Build-Host>${agent.name}</Build-Host>
-                            <Build-User>${user.name}</Build-User>
-                            <Build-Maven>Maven ${maven.version}</Build-Maven>
-                            <Build-Java>${java.version}</Build-Java>
-                            <Build-OS>${os.name}</Build-OS>
-                            <Build-Label>${project.version}</Build-Label>
-                        </manifestEntries>
-                    </archive>
-                </configuration>
-            </plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>build-helper-maven-plugin</artifactId>
+				<version>1.8</version>
+				<executions>
+					<execution>
+						<phase>validate</phase>
+						<goals>
+							<goal>maven-version</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<artifactId>maven-war-plugin</artifactId>
+				<configuration>
+					<warName>simple</warName>
+					<archive>
+						<manifest>
+							<addClasspath>false</addClasspath>
+						</manifest>
+						<manifestEntries>
+							<Build-Time>${maven.build.timestamp}</Build-Time>
+							<Build-Host>${agent.name}</Build-Host>
+							<Build-User>${user.name}</Build-User>
+							<Build-Maven>Maven ${maven.version}</Build-Maven>
+							<Build-Java>${java.version}</Build-Java>
+							<Build-OS>${os.name}</Build-OS>
+							<Build-Label>${project.version}</Build-Label>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
 
 		</plugins>
-		 <pluginManagement>
-            <plugins>
-                <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
-                <plugin>
-                    <groupId>org.eclipse.m2e</groupId>
-                    <artifactId>lifecycle-mapping</artifactId>
-                    <version>1.0.0</version>
-                    <configuration>
-                        <lifecycleMappingMetadata>
-                            <pluginExecutions>
-                                <pluginExecution>
-                                    <pluginExecutionFilter>
-                                        <groupId>org.codehaus.mojo</groupId>
-                                        <artifactId>build-helper-maven-plugin</artifactId>
-                                        <versionRange>[1.5,)</versionRange>
-                                        <goals>
-                                            <goal>maven-version</goal>
-                                        </goals>
-                                    </pluginExecutionFilter>
-                                    <action>
-                                        <ignore></ignore>
-                                    </action>
-                                </pluginExecution>
-                            </pluginExecutions>
-                        </lifecycleMappingMetadata>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
+		<pluginManagement>
+			<plugins>
+				<!--This plugin's configuration is used to store Eclipse m2e settings 
+					only. It has no influence on the Maven build itself. -->
+				<plugin>
+					<groupId>org.eclipse.m2e</groupId>
+					<artifactId>lifecycle-mapping</artifactId>
+					<version>1.0.0</version>
+					<configuration>
+						<lifecycleMappingMetadata>
+							<pluginExecutions>
+								<pluginExecution>
+									<pluginExecutionFilter>
+										<groupId>org.codehaus.mojo</groupId>
+										<artifactId>build-helper-maven-plugin</artifactId>
+										<versionRange>[1.5,)</versionRange>
+										<goals>
+											<goal>maven-version</goal>
+										</goals>
+									</pluginExecutionFilter>
+									<action>
+										<ignore></ignore>
+									</action>
+								</pluginExecution>
+							</pluginExecutions>
+						</lifecycleMappingMetadata>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
 	</build>
 
 	<dependencies>
 
-		 <!-- other modules in this project -->
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>reputationbox-dom</artifactId>
-            <exclusions>
-                <exclusion>
-                    <!-- so don't pick up transitive dependency to asm 4.0.0 -->
-                    <groupId>org.datanucleus</groupId>
-                    <artifactId>datanucleus-enhancer</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>reputationbox-fixture</artifactId>
-            <exclusions>
-                <exclusion>
-                    <!-- so don't pick up transitive dependency to asm 4.0.0 -->
-                    <groupId>org.datanucleus</groupId>
-                    <artifactId>datanucleus-enhancer</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        
-        <!-- other isis components -->
-        <dependency>
-            <groupId>org.apache.isis.core</groupId>
-            <artifactId>isis-core-objectstore-jdo-datanucleus</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.isis.viewer</groupId>
-            <artifactId>isis-viewer-wicket-impl</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.isis.core</groupId>
-            <artifactId>isis-core-viewer-restfulobjects-server</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.isis.core</groupId>
-            <artifactId>isis-core-security-shiro</artifactId>
-        </dependency>
+		<!-- other modules in this project -->
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>reputationbox-dom</artifactId>
+			<exclusions>
+				<exclusion>
+					<!-- so don't pick up transitive dependency to asm 4.0.0 -->
+					<groupId>org.datanucleus</groupId>
+					<artifactId>datanucleus-enhancer</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>reputationbox-fixture</artifactId>
+			<exclusions>
+				<exclusion>
+					<!-- so don't pick up transitive dependency to asm 4.0.0 -->
+					<groupId>org.datanucleus</groupId>
+					<artifactId>datanucleus-enhancer</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
+		<!-- other isis components -->
+		<dependency>
+			<groupId>org.apache.isis.objectstore</groupId>
+			<artifactId>isis-objectstore-jdo-datanucleus</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.isis.viewer</groupId>
+			<artifactId>isis-viewer-wicket-impl</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.isis.viewer</groupId>
+			<artifactId>isis-viewer-restfulobjects-server</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.isis.security</groupId>
+			<artifactId>isis-security-shiro</artifactId>
+		</dependency>
 
 
-        <!-- isis core -->
-        <dependency>
-            <groupId>org.apache.isis.core</groupId>
-            <artifactId>isis-core-runtime</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.isis.core</groupId>
-            <artifactId>isis-core-wrapper</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.isis.core</groupId>
-            <artifactId>isis-core-profilestore</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.isis.core</groupId>
-            <artifactId>isis-core-security</artifactId>
-        </dependency>
+		<!-- isis core -->
+		<dependency>
+			<groupId>org.apache.isis.core</groupId>
+			<artifactId>isis-core-runtime</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.isis.core</groupId>
+			<artifactId>isis-core-profilestore</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.isis.core</groupId>
+			<artifactId>isis-core-security</artifactId>
+		</dependency>
+
+		<!-- to run using WebServer (optional) -->
+		<dependency>
+			<groupId>org.apache.isis.core</groupId>
+			<artifactId>isis-core-webserver</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
+		</dependency>
 
 
-        <!-- isis modules -->
-        <dependency>
-            <groupId>org.apache.isis.module</groupId>
-            <artifactId>isis-module-devutils-impl</artifactId>
-        </dependency>
-        <!--
-        uncomment to enable auditing (@Audited),
-        persisted to database
-        -->
-        <!--
-        <dependency>
-            <groupId>org.apache.isis.module</groupId>
-            <artifactId>isis-module-audit-jdo</artifactId>
-        </dependency>
-        -->
+		<dependency>
+			<groupId>org.apache.geronimo.specs</groupId>
+			<artifactId>geronimo-servlet_2.5_spec</artifactId>
+			<scope>provided</scope>
+		</dependency>
 
-        <!--
-        uncomment to enable BackgroundService;
-        depends on: an implementation of BackgroundCommandService to persist commands
-        (see isis-module-command-jdo)
-        -->
-      
-        <dependency>
-            <groupId>org.apache.isis.module</groupId>
-            <artifactId>isis-module-background</artifactId>
-        </dependency>
-       
-        <!--
-        uncomment to enable commands (@Command annotation)
-        persisted to database, also enabling the ability to run commands in the background
-        (eg using the Quartz scheduler)
-        -->
-        
-        <dependency>
-            <groupId>org.apache.isis.module</groupId>
-            <artifactId>isis-module-command-jdo</artifactId>
-        </dependency>
-        
-        <!--
-        uncomment to enable publishing (@PublishedObject, @PublishedAction annotations)
-        persisted to database, and using the Restful Objects (JSON) serialization of the event.
-        -->
-        <!--
-        <dependency>
-            <groupId>org.apache.isis.module</groupId>
-            <artifactId>isis-module-publishing-jdo</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.isis.module</groupId>
-            <artifactId>isis-module-publishingeventserializer-ro</artifactId>
-        </dependency>
-        -->
+		<!-- JDBC drivers (for jdo objectstore) -->
+		<dependency>
+			<groupId>org.hsqldb</groupId>
+			<artifactId>hsqldb</artifactId>
+		</dependency>
 
-        <!--
-        uncomment to use the AppSettings or UserSettings services
-        (see also declaration of its applib in dom module)
-        -->
-        
-        <dependency>
-            <groupId>org.apache.isis.module</groupId>
-            <artifactId>isis-module-settings-impl-jdo</artifactId>
-        </dependency>
-        
+		<dependency> 
+			<groupId>postgresql</groupId> 
+			<artifactId>postgresql</artifactId> 
+			<version>9.1-901.jdbc4</version> 
+		</dependency>
 
-        <!-- to run using WebServer (optional) -->
-        <dependency>
-            <groupId>org.apache.isis.core</groupId>
-            <artifactId>isis-core-webserver</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
+		<!-- mvn install:install-file -Dfile=sqljdbc4.jar \ -DgroupId=com.microsoft.sqlserver 
+			\ -DartifactId=jdbc \ -Dversion=4.0 \ -Dpackaging=jar -->
+		<!-- <dependency> <groupId>com.microsoft.sqlserver</groupId> <artifactId>jdbc</artifactId> 
+			<version>4.0</version> </dependency> -->
+
+		<dependency>
+			<groupId>org.lazyluke</groupId>
+			<artifactId>log4jdbc-remix</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
 
 
-        <dependency>
-            <groupId>org.apache.geronimo.specs</groupId>
-            <artifactId>geronimo-servlet_2.5_spec</artifactId>
-            <!--
-            removed so can run o.a.i.WebServer from within IntelliJ;
-            can rely on servlet container to ignore this in war file
-            <scope>provided</scope>
-            -->
-        </dependency>
+		<!-- seems to be necessary to run under IntelliJ :-( -->
+		<dependency>
+			<groupId>org.apache.geronimo.specs</groupId>
+			<artifactId>geronimo-servlet_2.5_spec</artifactId>
+			<scope>compile</scope>
+		</dependency>
 
-        <!-- 
-          JDBC drivers 
-          (for jdo objectstore)
-          -->
-        <dependency>
-            <groupId>org.hsqldb</groupId>
-            <artifactId>hsqldb</artifactId>
-        </dependency>
+		<!-- DataNucleus (horrid, but needed to run the enhancer) -->
+		<dependency>
+			<groupId>javax.jdo</groupId>
+			<artifactId>jdo-api</artifactId>
+			<version>3.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.datanucleus</groupId>
+			<artifactId>datanucleus-core</artifactId>
+			<version>3.1.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.datanucleus</groupId>
+			<artifactId>datanucleus-enhancer</artifactId>
+			<version>3.1.1</version>
+			<exclusions>
+				<exclusion>
+					<groupId>asm</groupId>
+					<artifactId>asm</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.datanucleus</groupId>
+			<artifactId>datanucleus-api-jdo</artifactId>
+			<version>3.1.1</version>
+		</dependency>
 
-        <!-- 
+		  <!-- quartz scheduler integration -->
         <dependency>
-            <groupId>postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>9.1-901.jdbc4</version>
-        </dependency>
-         -->
-
-        <!-- 
-        mvn install:install-file -Dfile=sqljdbc4.jar \
-                                 -DgroupId=com.microsoft.sqlserver \
-                                 -DartifactId=jdbc \
-                                 -Dversion=4.0 \
-                                 -Dpackaging=jar
-         -->
-         <!-- 
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>sqljdbc4</artifactId>
-            <version>4.0</version>
-        </dependency>
-          -->
-
-        <dependency>
-          <groupId>org.lazyluke</groupId>
-          <artifactId>log4jdbc-remix</artifactId>
-          <exclusions>
-            <exclusion>
-              <groupId>org.slf4j</groupId>
-              <artifactId>slf4j-api</artifactId>
-            </exclusion>
-          </exclusions>
-        </dependency>
-        
-        <dependency>
-        	<groupId>org.quartz-scheduler</groupId>
+            <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>
             <version>2.0.2</version>
-        </dependency>    
+        </dependency>
+        <!--dependency>
+            <groupId>org.quartz-scheduler</groupId>
+            <artifactId>quartz-jobs</artifactId>
+            <version>2.0.2</version>
+        </dependency-->
 	</dependencies>
 
-<profiles>
-        <profile>
-            <id>self-host</id>
-            <build>
-                <plugins>
-                    <!-- 
-                    mvn -P self-host antrun:run
-                    -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <configuration>
-                            <tasks>
-                                <exec executable="java" failonerror="true">
-                                    <arg value="-jar" />
-                                    <arg value="${project.build.directory}/${project.build.finalName}-jetty-console.jar" />
-                                </exec>
-                            </tasks>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <profile>
-            <id>jrebel</id>
-            <properties>
-                <!-- as used in the rebel.xml in the dom project -->
-                <target.dir>target</target.dir>
-                <isis-jrebel-plugin.packagePrefix>dom.simple,org.apache.isis.objectstore.jdo.applib</isis-jrebel-plugin.packagePrefix>
-                <isis-jrebel-plugin.loggingLevel>warn</isis-jrebel-plugin.loggingLevel>
-            </properties>
-            <build>
-                <plugins>
-                    <!--
-                    mvn -P jrebel antrun:run \
-                        -Djrebel.jar="C:/Users/Dan/.IdeaIC13/config/plugins/jr-ide-idea/lib/jrebel/jrebel.jar" \
-                        -Disis_jrebel_plugin.jar="C:/github/danhaywood/isis-jrebel-plugin/target/danhaywood-isis-jrebel-plugin-1.0.0-SNAPSHOT.jar"
-                    -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <configuration>
-                            <target>
-                                <property name="compile_classpath" refid="maven.compile.classpath" />
-                                <property name="runtime_classpath" refid="maven.runtime.classpath" />
-                                <property name="test_classpath" refid="maven.test.classpath" />
-                                <property name="plugin_classpath" refid="maven.plugin.classpath" />
-
-                                <echo message="" />
-                                <echo message="" />
-                                <echo message="jrebel.jar             = ${jrebel.jar}" />
-                                <echo message="isis_jrebel_plugin.jar = ${isis_jrebel_plugin.jar}" />
-                                <echo message="target.dir             = ${target.dir}" />
-                                <echo message="" />
-                                <echo message="" />
-
-                                <exec executable="java" failonerror="true">
-                                    <arg value="-javaagent:${jrebel.jar}" />
-                                    <arg value="-Drebel.log=false" />
-                                    <arg value="-Drebel.check_class_hash=true" />
-                                    <arg value="-Drebel.packages_exclude=org.apache.isis" />
-
-                                    <!-- as used in the rebel.xml in the dom project -->
-                                    <arg value="-Dproject.root=${project.basedir}/.." />
-                                    <arg value="-Dtarget.dir=${target.dir}" />
-
-                                    <arg value="-Drebel.plugins=${isis_jrebel_plugin.jar}" />
-                                    <arg value="-Disis-jrebel-plugin.packagePrefix=${isis-jrebel-plugin.packagePrefix}" />
-                                    <arg value="-Disis-jrebel-plugin.loggingLevel=${isis-jrebel-plugin.loggingLevel}" />
-                                    <arg value="-XX:MaxPermSize=128m" />
-                                    <arg value="-classpath" />
-                                    <arg value="${runtime_classpath}" />
-                                    <arg value="org.apache.isis.WebServer" />
-                                </exec>
-                            </target>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

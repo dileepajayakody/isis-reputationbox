@@ -22,27 +22,41 @@
 package org.nic.isis.ri;
 
 import edu.ucla.sspace.index.PermutationFunction;
+import edu.ucla.sspace.index.RandomIndexVectorGenerator;
 import edu.ucla.sspace.index.TernaryPermutationFunction;
 import edu.ucla.sspace.text.IteratorFactory;
+import edu.ucla.sspace.util.GeneratorMap;
+import edu.ucla.sspace.vector.IntegerVector;
 import edu.ucla.sspace.vector.TernaryVector;
-
+import edu.ucla.sspace.vector.Vector;
+import edu.ucla.sspace.vector.Vectors;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.apache.isis.applib.annotation.Named;
+import org.nic.isis.vector.VectorsMath;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Modified RandomIndexing class based on the S-Space library class 
  * @author David Jurgens
  */
-public class RandomIndexing {
+public class RandomIndexing implements SemanticSpace {
 
 	public static final String RI_SSPACE_NAME = "random-indexing";
 
@@ -110,12 +124,12 @@ public class RandomIndexing {
 	/**
 	 * A mapping from each word to its associated index vector
 	 */
-	private Map<String, TernaryVector> wordToIndexVectors;
+	private Map<String, TernaryVector> wordToIndexVector;
 
 	/**
 	 * A mapping from each word to the int[] that the represents its semantics
 	 */
-	private Map<String, double[]> wordsToMeaningMap;
+	private Map<String, double[]> wordToMeaning;
 
 	/**
 	 * The number of dimensions for the semantic and index vectors.
@@ -139,11 +153,27 @@ public class RandomIndexing {
 	 */
 	private final PermutationFunction<TernaryVector> permutationFunc;
 
+	   /**
+     * A flag for whether this instance should use {@code SparseIntegerVector}
+     * instances for representic a word's semantics, which saves space but
+     * requires more computation.
+     */
+	private final boolean useSparseSemantics;
+	
 	/**
 	 * An optional set of words that restricts the set of semantic vectors that
 	 * this instance will retain.
 	 */
 	private final Set<String> semanticFilter;
+
+	private final static Logger logger = LoggerFactory
+			.getLogger(RandomIndexing.class);
+	 /**
+     * Creates a new {@code RandomIndexing} instance using the provided
+     * properites for configuration.
+     */
+	
+	private RandomIndexVectorGenerator generator;
 
 	/**
 	 * Creates a new {@code RandomIndexing} instance from an existing
@@ -155,8 +185,17 @@ public class RandomIndexing {
 		windowSize = DEFAULT_WINDOW_SIZE;
 		usePermutations = false;
 		permutationFunc = new TernaryPermutationFunction();
-		wordToIndexVectors = indexVectors;
-		wordsToMeaningMap = contextVectors;
+		wordToIndexVector = indexVectors;
+		useSparseSemantics = true;
+		
+		generator = new RandomIndexVectorGenerator(DEFAULT_VECTOR_LENGTH);
+		
+		//the context vectors of words depends on the contextual usage within each doc
+		//hence cannot have a global set of context vectors for a mailbox like index vectors
+		//test this also with a global contextVectors in the mailbox and compare results
+		wordToMeaning = contextVectors;
+		//wordToMeaning = new HashMap<String, double[]>();
+		
 		semanticFilter = new HashSet<String>();
 	}
 
@@ -168,7 +207,7 @@ public class RandomIndexing {
 	 */
 
 	public void removeAllSemantics() {
-		wordsToMeaningMap.clear();
+		wordToMeaning.clear();
 	}
 
 	/**
@@ -181,35 +220,50 @@ public class RandomIndexing {
 	 * 
 	 * @return the {@code SemanticVector} for the provide word.
 	 */
-	private double[] getSemanticVector(String word) {
-		double[] v = wordsToMeaningMap.get(word);
+	private synchronized double[] getSemanticVector(String word) {
+		double[] v = wordToMeaning.get(word);
 		if (v == null) {
 			// lock on the word in case multiple threads attempt to add it at
 			// once
 			synchronized (this) {
 				// recheck in case another thread added it while we were waiting
 				// for the lock
-				v = wordsToMeaningMap.get(word);
+				v = wordToMeaning.get(word);
 				if (v == null) {
 					v = new double[vectorLength];
-					wordsToMeaningMap.put(word, v);
+					wordToMeaning.put(word, v);
 				}
 			}
 		}
 		return v;
 	}
 
+	public synchronized void putSemanticVector(String word, double[] vector){
+		this.wordToMeaning.put(word, vector);
+	}
 	/**
 	 * returns the context vector for the word
-	 */
+	 *//*
 	public double[] getContextVector(String word) {
-		double[] v = wordsToMeaningMap.get(word);
+		double[] v = wordToMeaning.get(word);
 		if (v == null) {
 			return null;
 		}
 		return v;
 	}
+*/
+	 /**
+     * {@inheritDoc}
+     */ 
+    public double[] getVector(String word) {
+        double[] v = wordToMeaning.get(word);
+        if (v == null) {
+            return null;
+        }
+        return v;
+    }
 
+   
 	/**
 	 * {@inheritDoc}
 	 */
@@ -236,7 +290,7 @@ public class RandomIndexing {
 	 */
 
 	public Set<String> getWords() {
-		return Collections.unmodifiableSet(wordsToMeaningMap.keySet());
+		return Collections.unmodifiableSet(wordToMeaning.keySet());
 	}
 
 	/**
@@ -245,18 +299,76 @@ public class RandomIndexing {
 	 *         to represent them
 	 */
 	public Map<String, TernaryVector> getWordToIndexVector() {
-		return wordToIndexVectors;
+		return wordToIndexVector;
 	}
 
+	 /**
+     * Assigns the token to {@link IntegerVector} mapping to be used by this
+     * instance.  The contents of the map are copied, so any additions of new
+     * index words by this instance will not be reflected in the parameter's
+     * mapping.
+     *
+     * @param m a mapping from token to the {@code IntegerVector} that should be
+     *        used represent it when calculating other word's semantics
+     */
+    public void setWordToIndexVector(Map<String,TernaryVector> m) {
+        wordToIndexVector.clear();
+        wordToIndexVector.putAll(m);
+    }
+	
 	/**
 	 * 
 	 * @return a mapping from the current set of tokens to the context vector
 	 *         calculated for them
 	 */
 	public Map<String, double[]> getWordToMeaningVector() {
-		return wordsToMeaningMap;
+		return wordToMeaning;
 	}
 
+	 /**
+     * Removes all associations between word and semantics while still retaining
+     * the word to index vector mapping.  This method can be used to re-use the
+     * same instance of a {@code RandomIndexing} on multiple corpora while
+     * keeping the same semantic space.
+     */
+    public void removeSemantics() {
+        wordToMeaning.clear();
+    }
+    
+    private synchronized TernaryVector generateIndexVector(String word){
+		
+			// Confirm that some other thread has not created an index
+			// vector for this term.
+			TernaryVector v = wordToIndexVector.get(word);
+			if (v == null) {
+				// Generate the index vector for this term and store it.
+				v = generator.generate();
+				wordToIndexVector.put((String) word, v);
+			}
+			return v;
+	}
+    
+    /**
+     * just like processDocument, but not using context location of the word.
+     * 
+     * @param word
+     */
+    public double[] processWords(Map<String,Integer> words){
+    	double [] resultVector = new double[vectorLength];
+    	for(String word : words.keySet()){
+    		TernaryVector iv = wordToIndexVector.get(word);
+    		//if the word doesn't have a indexVector create one and put in the IndexVectorMap
+    		if(iv == null) {
+    			iv = this.generateIndexVector(word);
+    			wordToIndexVector.put(word, iv);   		
+    		}
+    		
+    		int frequency = words.get(word);
+    		resultVector = add(resultVector, iv, frequency);
+
+    	}
+    	return resultVector;
+    }
 	/**
 	 * Updates the context vectors based on the words in the document.
 	 * 
@@ -269,7 +381,7 @@ public class RandomIndexing {
 
 		Iterator<String> documentTokens = IteratorFactory
 				.tokenizeOrdered(document);
-
+		
 		String focusWord = null;
 
 		// prefetch the first windowSize words
@@ -311,13 +423,21 @@ public class RandomIndexing {
 						continue;
 					}
 
-					TernaryVector iv = wordToIndexVectors.get(word);
+					TernaryVector iv = wordToIndexVector.get(word);
+					//check if iv is null and generate vector
+					if(iv == null){
+						//logger.error("No index vector for previous word : " + word + " putting new one");
+						iv = this.generateIndexVector(word);
+						wordToIndexVector.put(word, iv);
+					}
+					
+					 
 					if (usePermutations) {
 						iv = permutationFunc.permute(iv, permutations);
 						++permutations;
 					}
 
-					add(focusMeaning, iv);
+					focusMeaning = add(focusMeaning, iv);
 				}
 
 				// Repeat for the words in the forward window.
@@ -333,14 +453,28 @@ public class RandomIndexing {
 						continue;
 					}
 
-					TernaryVector iv = wordToIndexVectors.get(word);
+					TernaryVector iv = wordToIndexVector.get(word);
+					//if the word doesn't have a indexVector create one and put in the IndexVectorMap
+					if(iv == null) {
+						//logger.error("No index vector for next word : " + word + " putting new one");
+						iv = this.generateIndexVector(word);
+						wordToIndexVector.put(word, iv);
+					}
+					
+					//logger.info("PROCESSING WORD in processDocument: " + word);
+					//logger.info("the iv" + iv.toString());
+					
+					
 					if (usePermutations) {
 						iv = permutationFunc.permute(iv, permutations);
 						++permutations;
 					}
 
-					add(focusMeaning, iv);
+					//logger.info("After permutations: " + iv.toString());
+					
+					focusMeaning = add(focusMeaning, iv);
 				}
+				//putSemanticVector(focusWord, focusMeaning);
 			}
 
 			// Last put this focus word in the prev words and shift off the
@@ -350,6 +484,8 @@ public class RandomIndexing {
 			if (prevWords.size() > windowSize) {
 				prevWords.remove();
 			}
+			
+			
 		}
 
 		document.close();
@@ -379,75 +515,76 @@ public class RandomIndexing {
 		// thread updating its semantics. Use the vector to avoid a class-level
 		// lock, which would limit the concurrency.
 		synchronized (semantics) {
-			for (int p : index.positiveDimensions())
-				// semantics.add(p, 1);
-				semantics[p] = semantics[p] + 1;
-			for (int n : index.negativeDimensions())
-				// semantics.add(n, -1);
-				semantics[n] = semantics[n] - 1;
+			if(index.positiveDimensions() != null){
+				for (int p : index.positiveDimensions())
+					// semantics.add(p, 1);
+					semantics[p] = semantics[p] + 1;
+			} else {
+				logger.error("no positive dimentions found for index: " + index.toString());
+			}
+			if(index.negativeDimensions() != null){
+				for (int n : index.negativeDimensions())
+					// semantics.add(n, -1);
+					semantics[n] = semantics[n] - 1;
+			} else {
+				logger.error("no negative dimentions found for index: " + index.toString());
+			}
 
 		}
 		return semantics;
 	}
 
 	/**
-	 * Math function to add (vector2 * frequency) to vector1
-	 * 
-	 * @param vector1
-	 * @param vector2
-	 * @param frequency : to multiply vector2 by frequency and add to vector1
-	 * @return
+	 * Atomically adds the values of the index vector to the semantic vector with given frequency.
+	 * This is a special case addition operation that only iterates over the
+	 * non-zero values of the index vector.
 	 */
-	public static double[] addArrays(double[] vector1, double[] vector2, int frequency) {
-		if (vector2.length != vector1.length)
-			throw new IllegalArgumentException(
-					"int arrays of different sizes cannot be added");
+	public static double[] add(double[] semantics, TernaryVector index, int frequency) {
+		// Lock on the semantic vector to avoid a race condition with another
+		// thread updating its semantics. Use the vector to avoid a class-level
+		// lock, which would limit the concurrency.
+		synchronized (semantics) {
+			if(index.positiveDimensions() != null){
+				for (int p : index.positiveDimensions())
+					// semantics.add(p, 1);
+					semantics[p] = semantics[p] + (1*frequency);
+			} else {
+				logger.error("no positive dimentions found for index: " + index.toString());
+			}
+			if(index.negativeDimensions() != null){
+				for (int n : index.negativeDimensions())
+					// semantics.add(n, -1);
+					semantics[n] = semantics[n] - (1*frequency);
+			} else {
+				logger.error("no negative dimentions found for index: " + index.toString());
+			}
 
-		int length = vector2.length;
-		for (int i = 0; i < length; ++i) {
-			double value = (vector2[i] * frequency) + vector1[i];
-			vector1[i] = value;
 		}
-		return vector1;
-	}
-	
-	/**
-	 * Math function to add (vector2 to vector1
-	 * 
-	 * @param vector1
-	 * @param vector2
-	 * @param frequency : to multiply vector2 by frequency and add to vector1
-	 * @return
-	 */
-	public static double[] addArrays(double[] vector1, double[] vector2) {
-		if (vector2.length != vector1.length)
-			throw new IllegalArgumentException(
-					"int arrays of different sizes cannot be added");
-
-		int length = vector2.length;
-		for (int i = 0; i < length; ++i) {
-			double value = vector2[i] + vector1[i];
-			vector1[i] = value;
-		}
-		return vector1;
+		return semantics;
 	}
 	
 	
-	/**
-	 * Math function to add vector2 to vector1
-	 * 
-	 * @param vector1
-	 * @param vector2
-	 * @param frequency
-	 * @return
-	 */
-	public static double[] devideArray(double[] vector, int divisionFactor) {
-		int length = vector.length;
-		double[] resultVector = new double[length];
-		for (int i = 0; i < length; ++i) {
-			double value = vector[i] / divisionFactor;
-			resultVector[i] = value;
-		}
-		return resultVector;
+	 /**
+     * Returns an instance of the the provided class name, that implements
+     * {@code PermutationFunction}.
+     *
+     * @param className the fully qualified name of a class
+     */ 
+    @SuppressWarnings("unchecked")
+    private static PermutationFunction<TernaryVector> loadPermutationFunction(
+            String className) {
+        try {
+            Class clazz = Class.forName(className);
+            return (PermutationFunction<TernaryVector>)(clazz.newInstance());
+        } catch (Exception e) {
+            // catch all of the exception and rethrow them as an error
+            throw new Error(e);
+        }
+    }
+
+	@Override
+	public void processSpace(Properties properties) {
+		// TODO Auto-generated method stub
+		
 	}
 }

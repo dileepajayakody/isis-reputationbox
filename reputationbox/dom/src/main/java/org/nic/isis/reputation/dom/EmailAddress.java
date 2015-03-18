@@ -14,6 +14,12 @@ import org.apache.isis.applib.annotation.ObjectType;
 @ObjectType("EMAILADDRESS")
 public class EmailAddress {
 
+	public EmailAddress(){
+		
+	}
+	public EmailAddress(String emailId){
+		this.emailId = emailId;
+	}
     //region > emailId (property)
 	private String emailId;
 

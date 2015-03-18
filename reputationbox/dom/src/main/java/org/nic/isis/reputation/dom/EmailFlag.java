@@ -5,17 +5,17 @@ import javax.jdo.annotations.VersionStrategy;
 
 import org.apache.isis.applib.annotation.ObjectType;
 
-@javax.jdo.annotations.PersistenceCapable(identityType=IdentityType.DATASTORE)
+/*@javax.jdo.annotations.PersistenceCapable(identityType=IdentityType.DATASTORE)
 @javax.jdo.annotations.DatastoreIdentity(
         strategy=javax.jdo.annotations.IdGeneratorStrategy.IDENTITY,
          column="id")
 @javax.jdo.annotations.Version(
         strategy=VersionStrategy.VERSION_NUMBER, 
         column="version")
-@ObjectType("EMAILFLAG")
+@ObjectType("EMAILFLAG")*/
 public class EmailFlag {
 
-	private boolean seen;
+	private boolean seen = false;
 
 	public boolean isSeen() {
 		return seen;
@@ -25,7 +25,7 @@ public class EmailFlag {
 		this.seen = isSeen;
 	}
 	
-	private boolean answered;
+	private boolean answered = false;
 	
 	public boolean isAnswered() {
 		return answered;
@@ -35,7 +35,8 @@ public class EmailFlag {
 		this.answered = answered;
 	}
 
-	private boolean flagged;
+	//if starred
+	private boolean flagged = false;
 
 	public boolean isFlagged() {
 		return flagged;

@@ -13,6 +13,7 @@ import java.util.Map;
 import javax.annotation.PostConstruct;
 
 import org.apache.isis.applib.DomainObjectContainer;
+import org.apache.isis.applib.annotation.Hidden;
 import org.apache.isis.applib.annotation.Named;
 import org.apache.isis.applib.annotation.Programmatic;
 import org.apache.isis.applib.query.QueryDefault;
@@ -21,14 +22,19 @@ import org.apache.isis.applib.services.settings.ApplicationSettingsServiceRW;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.nic.isis.clustering.EmailContentCluster;
+import org.nic.isis.reputation.dom.ContextVectorMap;
 import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.EmailFlag;
+import org.nic.isis.reputation.dom.IndexVectorMap;
 import org.nic.isis.reputation.dom.TextContent;
+import org.nic.isis.reputation.dom.TextTokenMap;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.reputation.utils.EmailUtils;
 import org.nic.isis.reputation.utils.JSONEmailProcessor;
 import org.nic.isis.reputation.utils.URLUtils;
 import org.nic.isis.ri.RandomIndexing;
+import org.nic.isis.ri.SemanticSpace;
 import org.scribe.builder.ServiceBuilder;
 import org.scribe.model.OAuthRequest;
 import org.scribe.model.Response;
@@ -38,6 +44,7 @@ import org.scribe.oauth.OAuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import sun.security.pkcs.ContentInfo;
 import at.tomtasche.contextio.ContextIOApi;
 import at.tomtasche.contextio.ContextIOResponse;
 import at.tomtasche.contextio.ContextIO_V11;
@@ -47,11 +54,13 @@ import at.tomtasche.contextio.ContextIO_V20;
  * Class to manage Context.IO API access
  * 
  */
+@Hidden
 public class ContextIOService {
 
 	private final static Logger logger = LoggerFactory
 			.getLogger(ContextIOService.class);
 
+	
 	// region > init
 	@PostConstruct
 	public void init() {
@@ -61,18 +70,20 @@ public class ContextIOService {
 		// this.secret =
 		// applicationSettingsService.find("contextIOApiSecret").valueAsString();
 
+		String key = "33333";
+		String secret = "xxxx";
+		String accountId = "eeeeeedddd";
+		
 		contextio_v11 = new ContextIO_V11();
 		contextio_v20 = new ContextIO_V20();
 
-		String key = "samplekey";
+		
 		contextio_v11.setKey(key);
 		contextio_v20.setKey(key);
 
-		String secret = "sample secret";
 		contextio_v11.setSecret(secret);
 		contextio_v20.setSecret(secret);
 
-		String accountId = "sample account id";
 		contextio_v11.setAccountId(accountId);
 		contextio_v20.setAccountId(accountId);
 
@@ -92,23 +103,58 @@ public class ContextIOService {
 	 * @param mailbox
 	 * @param limit
 	 *            number new emails
+	 * @param processType to indicate the analysisType : randomIndexing(1), temporalrandomIndexing(2) etc           
 	 * @return
 	 */
-	public UserMailBox updateMailBox(UserMailBox mailbox, int limit) {
+	@Programmatic
+	public UserMailBox updateMailBox(UserMailBox mailbox, int limit, int processType, long mailboxAddedTimeStamp) {
 
 		Map<String, String> params = new HashMap<String, String>();
+		SemanticSpace textSemantics = null;
+		SemanticSpace recipientSemantics = null;
+		
+		//getting indexVectors and contextVectors of the mailbox, if null intialize them
+		IndexVectorMap contentIndexVectorMap =  mailbox.getContentIndexVectorMap();
+		if(contentIndexVectorMap == null){
+			contentIndexVectorMap = new IndexVectorMap();
+		}
+		ContextVectorMap contentContextVectorMap = mailbox.getContentContextVectorMap();
+		if(contentContextVectorMap == null){
+			contentContextVectorMap = new ContextVectorMap();
+		}
+		IndexVectorMap recipientIndexVectorMap = mailbox.getRecipientIndexVectorMap();
+		if(recipientIndexVectorMap == null){
+			recipientIndexVectorMap = new IndexVectorMap();
+		}
+		ContextVectorMap recipientContextVectorMap = mailbox.getRecipientContextVectorMap();
+		if(recipientContextVectorMap == null){
+			recipientContextVectorMap = new ContextVectorMap();
+		}
+		logger.info("Starting updating mailbox using ContextIOService..");
+		logger.info(" the content index words sizes : " + contentIndexVectorMap.getIndexWords().size() + " : " 
+				+ contentIndexVectorMap.getIndexVectors().size());
+		logger.info(" the content context words : " + contentContextVectorMap.getContextWords().size() + " : "
+				+ contentContextVectorMap.getContextVectors().size());
+		logger.info(" the recipient index words : " + recipientIndexVectorMap.getIndexWords().size() + " : " 
+				+ recipientIndexVectorMap.getIndexVectors().size());
+		logger.info(" the recipient context words : " + recipientContextVectorMap.getContextWords().size() + " : "
+				+ recipientContextVectorMap.getContextVectors().size());
+		
+		//get emails for last 1/2 months initially	
+		long mailsFromDateTimeStamp = mailboxAddedTimeStamp - (1 * 2628000 / 8);
 
 		// contextio 2.0 impl
-		int offset = mailbox.getEmailCount();
+		int offset = mailbox.getAllEmails().size();
 		String emailAccount = mailbox.getAccountId();
 		params.put("offset", String.valueOf(offset));
 		params.put("limit", String.valueOf(limit));
-		params.put("sort_order", "desc");
+		params.put("sort_order", "asc");
 		params.put("include_body", String.valueOf(1));
-		params.put("include_headers", String.valueOf(1));
+		//params.put("include_headers", String.valueOf(1));
 		params.put("include_flags", String.valueOf(1));
+		params.put("date_after", String.valueOf(mailsFromDateTimeStamp));
 		// get emails in inbox
-		params.put("folder", "[Gmail]/INBOX");
+		params.put("folder", "INBOX");
 
 		try {
 			ContextIOResponse cio = contextio_v20.getAllMessages(emailAccount,
@@ -121,19 +167,37 @@ public class ContextIOService {
 			} else {
 				JSONArray emailData = new JSONArray(cio.getRawResponse()
 						.getBody());
-
+				
+				//check if there is more email data to retrieve
 				if (emailData != null && emailData.length() > 0) {
 					// initializing a random indexing object with mailbox's text
-					// semantics
-					RandomIndexing textIndexing = new RandomIndexing(
-							mailbox.getWordToIndexVector(),
-							mailbox.getWordToMeaningMap());
-					// initializing a random indexing object with mailbox's
-					// recipient semantics
-					RandomIndexing recipientIndexing = new RandomIndexing(
-							mailbox.getRecipientToIndexVector(),
-							mailbox.getRecipientToMeaningMap());
-
+					// index vectors
+					if(processType == 1){
+						
+						//testing by dileepa
+						/*textSemantics = new RandomIndexing(
+								mailbox.getWordToIndexVector(),
+								mailbox.getWordToMeaningMap());
+						*/
+						textSemantics = new RandomIndexing(contentIndexVectorMap.getIndexVectorMap(), 
+								contentContextVectorMap.getContextVectorMap());
+						
+						// initializing a random indexing object with mailbox's
+						// recipient index vectors
+						
+						//testing by dileepa
+						/*recipientSemantics = new RandomIndexing(
+								mailbox.getRecipientToIndexVector(),
+								mailbox.getRecipientToMeaningMap());
+						*/
+						recipientSemantics = new RandomIndexing(recipientIndexVectorMap.getIndexVectorMap(),
+								recipientContextVectorMap.getContextVectorMap());
+						
+					}
+					
+					//the new emails should be processed and rep results should be sent to the mailbox
+					List<Email> newEmails = new ArrayList<Email>();
+					
 					for (int i = 0; i < emailData.length(); i++) {
 						// iterating over emails
 						JSONObject emailObject = (JSONObject) emailData.get(i);
@@ -147,7 +211,12 @@ public class ContextIOService {
 							// String gmailMessageID =
 							// jsonProcessor.getGmailMessageId();
 							String subject = jsonProcessor.getSubject();
-							int messageTimestamp = jsonProcessor
+							//because db.persistence length for String is 255
+							if(subject.length() > 255){
+								subject = subject.substring(0, 254);
+							}
+
+							long messageTimestamp = jsonProcessor
 									.getMessageDate();
 							String fromAddress = jsonProcessor.getFromAddress();
 							List<String> toAddresses = jsonProcessor
@@ -156,15 +225,20 @@ public class ContextIOService {
 									.getCCAddresses();
 							EmailFlag emailFlags = jsonProcessor.getFlags();
 							String body = jsonProcessor.getBodyContent();
+							List<String> folders = jsonProcessor.getFolders();
 
 							// process the content
-							TextContent bodyTextContent = EmailUtils
-									.processText(body);
+							//logger.info("processing email subject content...");
 							TextContent subjectTextContent = EmailUtils
 									.processText(subject);
-
+							//logger.info("processing email body content...");
+							TextContent bodyTextContent = EmailUtils
+									.processText(body);
+							
 							Email email = new Email();
 
+							email.setMailboxId(mailbox.getEmailId());
+							
 							email.setSubject(subject);
 							email.setMessageId(emailMessageID);
 							email.setGmailThreadId(gmailThreadID);
@@ -172,40 +246,137 @@ public class ContextIOService {
 							email.setFromAddress(fromAddress);
 							email.setCcAddresses(ccAddresses);
 							email.setToAddresses(toAddresses);
-							email.setEmailFlags(emailFlags);
+							
+							for(String toAddress : toAddresses){
+								if(toAddress.equalsIgnoreCase(mailbox.getEmailId())){
+									email.setDirect(true);
+									break;
+								}
+							}
+							for(String ccAddress : ccAddresses){
+								if(ccAddress.equalsIgnoreCase(mailbox.getEmailId())){
+									email.setCCd(true);
+									break;
+								}
+							}
+							//labels/folders for the email
+							email.setFolders(folders);
+							//email.setEmailFlags(emailFlags);
+							//processing email flags
+							if(emailFlags.isFlagged()){
+								email.setFlagged(true);
+							}
+							if(emailFlags.isAnswered()){
+								email.setAnswered(true);
+							}
+							if(emailFlags.isDeleted()){
+								email.setDeleted(true);
+							}
+							if(emailFlags.isSeen()){
+								email.setSeen(true);
+							}
+								
 							email.setSubjectContent(subjectTextContent);
 							email.setBodyContent(bodyTextContent);
+							
+							
+							TextTokenMap textTokenMap = new TextTokenMap();
+							textTokenMap.populateWordFrequenciesFromTextContent(subjectTextContent);
+							textTokenMap.populateWordFrequenciesFromTextContent(bodyTextContent);
+							
+							email.setWordFrequencyMap(textTokenMap);
+							
+							//just intake emails from inbox; we are only considering incoming emails for clustering
+							//email.setFolders(folders);
+							//have to process headers too
 
 							// building context vectors for text and recipients
 							// on the go
-							textIndexing = emailAnalysisService
-									.processTextSemantics(email, textIndexing);
-							recipientIndexing = emailAnalysisService
-									.processRecipientSemantics(email,
-											recipientIndexing);
+							if(processType == 1){
+							/*	logger.info("Processing text semantics for email id : " + email.getMessageId() + "\n subject: " 
+										+ subject + " \n body  : " + body);*/
+								textSemantics = emailAnalysisService
+										.processTextSemantics(email, textSemantics);
+								
+							//	logger.info("Processing recipient semantics for email id : " + email.getMessageId());
+								recipientSemantics = emailAnalysisService
+										.processPeopleSemantics(email,
+												recipientSemantics);
+								
+							}
+							
+							
+							logger.info("adding email to mailbox with size ["
+									+ mailbox.getAllEmails().size() + " ] subject: "
+									+ email.getSubject() + " email sent timestamp : " + email.getSentTimestamp());
+							//adding email to mailbox...
 							mailbox.addEmail(email);
-							logger.info("adding email ["
-									+ mailbox.getEmailCount() + " ] subject: "
-									+ email.getSubject());
-
+							newEmails.add(email);
+							logger.info("end of process for email....\n"
+									+ "===========================================================================\n");
 						} catch (Exception e) {
 							logger.error(
-									"Error while decoding email JSON message",
+									"Error while creating email and adding to mailbox",
 									e);
 						}
 					}
+					
 					// saving new text vectors in the mailbox
-					mailbox.setWordToIndexVector(textIndexing
+					
+					/*mailbox.setWordToIndexVector(textSemantics
 							.getWordToIndexVector());
-					mailbox.setWordToMeaningMap(textIndexing
+					//this global wordToMeaningVector is not used in RI now, its initialized per email
+					//after comparing performance, remove this
+					mailbox.setWordToMeaningMap(textSemantics
 							.getWordToMeaningVector());
-
+					*/
+					contentIndexVectorMap.setIndexVectorMap(textSemantics.getWordToIndexVector());
+					contentContextVectorMap.setContextVectorMap(textSemantics.getWordToMeaningVector());
+					
+					//logger.error("the new content Index vector for mailbox : " + mailbox.getEmailId() + " : " + contentIndexVectorMap.toString());
+					mailbox.setContentIndexVectorMap(contentIndexVectorMap);
+					//logger.error("the new content Context vector for mailbox : " + mailbox.getEmailId() + " : " + contentContextVectorMap.toString());
+					mailbox.setContentContextVectorMap(contentContextVectorMap);
+					
 					// saving new recipient vectors in the mailbox
-					mailbox.setRecipientToIndexVector(recipientIndexing
+					/*mailbox.setRecipientToIndexVector(recipientSemantics
 							.getWordToIndexVector());
-					mailbox.setRecipientToMeaningMap(recipientIndexing
-							.getWordToMeaningVector());
+					//this global wordToMeaningVector is not used in RI now, its initialized per email
+					//after comparing performance, remove this
+					mailbox.setRecipientToMeaningMap(recipientSemantics
+							.getWordToMeaningVector());*/
+					
+					recipientIndexVectorMap.setIndexVectorMap(recipientSemantics.getWordToIndexVector());
+					//logger.info("the recipientSemantics wordToIndexVector size: " + recipientSemantics.getWordToIndexVector().size());
+					recipientContextVectorMap.setContextVectorMap(recipientSemantics.getWordToMeaningVector());
+					//logger.info("the recipientSemantics wordToMeaningVector size: " + recipientSemantics.getWordToMeaningVector().size());
+					
+					//logger.error("the new recipient Index vector for mailbox : " + mailbox.getEmailId() + " : " + recipientIndexVectorMap.toString());
+					mailbox.setRecipientIndexVectorMap(recipientIndexVectorMap);
+					//logger.error("the new recipient Context vector for mailbox : " + mailbox.getEmailId() + " : " + recipientContextVectorMap.toString());
+					mailbox.setRecipientContextVectorMap(recipientContextVectorMap);
+					
+					
+					//before sending results create a cluster profile and add it to cluster results
+				/*	List<EmailContentCluster> contentClusters = mailbox.getReputationDataModel().getContentClusters();
+					for(EmailContentCluster cluster : contentClusters){
+						List<Email> emails = cluster.getContentEmails();
+						Map<String, Integer> contentWords = new HashMap<String, Integer>();
+						for(Email mail: emails){
+							Map<String, Integer> wordFrequencies = mail.getWordFrequencyMap().getWordFrequencyMap();
+							
+						}
+					}*/
 
+					//sending the reputation results of the new emails processed
+					EmailUtils.sendReputationResults(mailbox.getEmailId(), newEmails);
+					
+					//if all emails are processed and the last set of emailData are lesser than the limit set
+					if(emailData.length() < limit){
+						mailbox.setSyncing(false);
+					}
+					
+					
 				} else {
 					// no more emails to sync
 					mailbox.setSyncing(false);
@@ -215,7 +386,6 @@ public class ContextIOService {
 
 			}
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			logger.error("Error while updating mailbox", e);
 		}
 
@@ -298,7 +468,7 @@ public class ContextIOService {
 				return null;
 			}
 		} else {
-			logger.info("Email : " + emailId + " is already connected");
+			logger.info("Mailbox : " + emailId + " is already connected");
 			return findUserMailBox(emailId);
 		}
 

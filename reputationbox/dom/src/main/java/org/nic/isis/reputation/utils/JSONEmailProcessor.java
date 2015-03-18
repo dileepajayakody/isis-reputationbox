@@ -41,12 +41,12 @@ public class JSONEmailProcessor {
 		return json.getString("gmail_message_id");
 	}
 
-	public int getDateIndexed() {
-		return json.getInt("date_indexed");
+	public long getDateIndexed() {
+		return json.getLong("date_indexed");
 	}
 
-	public int getMessageDate() {
-		int date = json.getInt("date");
+	public long getMessageDate() {
+		long date = json.getLong("date");
 		return date;
 	}
 	
@@ -183,17 +183,16 @@ public class JSONEmailProcessor {
 	}
 	
 	public String getBodyContent(){
-		JSONArray bodyArray = (JSONArray)json.get("body");
-		//return only the first body item
-		JSONObject bodyObject = (JSONObject)bodyArray.get(0);
-		String content = bodyObject.getString("content");
-		
-		//List<String> bodyContents = new ArrayList<String>();
-		/*for(int i = 0; i < bodyArray.length(); i++){
-			JSONObject bodyObject = (JSONObject)bodyArray.get(i);
-			String content = bodyObject.getString("content");
-			bodyContents.add(content);
-		}*/
+		String content = "";
+		try{
+			JSONArray bodyArray = (JSONArray)json.get("body");
+			//return only the first body item
+			JSONObject bodyObject = (JSONObject)bodyArray.get(0);
+			content = bodyObject.getString("content");
+		}catch(JSONException jex){
+			logger.error(
+					"JSON Exception occured while retreiving body content", jex);
+		}
 		return content;
 	}
 

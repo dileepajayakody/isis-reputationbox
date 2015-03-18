@@ -17,30 +17,22 @@
 package integration.glue;
 
 import cucumber.api.java.Before;
-import dom.simple.SimpleObject;
-import fixture.simple.SimpleObjectsFixture;
 
 import org.apache.isis.core.specsupport.scenarios.InMemoryDB;
-import org.apache.isis.core.specsupport.specs.CukeGlueAbstract;
+import org.apache.isis.core.specsupport.specs.CukeGlueAbstract;	
+import org.nic.isis.reputation.dom.UserMailBox;
 
 public class CatalogOfFixturesGlue extends CukeGlueAbstract {
 
     
-    @Before(value={"@unit", "@SimpleObjectsFixture"}, order=20000)
+    @Before(value={"@unit"}, order=20000)
     public void unitFixtures() throws Throwable {
         final InMemoryDB inMemoryDB = new InMemoryDBForSimpleApp(this.scenarioExecution());
-        inMemoryDB.getElseCreate(SimpleObject.class, "Foo");
-        inMemoryDB.getElseCreate(SimpleObject.class, "Bar");
-        inMemoryDB.getElseCreate(SimpleObject.class, "Baz");
+        inMemoryDB.getElseCreate(UserMailBox.class, "reputationbox1@gmail.com");
         putVar("isis", "in-memory-db", inMemoryDB);
     }
 
     // //////////////////////////////////////
 
-    @Before(value={"@integration", "@SimpleObjectsFixture"}, order=20000)
-    public void integrationFixtures() throws Throwable {
-        scenarioExecution().install(new SimpleObjectsFixture());
-    }
-    
 
 }

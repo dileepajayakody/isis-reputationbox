@@ -32,8 +32,11 @@
     </prerequisites>
 
 	<properties>
-        <isis.version>1.6.0</isis.version>
-        <isis-viewer-wicket.version>1.6.0</isis-viewer-wicket.version>
+        <isis.version>1.4.0</isis.version>
+        <isis-objectstore-jdo.version>1.4.1</isis-objectstore-jdo.version>
+        <isis-viewer-wicket.version>1.4.1</isis-viewer-wicket.version>
+        <isis-viewer-restfulobjects.version>2.2.0</isis-viewer-restfulobjects.version>
+        <isis-security-shiro.version>1.4.0</isis-security-shiro.version>
 
         <!-- must be consistent with the versions defined by the JDO Objectstore -->
         <datanucleus-accessplatform-jdo-rdbms.version>3.3.6</datanucleus-accessplatform-jdo-rdbms.version>
@@ -43,7 +46,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
     
-  <repositories>
+    <repositories>
         <repository>
               <id>apache.snapshots</id>
               <name>Apache Snapshots</name>
@@ -66,6 +69,7 @@
                     <configuration>
                         <source>1.6</source>
                         <target>1.6</target>
+			 <compilerArgument>-Xlint:unchecked</compilerArgument>
                     </configuration>
                     <executions>
                         <execution>
@@ -305,9 +309,33 @@
 			</dependency>
 
 			<dependency>
+				<groupId>org.apache.isis.objectstore</groupId>
+				<artifactId>isis-objectstore-jdo</artifactId>
+				<version>${isis-objectstore-jdo.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
 				<groupId>org.apache.isis.viewer</groupId>
 				<artifactId>isis-viewer-wicket</artifactId>
 				<version>${isis-viewer-wicket.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.isis.viewer</groupId>
+				<artifactId>isis-viewer-restfulobjects</artifactId>
+				<version>${isis-viewer-restfulobjects.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.isis.security</groupId>
+				<artifactId>isis-security-shiro</artifactId>
+				<version>${isis-security-shiro.version}</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>

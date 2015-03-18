@@ -46,8 +46,7 @@ public class SimpleAppSystemInitializer {
             with(new DataNucleusPersistenceMechanismInstaller());
 
             // services annotated with @DomainService
-            withServicesIn( "dom.simple"
-                            ,"fixture.simple"
+            withServicesIn( "org.nic.isis.reputation.services"
                             ,"org.apache.isis.core.wrapper"
                             ,"org.apache.isis.applib"
                             ,"org.apache.isis.core.metamodel.services"
@@ -59,7 +58,7 @@ public class SimpleAppSystemInitializer {
 
         private static IsisConfiguration testConfiguration() {
             final IsisConfigurationForJdoIntegTests testConfiguration = new IsisConfigurationForJdoIntegTests();
-            testConfiguration.addRegisterEntitiesPackagePrefix("dom");
+            testConfiguration.addRegisterEntitiesPackagePrefix("org.nic.isis.reputation.dom");
             return testConfiguration;
         }
     }

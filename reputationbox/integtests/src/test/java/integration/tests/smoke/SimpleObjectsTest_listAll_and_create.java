@@ -18,9 +18,6 @@
  */
 package integration.tests.smoke;
 
-import dom.simple.SimpleObject;
-import dom.simple.SimpleObjects;
-import fixture.simple.SimpleObjectsFixture;
 import integration.tests.SimpleAppIntegTest;
 
 import java.util.List;
@@ -32,7 +29,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 public class SimpleObjectsTest_listAll_and_create extends SimpleAppIntegTest {
-
+/*
     @Before
     public void setUpData() throws Exception {
         scenarioExecution().install(new SimpleObjectsFixture());
@@ -58,6 +55,6 @@ public class SimpleObjectsTest_listAll_and_create extends SimpleAppIntegTest {
         
         final List<SimpleObject> all = wrap(simpleObjects).listAll();
         assertThat(all.size(), is(4));
-    }
+    }*/
 
 }

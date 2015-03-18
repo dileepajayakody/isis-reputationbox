@@ -18,10 +18,13 @@
  */
 package integration.tests;
 
+import javax.validation.constraints.AssertTrue;
+import static org.junit.Assert.assertTrue;
+
 import integration.SimpleAppSystemInitializer;
 
 import org.junit.BeforeClass;
-
+import org.junit.Test;
 import org.apache.isis.core.integtestsupport.IntegrationTestAbstract;
 import org.apache.isis.core.integtestsupport.scenarios.ScenarioExecutionForIntegration;
 
@@ -34,6 +37,11 @@ public abstract class SimpleAppIntegTest extends IntegrationTestAbstract {
         
         // instantiating will install onto ThreadLocal
         new ScenarioExecutionForIntegration();
+    }
+    
+    @Test
+    public void testOne(){
+    	assertTrue(5>3);
     }
 
 }

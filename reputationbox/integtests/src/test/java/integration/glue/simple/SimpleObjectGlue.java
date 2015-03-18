@@ -30,6 +30,7 @@ import org.jmock.Expectations;
 import org.jmock.api.Action;
 import org.jmock.api.Invocation;
 import org.nic.isis.reputation.dom.Email;
+import org.nic.isis.reputation.dom.UserMailBox;
 import org.apache.isis.core.specsupport.scenarios.InMemoryDB;
 import org.apache.isis.core.specsupport.specs.CukeGlueAbstract;
 
@@ -40,22 +41,22 @@ public class SimpleObjectGlue extends CukeGlueAbstract {
         if(supportsMocks()) {
             checking(new Expectations() {
                 {
-                    allowing(service(Email.class)).listAll();
-                    will(returnValue(allSimpleObjects()));
+                    allowing(service(UserMailBox.class)).getLastIndexTimestamp();
+                    will(returnValue(allMailBoxes()));
                 }
             });
         }
         try {
-            final List<SimpleObject> findAll = service(SimpleObjects.class).listAll();
-            assertThat(findAll.size(), is(n));
-            putVar("list", "all", findAll);
+            final int lastIndexTimestamp = service(UserMailBox.class).getLastIndexTimestamp();
+            assertThat(lastIndexTimestamp, is(0));
+            //putVar("list", "all", findAll);
             
         } finally {
             assertMocksSatisfied();
         }
     }
     
-    @When("^I create a new simple object$")
+   /* @When("^I create a new simple object$")
     public void I_create_a_new_simple_object() throws Throwable {
         if(supportsMocks()) {
             checking(new Expectations() {
@@ -66,7 +67,7 @@ public class SimpleObjectGlue extends CukeGlueAbstract {
             });
         }
         service(SimpleObjects.class).create(UUID.randomUUID().toString());
-    }
+    }*/
     
     private Action addToInMemoryDB() {
         return new Action() {
@@ -74,10 +75,10 @@ public class SimpleObjectGlue extends CukeGlueAbstract {
             @Override
             public Object invoke(Invocation invocation) throws Throwable {
                 final InMemoryDB inMemoryDB = getVar("isis", "in-memory-db", InMemoryDB.class);
-                final String name = (String)invocation.getParameter(0);
-                final SimpleObject obj = new SimpleObject();
-                obj.setName(name);
-                inMemoryDB.put(SimpleObject.class, name, obj);
+                final String accId = (String)invocation.getParameter(0);
+                final UserMailBox obj = new UserMailBox();
+                obj.setAccountId(accId);
+                inMemoryDB.put(UserMailBox.class, accId, obj);
                 return obj;
             }
             
@@ -89,8 +90,8 @@ public class SimpleObjectGlue extends CukeGlueAbstract {
     }
 
     // helper
-    private List<SimpleObject> allSimpleObjects() {
+    private List<UserMailBox> allMailBoxes() {
         final InMemoryDB inMemoryDB = getVar("isis", "in-memory-db", InMemoryDB.class);
-        return inMemoryDB.findAll(SimpleObject.class);
+        return inMemoryDB.findAll(UserMailBox.class);
     }
 }

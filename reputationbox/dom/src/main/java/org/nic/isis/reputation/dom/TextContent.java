@@ -22,6 +22,7 @@ public class TextContent {
 	
 
 	@javax.jdo.annotations.NotPersistent
+	//@javax.jdo.annotations.Column(allowsNull="true")
 	public String getTokenStream() {
 		return tokenStream;
 	}
@@ -30,16 +31,6 @@ public class TextContent {
 		this.tokenStream = tokenStream;
 	}
 	
-	private Map<String, Integer> stringTokens;
-	
-	@javax.jdo.annotations.Column(allowsNull="true")
-	public Map<String, Integer> getStringTokens() {
-		return stringTokens;
-	}
-
-	public void setStringTokens(Map<String, Integer> stringTokens) {
-		this.stringTokens = stringTokens;
-	}
 
 	private Map<String, Integer> urlTokens;
 
@@ -83,6 +74,18 @@ public class TextContent {
 
 	public void setEmailTokens(Map<String, Integer> emails) {
 		this.emailTokens = emails;
+	}
+	
+	private Map<String, Integer> stringTokens;
+	
+	@javax.jdo.annotations.Column(allowsNull="true")
+	@javax.jdo.annotations.Persistent
+	public Map<String, Integer> getStringTokens() {
+		return stringTokens;
+	}
+
+	public void setStringTokens(Map<String, Integer> stringTokens) {
+		this.stringTokens = stringTokens;
 	}
 
 }
