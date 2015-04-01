@@ -25,6 +25,7 @@ import org.nic.isis.clustering.EmailContentCluster;
 import org.nic.isis.clustering.EmailRecipientCluster;
 import org.nic.isis.clustering.KMeansClustering;
 import org.nic.isis.reputation.services.EmailAnalysisService;
+import org.nic.isis.reputation.utils.EmailUtils;
 import org.nic.isis.ri.RandomIndexing;
 import org.nic.isis.vector.VectorsMath;
 import org.slf4j.Logger;
@@ -58,55 +59,59 @@ public class UserMailBox {
 			.getLogger(UserMailBox.class);
 	
 	
-	private IndexVectorMap contentIndexVectorMap;
-	private ContextVectorMap contentContextVectorMap;
-
-	private IndexVectorMap recipientIndexVectorMap;
-	private ContextVectorMap recipientContextVectorMap;
+//	private IndexVectorMap contentIndexVectorMap;
+//	private ContextVectorMap contentContextVectorMap;
+//
+//	private IndexVectorMap recipientIndexVectorMap;
+//	private ContextVectorMap recipientContextVectorMap;
+	
+	private List<RandomIndexVector> contentVectors;
+	private List<RandomIndexVector> recipientVectors;
+	
 	
 	//important content profiles for the mailbox; for direct emails
-	private double[] importantTopicsReplied;
-	private double[] importantTopicsOnlySeen;
-	private double[] importantTopicsFlagged;
-	//important people profiles for the mailbox
-	private double[] importantPeopleReplied;
-	private double[] importantPeopleOnlySeen;
-	private double[] importantPeopleFlagged;
-	//important speech acts for the mailbox (meeting, request, delivery, proposal, commit)
-	private double[] importantSpeechActReplied;
-	private double[] importantSpeechActOnlySeen;
-	private double[] importantSpeechActFlagged;
-	
-	//important list emails; which are handled separately because the load of list emails is high 
-	private double[] importantListTopicsReplied;
-	private double[] importantListTopicsOnlySeen;
-	private double[] importantListTopicsFlagged;
-	//important people profiles for the mailbox
-	private double[] importantListPeopleReplied;
-	private double[] importantListPeopleOnlySeen;
-	private double[] importantListPeopleFlagged;
-	//important speech acts for the mailbox (meeting, request, delivery, proposal, commit)
-	private double[] importantListSpeechActReplied;
-	private double[] importantListSpeechActOnlySeen;
-	private double[] importantListSpeechActFlagged;
-	
-	
-	//unimportant topics/people/speech act profile from spam, 
-	private double[] unimportanttopicsVector;
-	private double[] unimportantPeopleVector;
-	private double[] unimportantSpeechActVector;
-	
-	
-	private double[] importantNLPKeywordsReplied;
-	private double[] importantNLPKeywordsOnlySeen;
-	private double[] importantNLPKeywordsFlagged;
-	
-	private double[] importantListNLPKeywordsReplied;
-	private double[] importantListNLPKeywordsOnlySeen;
-	private double[] importantListNLPKeywordsFlagged;
-	
-	private double[] unimportantDirectKeywordVector;
-	
+//	private double[] importantTopicsReplied;
+//	private double[] importantTopicsOnlySeen;
+//	private double[] importantTopicsFlagged;
+//	//important people profiles for the mailbox
+//	private double[] importantPeopleReplied;
+//	private double[] importantPeopleOnlySeen;
+//	private double[] importantPeopleFlagged;
+//	//important speech acts for the mailbox (meeting, request, delivery, proposal, commit)
+//	private double[] importantSpeechActReplied;
+//	private double[] importantSpeechActOnlySeen;
+//	private double[] importantSpeechActFlagged;
+//	
+//	//important list emails; which are handled separately because the load of list emails is high 
+//	private double[] importantListTopicsReplied;
+//	private double[] importantListTopicsOnlySeen;
+//	private double[] importantListTopicsFlagged;
+//	//important people profiles for the mailbox
+//	private double[] importantListPeopleReplied;
+//	private double[] importantListPeopleOnlySeen;
+//	private double[] importantListPeopleFlagged;
+//	//important speech acts for the mailbox (meeting, request, delivery, proposal, commit)
+//	private double[] importantListSpeechActReplied;
+//	private double[] importantListSpeechActOnlySeen;
+//	private double[] importantListSpeechActFlagged;
+//	
+//	
+//	//unimportant topics/people/speech act profile from spam, 
+//	private double[] unimportanttopicsVector;
+//	private double[] unimportantPeopleVector;
+//	private double[] unimportantSpeechActVector;
+//	
+//	
+//	private double[] importantNLPKeywordsReplied;
+//	private double[] importantNLPKeywordsOnlySeen;
+//	private double[] importantNLPKeywordsFlagged;
+//	
+//	private double[] importantListNLPKeywordsReplied;
+//	private double[] importantListNLPKeywordsOnlySeen;
+//	private double[] importantListNLPKeywordsFlagged;
+//	
+//	private double[] unimportantDirectKeywordVector;
+//	
 	//important email numbers for the current model
 	private int numberOfListEmails;
 	private int numberOfDirectEmails;
@@ -130,46 +135,48 @@ public class UserMailBox {
 	public UserMailBox() {
 		this.allEmailContacts = new ArrayList<EmailContact>();
 		this.allEmails = new ArrayList<Email>();
+		this.contentVectors = new ArrayList<RandomIndexVector>();
+		this.recipientVectors = new ArrayList<RandomIndexVector>();
 		
-		importantTopicsReplied = new double[4000];
-		importantTopicsOnlySeen = new double[4000];
-		importantTopicsFlagged = new double[4000];
-		importantPeopleReplied = new double[4000];
-		importantPeopleOnlySeen = new double[4000];
-		importantPeopleFlagged = new double[4000];
-		
-		importantSpeechActReplied = new double[5];
-		importantSpeechActOnlySeen = new double[5];
-		importantSpeechActFlagged = new double[5];
-		
-		//list importance vectors
-		importantListTopicsReplied = new double[4000];
-		importantListTopicsOnlySeen = new double[4000];
-		importantListTopicsFlagged = new double[4000];
-		importantListPeopleReplied = new double[4000];
-		importantListPeopleOnlySeen = new double[4000];
-		importantListPeopleFlagged = new double[4000];
-		
-		importantListSpeechActReplied = new double[5];
-		importantListSpeechActOnlySeen = new double[5];
-		importantListSpeechActFlagged = new double[5];
-		
-		
-		unimportanttopicsVector = new double[4000];
-		unimportantPeopleVector = new double[4000];
-		unimportantSpeechActVector = new double[5];
-		
-		//keyword vectors
-		importantNLPKeywordsReplied = new double[4000];
-		importantNLPKeywordsOnlySeen = new double[4000];
-		importantNLPKeywordsFlagged = new double[4000];
-		
-		importantListNLPKeywordsReplied = new double[4000];
-		importantListNLPKeywordsOnlySeen = new double[4000];
-		importantListNLPKeywordsFlagged = new double[4000];
-		
-		unimportantDirectKeywordVector = new double[4000];
-		
+//		importantTopicsReplied = new double[4000];
+//		importantTopicsOnlySeen = new double[4000];
+//		importantTopicsFlagged = new double[4000];
+//		importantPeopleReplied = new double[4000];
+//		importantPeopleOnlySeen = new double[4000];
+//		importantPeopleFlagged = new double[4000];
+//		
+//		importantSpeechActReplied = new double[5];
+//		importantSpeechActOnlySeen = new double[5];
+//		importantSpeechActFlagged = new double[5];
+//		
+//		//list importance vectors
+//		importantListTopicsReplied = new double[4000];
+//		importantListTopicsOnlySeen = new double[4000];
+//		importantListTopicsFlagged = new double[4000];
+//		importantListPeopleReplied = new double[4000];
+//		importantListPeopleOnlySeen = new double[4000];
+//		importantListPeopleFlagged = new double[4000];
+//		
+//		importantListSpeechActReplied = new double[5];
+//		importantListSpeechActOnlySeen = new double[5];
+//		importantListSpeechActFlagged = new double[5];
+//		
+//		
+//		unimportanttopicsVector = new double[4000];
+//		unimportantPeopleVector = new double[4000];
+//		unimportantSpeechActVector = new double[5];
+//		
+//		//keyword vectors
+//		importantNLPKeywordsReplied = new double[4000];
+//		importantNLPKeywordsOnlySeen = new double[4000];
+//		importantNLPKeywordsFlagged = new double[4000];
+//		
+//		importantListNLPKeywordsReplied = new double[4000];
+//		importantListNLPKeywordsOnlySeen = new double[4000];
+//		importantListNLPKeywordsFlagged = new double[4000];
+//		
+//		unimportantDirectKeywordVector = new double[4000];
+//		
 		reputationDataModel = new EmailReputationDataModel();
 		
 		// for tf, idf purposes for weighting RI results at clustering
@@ -401,35 +408,58 @@ public class UserMailBox {
 		//processing emails sent to lists and not directly to the user
 		email.setModel(true);
 		email.setPredicted(false);
+		EmailReputationDataModel repModel = this.getReputationDataModel();
 		
 		if(email.isListMail() && !email.isDirect() && !email.isCCd()){
 			numberOfListEmails++;
 			if(email.isAnswered()){
 				logger.info("this is a list email answered");
-				this.importantListTopicsReplied = VectorsMath.getMergedVector(this.importantListTopicsReplied, email.getTextContextVector());
-				this.importantListPeopleReplied = VectorsMath.getMergedVector(this.importantListPeopleReplied, email.getRecipientContextVector());
-				this.importantListSpeechActReplied = VectorsMath.getMergedVector(this.importantListSpeechActReplied, email.getSpeechActVector());	
-				this.importantListNLPKeywordsReplied = VectorsMath.getMergedVector(this.importantListNLPKeywordsReplied, email.getNlpKeywordsVector());
+				double[] importantListTopicsReplied = VectorsMath.getMergedVector
+						(repModel.getImportantListTopicsReplied(), email.getTextContextVector());
+				repModel.setImportantListTopicsReplied(importantListTopicsReplied);		
+				logger.info("emai text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "list-replied-topic vector sum: " + EmailUtils.getVectorTotal(importantListTopicsReplied));
+						
+				double[] importantListPeopleReplied = VectorsMath.getMergedVector
+						(repModel.getImportantListPeopleReplied(), email.getRecipientContextVector());
+				repModel.setImportantListPeopleReplied(importantListPeopleReplied);
+				double[] importantListNLPKeywordsReplied = VectorsMath.getMergedVector
+						(repModel.getImportantListNLPKeywordsReplied(), email.getNlpKeywordsVector());
+				repModel.setImportantListNLPKeywordsReplied(importantListNLPKeywordsReplied);
+				
 				numberOfListEmailsReplied++;
 				this.getReputationDataModel().getRepliedListEmails().add(email);
+								
 			}
 			else if(email.isSeen()){
 				logger.info("this is a list email seen");
-				this.importantListTopicsOnlySeen = VectorsMath.getMergedVector(this.importantListTopicsOnlySeen, email.getTextContextVector());
-				this.importantListPeopleOnlySeen = VectorsMath.getMergedVector(this.importantListPeopleOnlySeen, email.getRecipientContextVector());
-				this.importantListSpeechActOnlySeen = VectorsMath.getMergedVector(this.importantListSpeechActOnlySeen, email.getSpeechActVector());
+				double[] importantListTopicsOnlySeen = VectorsMath.getMergedVector
+						(repModel.getImportantListTopicsOnlySeen(), email.getTextContextVector());
+				repModel.setImportantListTopicsOnlySeen(importantListTopicsOnlySeen);
+				logger.info("emai text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "list-seen-topic vector sum: " + EmailUtils.getVectorTotal(importantListTopicsOnlySeen));
 				
-				this.importantListNLPKeywordsOnlySeen = VectorsMath.getMergedVector(this.importantListNLPKeywordsOnlySeen, email.getNlpKeywordsVector());
+				double[] importantListPeopleOnlySeen = VectorsMath.getMergedVector(repModel.getImportantListPeopleOnlySeen(), email.getRecipientContextVector());
+				repModel.setImportantListPeopleOnlySeen(importantListPeopleOnlySeen);
+				logger.info("emai recipient vector sum : " + EmailUtils.getVectorTotal(email.getRecipientContextVector()) + "list-seen-people vector sum: " + EmailUtils.getVectorTotal(importantListPeopleOnlySeen));
+				
+				double[] importantListNLPKeywordsOnlySeen = VectorsMath.getMergedVector(repModel.getImportantListNLPKeywordsOnlySeen(), email.getNlpKeywordsVector());
+				repModel.setImportantListNLPKeywordsOnlySeen(importantListNLPKeywordsOnlySeen);
+				logger.info("emai nlp keyword vector sum : " + EmailUtils.getVectorTotal(email.getNlpKeywordsVector()) + "list-seen-keyword vector sum: " + EmailUtils.getVectorTotal(importantListNLPKeywordsOnlySeen));
+				
 				numberOfListEmailsSeen++;
 				this.getReputationDataModel().getSeenListEmails().add(email);
 			}
 			if(email.isFlagged()){
 				logger.info("this is a list email flagged");
-				this.importantListTopicsFlagged = VectorsMath.getMergedVector(this.importantListTopicsFlagged, email.getTextContextVector());
-				this.importantListPeopleFlagged = VectorsMath.getMergedVector(this.importantListPeopleFlagged, email.getRecipientContextVector());
-				this.importantListSpeechActFlagged = VectorsMath.getMergedVector(this.importantListSpeechActFlagged, email.getSpeechActVector());
+				double[] importantListTopicsFlagged = VectorsMath.getMergedVector(repModel.getImportantListTopicsFlagged(), email.getTextContextVector());
+				repModel.setImportantListTopicsFlagged(importantListTopicsFlagged);
+				logger.info("emai text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "flagged important-list-topic vector sum: " + EmailUtils.getVectorTotal(importantListTopicsFlagged));
 				
-				this.importantListNLPKeywordsFlagged = VectorsMath.getMergedVector(this.importantListNLPKeywordsFlagged, email.getNlpKeywordsVector());
+				double[] importantListPeopleFlagged = VectorsMath.getMergedVector(repModel.getImportantListPeopleFlagged(), email.getRecipientContextVector());
+				repModel.setImportantListPeopleFlagged(importantListPeopleFlagged);
+				
+				double[] importantListNLPKeywordsFlagged = VectorsMath.getMergedVector(repModel.getImportantListNLPKeywordsFlagged(), email.getNlpKeywordsVector());
+				repModel.setImportantListNLPKeywordsFlagged(importantListNLPKeywordsFlagged);
+				
 				numberOfListEmailsFlagged++;
 				this.getReputationDataModel().getFlaggedListEmails().add(email);
 			}
@@ -438,33 +468,47 @@ public class UserMailBox {
 			numberOfDirectEmails++;
 			if(email.isAnswered()){
 				logger.info("this is a direct email answered");
-				this.importantTopicsReplied = VectorsMath.getMergedVector(this.importantTopicsReplied, email.getTextContextVector());
-				this.importantPeopleReplied = VectorsMath.getMergedVector(this.importantPeopleReplied, email.getRecipientContextVector());
-				this.importantSpeechActReplied = VectorsMath.getMergedVector(this.importantSpeechActReplied, email.getSpeechActVector());
+				double[] importantTopicsReplied = VectorsMath.getMergedVector(repModel.getImportantTopicsReplied(), email.getTextContextVector());
+				repModel.setImportantTopicsReplied(importantTopicsReplied);
+				logger.info("emai text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "direct replied important-topic vector sum: " + EmailUtils.getVectorTotal(importantTopicsReplied));
 				
-				this.importantNLPKeywordsReplied = VectorsMath.getMergedVector(this.importantNLPKeywordsReplied, email.getNlpKeywordsVector());
+				double[] importantPeopleReplied = VectorsMath.getMergedVector(repModel.getImportantPeopleReplied(), email.getRecipientContextVector());
+				repModel.setImportantPeopleReplied(importantPeopleReplied);
+				
+				double[] importantNLPKeywordsReplied = VectorsMath.getMergedVector(repModel.getImportantNLPKeywordsReplied(), email.getNlpKeywordsVector());
+				repModel.setImportantNLPKeywordsReplied(importantNLPKeywordsReplied);
+				
 				numberOfDirectEmailsReplied++;
 				this.getReputationDataModel().getRepliedEmails().add(email);
 			}
 			else if(email.isSeen()){
 				logger.info("this is a direct email seen");
 				
-				this.importantTopicsOnlySeen = VectorsMath.getMergedVector(this.importantTopicsOnlySeen, email.getTextContextVector());
-				this.importantPeopleOnlySeen = VectorsMath.getMergedVector(this.importantPeopleOnlySeen, email.getRecipientContextVector());
-				this.importantSpeechActOnlySeen = VectorsMath.getMergedVector(this.importantSpeechActOnlySeen, email.getSpeechActVector());
+				double[] importantTopicsOnlySeen = VectorsMath.getMergedVector(repModel.getImportantTopicsOnlySeen(), email.getTextContextVector());
+				repModel.setImportantTopicsOnlySeen(importantTopicsOnlySeen);
+				logger.info("emai text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "direct seen important-topic vector sum: " + EmailUtils.getVectorTotal(importantTopicsOnlySeen));
 				
-				this.importantNLPKeywordsOnlySeen = VectorsMath.getMergedVector(this.importantNLPKeywordsOnlySeen, email.getNlpKeywordsVector());
+				double[] importantPeopleOnlySeen = VectorsMath.getMergedVector(repModel.getImportantPeopleOnlySeen(), email.getRecipientContextVector());
+				repModel.setImportantPeopleOnlySeen(importantPeopleOnlySeen);
+				
+				double[] importantNLPKeywordsOnlySeen = VectorsMath.getMergedVector(repModel.getImportantNLPKeywordsOnlySeen(), email.getNlpKeywordsVector());
+				repModel.setImportantNLPKeywordsOnlySeen(importantNLPKeywordsOnlySeen);
+				
 				numberOfDirectEmailsSeen++;
 				this.getReputationDataModel().getSeenEmails().add(email);
 			}
 			if(email.isFlagged()){
 				logger.info("this is a direct email flagged");
 				
-				this.importantTopicsFlagged = VectorsMath.getMergedVector(this.importantTopicsFlagged, email.getTextContextVector());
-				this.importantPeopleFlagged = VectorsMath.getMergedVector(this.importantPeopleFlagged, email.getRecipientContextVector());
-				this.importantSpeechActFlagged = VectorsMath.getMergedVector(this.importantSpeechActFlagged, email.getSpeechActVector());
+				double[] importantTopicsFlagged = VectorsMath.getMergedVector(repModel.getImportantTopicsFlagged(), email.getTextContextVector());
+				repModel.setImportantTopicsFlagged(importantTopicsFlagged);
 				
-				this.importantNLPKeywordsFlagged = VectorsMath.getMergedVector(this.importantNLPKeywordsFlagged, email.getNlpKeywordsVector());
+				double[] importantPeopleFlagged = VectorsMath.getMergedVector(repModel.getImportantPeopleFlagged(), email.getRecipientContextVector());
+				repModel.setImportantPeopleFlagged(importantPeopleFlagged);
+				
+				double[] importantNLPKeywordsFlagged = VectorsMath.getMergedVector(repModel.getImportantNLPKeywordsFlagged(), email.getNlpKeywordsVector());
+				repModel.setImportantNLPKeywordsFlagged(importantNLPKeywordsFlagged);
+				
 				numberOfDirectEmailsFlagged++;
 				this.getReputationDataModel().getFlaggedEmails().add(email);
 			}
@@ -473,45 +517,57 @@ public class UserMailBox {
 			if( email.isSpam() || email.isDeleted()){
 				logger.info("this is a spam email recognized by flag or header");
 				
-				this.unimportanttopicsVector = VectorsMath.getMergedVector(this.unimportanttopicsVector, email.getTextContextVector());
-				this.unimportantPeopleVector = VectorsMath.getMergedVector(this.unimportantPeopleVector, email.getRecipientContextVector());
-				this.unimportantSpeechActVector = VectorsMath.getMergedVector(this.unimportantSpeechActVector, email.getSpeechActVector());
+				double[] unimportanttopicsVector = VectorsMath.getMergedVector(repModel.getSpamVector(), email.getTextContextVector());
+				repModel.setSpamVector(unimportanttopicsVector);
+				logger.info("emai text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "spam topic vector sum: " + EmailUtils.getVectorTotal(unimportanttopicsVector));
 				
-				this.unimportantDirectKeywordVector = VectorsMath.getMergedVector(this.unimportantDirectKeywordVector, email.getNlpKeywordsVector());
+				
+				double[] unimportantPeopleVector = VectorsMath.getMergedVector(repModel.getSpamPeopleVector(), email.getRecipientContextVector());
+				repModel.setSpamPeopleVector(unimportantPeopleVector);
+				
+				double[] unimportantDirectKeywordVector = VectorsMath.getMergedVector(repModel.getSpamNLPKeywordVector(), email.getNlpKeywordsVector());
+				repModel.setSpamNLPKeywordVector(unimportantDirectKeywordVector);
 				nofOfUnimportantEmails++;
+				
+				//trying out the spam vector from reputation data model
 				this.getReputationDataModel().getSpamEmails().add(email);
 			}
+			
+			
+			//adding email to the mailbox
+			logger.info("adding email to mailbox and reputation-model with size ["
+					+ this.getAllEmails().size() + " ] subject: "
+					+ email.getSubject() + " email sent timestamp : "
+					+ email.getSentTimestamp());						
+			this.addEmail(email);
+			this.setReputationDataModel(repModel);
 	}
 	
 	public Email predictImportanceFormEmail(Email newEmail){
 		newEmail.setModel(false);
 		newEmail.setPredicted(true);
+		EmailReputationDataModel repModel = this.getReputationDataModel();
 		
 		if(newEmail.isSpam()){
 			logger.info("The email to recommend reputation is pre-labeled as spam..");
-			double spamTopicSimilarity = Similarity.cosineSimilarity(unimportanttopicsVector, newEmail.getTextContextVector());
-			double spamPeopleSimilarity = Similarity.cosineSimilarity(unimportantPeopleVector, newEmail.getRecipientContextVector());
-			double spamSpeechActSimilarity = Similarity.cosineSimilarity(unimportantSpeechActVector, newEmail.getSpeechActVector());
-			 
-			double spamNLPKeywordSimilarity = Similarity.cosineSimilarity(unimportantDirectKeywordVector, newEmail.getNlpKeywordsVector());
+			double spamTopicSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamVector(), newEmail.getTextContextVector());
+			double spamPeopleSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamPeopleVector(), newEmail.getRecipientContextVector()); 
+			double spamNLPKeywordSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamNLPKeywordVector(), newEmail.getNlpKeywordsVector());
 			
 			logger.info("The similarity of the email with SPAM emails in the model \n:"
 			+" spam topic similarity : " + spamTopicSimilarity 
 			+ " spam NLP keyword similarity : " + spamNLPKeywordSimilarity 			
-			+ " spam people similarity : " + spamPeopleSimilarity 
-			+ " spam speech act similarity : " + spamSpeechActSimilarity);
+			+ " spam people similarity : " + spamPeopleSimilarity);
 			
 		}
 		if(newEmail.isListMail() && !newEmail.isDirect() && !newEmail.isCCd()){
 			logger.info("The email is not a direct email, calculating similarities with list email profiles");
-			double[] importantListFlaggedTopics = this.getImportantListTopicsFlagged();
-			double[] importantListRepliedTopics = this.getImportantListTopicsReplied();
-			double[] importantListSeenTopics = this.getImportantListTopicsOnlySeen();
+			double flaggedTopicscore = EmailUtils.calculateCosineSimilarity(repModel.getImportantListTopicsFlagged(), newEmail.getTextContextVector());
+			double repliedTopicscore = EmailUtils.calculateCosineSimilarity(repModel.getImportantListTopicsReplied(), newEmail.getTextContextVector());	
+			double seenTopicscore = EmailUtils.calculateCosineSimilarity(repModel.getImportantListTopicsOnlySeen(), newEmail.getTextContextVector());
+			double spamTopicSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamVector(), newEmail.getTextContextVector());
 			
-			double flaggedTopicscore = Similarity.cosineSimilarity(importantListFlaggedTopics, newEmail.getTextContextVector());
-			double repliedTopicscore = Similarity.cosineSimilarity(importantListRepliedTopics, newEmail.getTextContextVector());
-			double seenTopicscore = Similarity.cosineSimilarity(importantListSeenTopics, newEmail.getTextContextVector());
-			double spamTopicSimilarity = Similarity.cosineSimilarity(unimportanttopicsVector, newEmail.getTextContextVector());
+
 			double totalTopicScore = flaggedTopicscore + repliedTopicscore + seenTopicscore - spamTopicSimilarity;			
 			
 			logger.info("flagged list topic score : " + flaggedTopicscore);
@@ -527,10 +583,10 @@ public class UserMailBox {
 			
 			
 			
-			double flaggedKeywordsScore = Similarity.cosineSimilarity(importantListNLPKeywordsFlagged, newEmail.getNlpKeywordsVector());
-			double repliedKeywordsScore = Similarity.cosineSimilarity(importantListNLPKeywordsReplied, newEmail.getNlpKeywordsVector());
-			double seenKeywordsScore = Similarity.cosineSimilarity(importantListNLPKeywordsOnlySeen, newEmail.getNlpKeywordsVector());
-			double spamKeywordScore = Similarity.cosineSimilarity(unimportantDirectKeywordVector, newEmail.getNlpKeywordsVector());
+			double flaggedKeywordsScore = EmailUtils.calculateCosineSimilarity(repModel.getImportantListNLPKeywordsFlagged(), newEmail.getNlpKeywordsVector());
+			double repliedKeywordsScore = EmailUtils.calculateCosineSimilarity(repModel.getImportantListNLPKeywordsReplied(), newEmail.getNlpKeywordsVector());
+			double seenKeywordsScore = EmailUtils.calculateCosineSimilarity(repModel.getImportantListNLPKeywordsOnlySeen(), newEmail.getNlpKeywordsVector());
+			double spamKeywordScore = EmailUtils.calculateCosineSimilarity(repModel.getSpamNLPKeywordVector(), newEmail.getNlpKeywordsVector());
 			double totalListKeywordScore = flaggedKeywordsScore + repliedKeywordsScore + seenKeywordsScore - spamKeywordScore;		
 			
 			logger.info("flagged list keyword score : " + flaggedKeywordsScore);
@@ -542,18 +598,12 @@ public class UserMailBox {
 			newEmail.setRepliedKeywordscore(repliedKeywordsScore);
 			newEmail.setSeenKeywordscore(seenKeywordsScore);
 			newEmail.setSpamKeywordscore(spamKeywordScore);
-			newEmail.setTotalKeywordscore(totalListKeywordScore);
+			newEmail.setTotalKeywordscore(totalListKeywordScore);						
 			
-			
-			
-			double[] importantListFlaggedPeople = this.getImportantListPeopleFlagged();
-			double[] importantListRepliedPeople = this.getImportantListPeopleReplied();
-			double[] importantListSeenPeople = this.getImportantListPeopleOnlySeen();
-			
-			double flaggedPeoplescore = Similarity.cosineSimilarity(importantListFlaggedPeople, newEmail.getRecipientContextVector());
-			double repliedPeoplescore = Similarity.cosineSimilarity(importantListRepliedPeople, newEmail.getRecipientContextVector());
-			double seenPeoplescore = Similarity.cosineSimilarity(importantListSeenPeople, newEmail.getRecipientContextVector());
-			double spamPeopleSimilarity = Similarity.cosineSimilarity(unimportantPeopleVector, newEmail.getRecipientContextVector());
+			double flaggedPeoplescore = EmailUtils.calculateCosineSimilarity(repModel.getImportantListPeopleFlagged(), newEmail.getRecipientContextVector());
+			double repliedPeoplescore = EmailUtils.calculateCosineSimilarity(repModel.getImportantListPeopleReplied(), newEmail.getRecipientContextVector());
+			double seenPeoplescore = EmailUtils.calculateCosineSimilarity(repModel.getImportantListPeopleOnlySeen(), newEmail.getRecipientContextVector());
+			double spamPeopleSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamPeopleVector(), newEmail.getRecipientContextVector());
 			
 			double totalPeopleScore = flaggedPeoplescore + repliedPeoplescore + seenPeoplescore - spamPeopleSimilarity;
 			
@@ -569,40 +619,33 @@ public class UserMailBox {
 			newEmail.setSpamPeopleScore(spamPeopleSimilarity);
 			newEmail.setTotalPeopleScore(totalPeopleScore);
 			
-			
-			double[] importantListSpeechActsFlagged = this.getImportantListSpeechActFlagged();
-			double[] importantListRepliedSpeechActs = this.getImportantListSpeechActReplied();
-			double[] importantListSeenSpeechActs = this.getImportantListSpeechActOnlySeen();
-			
-			double flaggedSAScore = Similarity.cosineSimilarity(importantListSpeechActsFlagged, newEmail.getSpeechActVector());
-			double repliedSAScore = Similarity.cosineSimilarity(importantListRepliedSpeechActs, newEmail.getSpeechActVector());
-			double seenSAScore = Similarity.cosineSimilarity(importantListSeenSpeechActs, newEmail.getSpeechActVector());
-			double spamSpeechActSimilarity = Similarity.cosineSimilarity(unimportantSpeechActVector, newEmail.getSpeechActVector());
-			
-			double totalSAScore = flaggedSAScore + repliedSAScore + seenSAScore - spamSpeechActSimilarity;
-			
-			
-			logger.info("flagged list SA score : " + flaggedSAScore);
-			logger.info("replied list SA score : " + repliedSAScore);
-			logger.info("seen list SA score : " + seenSAScore);
-			logger.info("Spam list people score : " + spamSpeechActSimilarity);
-			logger.info("Total list SA score : " + totalSAScore);				
-			newEmail.setFlaggedSpeechActscore(totalSAScore);
-			newEmail.setRepliedSpeechActscore(repliedSAScore);
-			newEmail.setSeenSpeechActscore(seenSAScore);
-			newEmail.setTotalSpeechActscore(totalSAScore);
-			
+//			
+//			double flaggedSAScore = Similarity.cosineSimilarity(importantListSpeechActsFlagged, newEmail.getSpeechActVector());
+//			double repliedSAScore = Similarity.cosineSimilarity(importantListRepliedSpeechActs, newEmail.getSpeechActVector());
+//			double seenSAScore = Similarity.cosineSimilarity(importantListSeenSpeechActs, newEmail.getSpeechActVector());
+//			double spamSpeechActSimilarity = Similarity.cosineSimilarity(unimportantSpeechActVector, newEmail.getSpeechActVector());
+//			
+//			double totalSAScore = flaggedSAScore + repliedSAScore + seenSAScore - spamSpeechActSimilarity;
+//			
+//			
+//			logger.info("flagged list SA score : " + flaggedSAScore);
+//			logger.info("replied list SA score : " + repliedSAScore);
+//			logger.info("seen list SA score : " + seenSAScore);
+//			logger.info("Spam list people score : " + spamSpeechActSimilarity);
+//			logger.info("Total list SA score : " + totalSAScore);				
+//			newEmail.setFlaggedSpeechActscore(totalSAScore);
+//			newEmail.setRepliedSpeechActscore(repliedSAScore);
+//			newEmail.setSeenSpeechActscore(seenSAScore);
+//			newEmail.setTotalSpeechActscore(totalSAScore);
+//			
 			
 		}else{
 			logger.info("The email is a direct or ccd email and not a list email");
-			double[] importantFlaggedTopics = this.getImportantTopicsFlagged();
-			double[] importantRepliedTopics = this.getImportantTopicsReplied();
-			double[] importantSeenTopics = this.getImportantTopicsOnlySeen();
 			
-			double flaggedTopicscore = Similarity.cosineSimilarity(importantFlaggedTopics, newEmail.getTextContextVector());
-			double repliedTopicscore = Similarity.cosineSimilarity(importantRepliedTopics, newEmail.getTextContextVector());
-			double seenTopicscore = Similarity.cosineSimilarity(importantSeenTopics, newEmail.getTextContextVector());
-			double spamTopicSimilarity = Similarity.cosineSimilarity(unimportanttopicsVector, newEmail.getTextContextVector());
+			double flaggedTopicscore = EmailUtils.calculateCosineSimilarity(repModel.getImportantTopicsFlagged(), newEmail.getTextContextVector());
+			double repliedTopicscore = EmailUtils.calculateCosineSimilarity(repModel.getImportantTopicsReplied(), newEmail.getTextContextVector());
+			double seenTopicscore = EmailUtils.calculateCosineSimilarity(repModel.getImportantTopicsOnlySeen(), newEmail.getTextContextVector());
+			double spamTopicSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamVector(), newEmail.getTextContextVector());
 			
 			double totalTopicScore = flaggedTopicscore + repliedTopicscore + seenTopicscore - spamTopicSimilarity;
 			
@@ -617,10 +660,10 @@ public class UserMailBox {
 			newEmail.setTotalTopicScore(totalTopicScore);
 			
 			
-			double flaggedKeywordsScore = Similarity.cosineSimilarity(importantNLPKeywordsFlagged, newEmail.getNlpKeywordsVector());
-			double repliedKeywordsScore = Similarity.cosineSimilarity(importantNLPKeywordsReplied, newEmail.getNlpKeywordsVector());
-			double seenKeywordsScore = Similarity.cosineSimilarity(importantNLPKeywordsOnlySeen, newEmail.getNlpKeywordsVector());
-			double spamKeywordScore = Similarity.cosineSimilarity(unimportantDirectKeywordVector, newEmail.getNlpKeywordsVector());
+			double flaggedKeywordsScore = EmailUtils.calculateCosineSimilarity(repModel.getImportantNLPKeywordsFlagged(), newEmail.getNlpKeywordsVector());
+			double repliedKeywordsScore = EmailUtils.calculateCosineSimilarity(repModel.getImportantNLPKeywordsReplied(), newEmail.getNlpKeywordsVector());
+			double seenKeywordsScore = EmailUtils.calculateCosineSimilarity(repModel.getImportantNLPKeywordsOnlySeen(), newEmail.getNlpKeywordsVector());
+			double spamKeywordScore = EmailUtils.calculateCosineSimilarity(repModel.getSpamNLPKeywordVector(), newEmail.getNlpKeywordsVector());
 			double totalKeywordScore = flaggedKeywordsScore + repliedKeywordsScore + seenKeywordsScore - spamKeywordScore;			
 			
 			logger.info("flagged keyword score : " + flaggedKeywordsScore);
@@ -634,15 +677,10 @@ public class UserMailBox {
 			newEmail.setSpamKeywordscore(spamKeywordScore);
 			newEmail.setTotalKeywordscore(totalKeywordScore);
 			
-			
-			double[] importantFlaggedPeople = this.getImportantPeopleFlagged();
-			double[] importantRepliedPeople = this.getImportantPeopleReplied();
-			double[] importantSeenPeople = this.getImportantPeopleOnlySeen();
-			
-			double flaggedPeoplescore = Similarity.cosineSimilarity(importantFlaggedPeople, newEmail.getRecipientContextVector());
-			double repliedPeoplescore = Similarity.cosineSimilarity(importantRepliedPeople, newEmail.getRecipientContextVector());
-			double seenPeoplescore = Similarity.cosineSimilarity(importantSeenPeople, newEmail.getRecipientContextVector());
-			double spamPeopleSimilarity = Similarity.cosineSimilarity(unimportantPeopleVector, newEmail.getRecipientContextVector());
+			double flaggedPeoplescore = EmailUtils.calculateCosineSimilarity(repModel.getImportantPeopleFlagged(), newEmail.getRecipientContextVector());
+			double repliedPeoplescore = EmailUtils.calculateCosineSimilarity(repModel.getImportantPeopleReplied(), newEmail.getRecipientContextVector());
+			double seenPeoplescore = EmailUtils.calculateCosineSimilarity(repModel.getImportantPeopleOnlySeen(), newEmail.getRecipientContextVector());
+			double spamPeopleSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamPeopleVector(), newEmail.getRecipientContextVector());
 			
 			double totalPeopleScore = flaggedPeoplescore + repliedPeoplescore + seenPeoplescore - spamPeopleSimilarity;
 			logger.info("flagged people score : " + flaggedPeoplescore);
@@ -654,25 +692,25 @@ public class UserMailBox {
 			newEmail.setSeenPeoplescore(seenPeoplescore);
 			newEmail.setSpamPeopleScore(spamPeopleSimilarity);
 			newEmail.setTotalPeopleScore(totalPeopleScore);
-			
-			double[] importantSpeechActsFlagged = this.getImportantSpeechActFlagged();
-			double[] importantRepliedSpeechActs = this.getImportantSpeechActReplied();
-			double[] importantSeenSpeechActs = this.getImportantSpeechActOnlySeen();
-			
-			double flaggedSAScore = Similarity.cosineSimilarity(importantSpeechActsFlagged, newEmail.getSpeechActVector());
-			double repliedSAScore = Similarity.cosineSimilarity(importantRepliedSpeechActs, newEmail.getSpeechActVector());
-			double seenSAScore = Similarity.cosineSimilarity(importantSeenSpeechActs, newEmail.getSpeechActVector());
-			double spamSpeechActSimilarity = Similarity.cosineSimilarity(unimportantSpeechActVector, newEmail.getSpeechActVector());
-			
-			double totalSAScore = flaggedSAScore + repliedSAScore + seenSAScore - spamSpeechActSimilarity;
-			logger.info("flagged SA score : " + flaggedSAScore);
-			logger.info("replied SA score : " + repliedSAScore);
-			logger.info("seen SA score : " + seenSAScore);
-			logger.info("Total SA score : " + totalSAScore);				
-			newEmail.setFlaggedSpeechActscore(totalSAScore);
-			newEmail.setRepliedSpeechActscore(repliedSAScore);
-			newEmail.setSeenSpeechActscore(seenSAScore);
-			newEmail.setTotalSpeechActscore(totalSAScore);
+//			
+//			double[] importantSpeechActsFlagged = this.getImportantSpeechActFlagged();
+//			double[] importantRepliedSpeechActs = this.getImportantSpeechActReplied();
+//			double[] importantSeenSpeechActs = this.getImportantSpeechActOnlySeen();
+//			
+//			double flaggedSAScore = Similarity.cosineSimilarity(importantSpeechActsFlagged, newEmail.getSpeechActVector());
+//			double repliedSAScore = Similarity.cosineSimilarity(importantRepliedSpeechActs, newEmail.getSpeechActVector());
+//			double seenSAScore = Similarity.cosineSimilarity(importantSeenSpeechActs, newEmail.getSpeechActVector());
+//			double spamSpeechActSimilarity = Similarity.cosineSimilarity(unimportantSpeechActVector, newEmail.getSpeechActVector());
+//			
+//			double totalSAScore = flaggedSAScore + repliedSAScore + seenSAScore - spamSpeechActSimilarity;
+//			logger.info("flagged SA score : " + flaggedSAScore);
+//			logger.info("replied SA score : " + repliedSAScore);
+//			logger.info("seen SA score : " + seenSAScore);
+//			logger.info("Total SA score : " + totalSAScore);				
+//			newEmail.setFlaggedSpeechActscore(totalSAScore);
+//			newEmail.setRepliedSpeechActscore(repliedSAScore);
+//			newEmail.setSeenSpeechActscore(seenSAScore);
+//			newEmail.setTotalSpeechActscore(totalSAScore);
 		}	
 		return newEmail;
 	}
@@ -748,76 +786,7 @@ public class UserMailBox {
 		return email;
 	}
 
-	private void processEmailContact(String contactEmailAddress, Email email,
-			boolean isFrom, boolean isCC, boolean isTo) {
-		// check if the email address is the user's email address
-		if (contactEmailAddress != this.getEmailId()) {
-			boolean foundContact = false;
-			EmailContact emailContact = null;
-			for (EmailContact contact : allEmailContacts) {
-				if (contact.getPrimaryEmailAddress().equalsIgnoreCase(
-						contactEmailAddress)) {
-					emailContact = contact;
-					if (email.isSeen()) {
-						emailContact.addMessageSeen();
-					}
-					if (email.isAnswered()) {
-						emailContact.addMessageAnswered();
-					}
-					if (email.isFlagged()) {
-						emailContact.addMessageFlagged();
-					}
-					if (email.isDeleted()) {
-						emailContact.addMessageDeleted();
-					}
-					
-					//process if the message was to,cc,from the contact
-					if(isFrom) {
-						emailContact.addMessageFrom(email.getMessageId());
-					} else if(isTo) {
-						emailContact.addMessageTo(email.getMessageId());
-					} else if(isCC) {
-						emailContact.addMessageCC(email.getMessageId());
-					}
-
-					
-					foundContact = true;
-					break;
-				}
-			}
-			// not yet added, needs to add the new contact
-			if (!foundContact) {
-				emailContact = new EmailContact();
-				emailContact.setPrimaryEmailAddress(contactEmailAddress);
-				emailContact.addEmailAddress(new EmailAddress(
-						contactEmailAddress));
-				
-				if (email.isSeen()) {
-					emailContact.addMessageSeen();
-				}
-				if (email.isAnswered()) {
-					emailContact.addMessageAnswered();
-				}
-				if (email.isFlagged()) {
-					emailContact.addMessageFlagged();
-				}
-				if (email.isDeleted()) {
-					emailContact.addMessageDeleted();
-				}
-				
-				//process if the message was to,cc,from the contact
-				if(isFrom) {
-					emailContact.addMessageFrom(email.getMessageId());
-				} else if(isTo) {
-					emailContact.addMessageTo(email.getMessageId());
-				} else if(isCC) {
-					emailContact.addMessageCC(email.getMessageId());
-				}
-				allEmailContacts.add(emailContact);
-			}
-
-		}
-	}
+	
 
 	/**
 	 * adding new words to the mailbox's global word freq. matrix &
@@ -998,51 +967,6 @@ public class UserMailBox {
 	}
 
 	@javax.jdo.annotations.Persistent
-	@javax.jdo.annotations.Column(allowsNull = "true") 
-	@Hidden
-	public IndexVectorMap getContentIndexVectorMap() {
-		return contentIndexVectorMap;
-	}
-
-	public void setContentIndexVectorMap(IndexVectorMap contentIndexVectorMap) {
-		this.contentIndexVectorMap = contentIndexVectorMap;
-	}
-
-	@javax.jdo.annotations.Persistent
-	@javax.jdo.annotations.Column(allowsNull = "true") 
-	@Hidden
-	public ContextVectorMap getContentContextVectorMap() {
-		return contentContextVectorMap;
-	}
-
-	public void setContentContextVectorMap(ContextVectorMap contentContextVectorMap) {
-		this.contentContextVectorMap = contentContextVectorMap;
-	}
-
-	@javax.jdo.annotations.Persistent
-	@javax.jdo.annotations.Column(allowsNull = "true") 
-	@Hidden
-	public IndexVectorMap getRecipientIndexVectorMap() {
-		return recipientIndexVectorMap;
-	}
-
-	public void setRecipientIndexVectorMap(IndexVectorMap recipientIndexVectorMap) {
-		this.recipientIndexVectorMap = recipientIndexVectorMap;
-	}
-
-	@javax.jdo.annotations.Persistent
-	@javax.jdo.annotations.Column(allowsNull = "true") 
-	@Hidden
-	public ContextVectorMap getRecipientContextVectorMap() {
-		return recipientContextVectorMap;
-	}
-
-	public void setRecipientContextVectorMap(
-			ContextVectorMap recipientContextVectorMap) {
-		this.recipientContextVectorMap = recipientContextVectorMap;
-	}
-
-	@javax.jdo.annotations.Persistent
 	public long getLastIndexedMsgUid() {
 		return lastIndexedMsgUid;
 	}
@@ -1071,130 +995,10 @@ public class UserMailBox {
 	public void setImapHostId(String imapHostId) {
 		this.imapHostId = imapHostId;
 	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantTopicsReplied() {
-		return importantTopicsReplied;
-	}
-
-	public void setImportantTopicsReplied(double[] importantTopicsReplied) {
-		this.importantTopicsReplied = importantTopicsReplied;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantTopicsOnlySeen() {
-		return importantTopicsOnlySeen;
-	}
-
-	public void setImportantTopicsOnlySeen(double[] importantTopicsOnlySeen) {
-		this.importantTopicsOnlySeen = importantTopicsOnlySeen;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantTopicsFlagged() {
-		return importantTopicsFlagged;
-	}
-
-	public void setImportantTopicsFlagged(double[] importantTopicsFlagged) {
-		this.importantTopicsFlagged = importantTopicsFlagged;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantPeopleReplied() {
-		return importantPeopleReplied;
-	}
-
-	public void setImportantPeopleReplied(double[] importantPeopleReplied) {
-		this.importantPeopleReplied = importantPeopleReplied;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantPeopleOnlySeen() {
-		return importantPeopleOnlySeen;
-	}
-
-	public void setImportantPeopleOnlySeen(double[] importantPeopleOnlySeen) {
-		this.importantPeopleOnlySeen = importantPeopleOnlySeen;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantPeopleFlagged() {
-		return importantPeopleFlagged;
-	}
-
-	public void setImportantPeopleFlagged(double[] importantPeopleFlagged) {
-		this.importantPeopleFlagged = importantPeopleFlagged;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantSpeechActReplied() {
-		return importantSpeechActReplied;
-	}
-
-	public void setImportantSpeechActReplied(double[] importantSpeechActReplied) {
-		this.importantSpeechActReplied = importantSpeechActReplied;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantSpeechActOnlySeen() {
-		return importantSpeechActOnlySeen;
-	}
-
-	public void setImportantSpeechActOnlySeen(double[] importantSpeechActOnlySeen) {
-		this.importantSpeechActOnlySeen = importantSpeechActOnlySeen;
-	}
 	
-	@javax.jdo.annotations.Column(allowsNull= "true" )
+		
 	@Hidden
-	public double[] getImportantSpeechActFlagged() {
-		return importantSpeechActFlagged;
-	}
-
-	public void setImportantSpeechActFlagged(double[] importantSpeechActFlagged) {
-		this.importantSpeechActFlagged = importantSpeechActFlagged;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getUnimportanttopicsVector() {
-		return unimportanttopicsVector;
-	}
-
-	public void setUnimportanttopicsVector(double[] unimportanttopicsVector) {
-		this.unimportanttopicsVector = unimportanttopicsVector;
-	}
-	
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getUnimportantPeopleVector() {
-		return unimportantPeopleVector;
-	}
-
-	public void setUnimportantPeopleVector(double[] unimportantPeopleVector) {
-		this.unimportantPeopleVector = unimportantPeopleVector;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getUnimportantSpeechActVector() {
-		return unimportantSpeechActVector;
-	}
-
-	public void setUnimportantSpeechActVector(double[] unimportantSpeechActVector) {
-		this.unimportantSpeechActVector = unimportantSpeechActVector;
-	}
-
-	
-
-	@Hidden
+	@javax.jdo.annotations.Persistent
 	public int getNofOfUnimportantEmails() {
 		return nofOfUnimportantEmails;
 	}
@@ -1202,101 +1006,9 @@ public class UserMailBox {
 	public void setNofOfUnimportantEmails(int nofOfUnimportantEmails) {
 		this.nofOfUnimportantEmails = nofOfUnimportantEmails;
 	}
-	
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantListTopicsReplied() {
-		return importantListTopicsReplied;
-	}
-
-	public void setImportantListTopicsReplied(double[] importantListTopicsReplied) {
-		this.importantListTopicsReplied = importantListTopicsReplied;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantListTopicsOnlySeen() {
-		return importantListTopicsOnlySeen;
-	}
-
-	public void setImportantListTopicsOnlySeen(double[] importantListTopicsOnlySeen) {
-		this.importantListTopicsOnlySeen = importantListTopicsOnlySeen;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantListTopicsFlagged() {
-		return importantListTopicsFlagged;
-	}
-
-	public void setImportantListTopicsFlagged(double[] importantListTopicsFlagged) {
-		this.importantListTopicsFlagged = importantListTopicsFlagged;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantListPeopleReplied() {
-		return importantListPeopleReplied;
-	}
-
-	public void setImportantListPeopleReplied(double[] importantListPeopleReplied) {
-		this.importantListPeopleReplied = importantListPeopleReplied;
-	}
-	
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantListPeopleOnlySeen() {
-		return importantListPeopleOnlySeen;
-	}
-
-	public void setImportantListPeopleOnlySeen(double[] importantListPeopleOnlySeen) {
-		this.importantListPeopleOnlySeen = importantListPeopleOnlySeen;
-	}
-	
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantListPeopleFlagged() {
-		return importantListPeopleFlagged;
-	}
-
-	public void setImportantListPeopleFlagged(double[] importantListPeopleFlagged) {
-		this.importantListPeopleFlagged = importantListPeopleFlagged;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantListSpeechActReplied() {
-		return importantListSpeechActReplied;
-	}
-
-	public void setImportantListSpeechActReplied(
-			double[] importantListSpeechActReplied) {
-		this.importantListSpeechActReplied = importantListSpeechActReplied;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantListSpeechActOnlySeen() {
-		return importantListSpeechActOnlySeen;
-	}
-
-	public void setImportantListSpeechActOnlySeen(
-			double[] importantListSpeechActOnlySeen) {
-		this.importantListSpeechActOnlySeen = importantListSpeechActOnlySeen;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantListSpeechActFlagged() {
-		return importantListSpeechActFlagged;
-	}
-
-	public void setImportantListSpeechActFlagged(
-			double[] importantListSpeechActFlagged) {
-		this.importantListSpeechActFlagged = importantListSpeechActFlagged;
-	}
 
 	@Hidden
+	@javax.jdo.annotations.Persistent
 	public int getNumberOfListEmails() {
 		return numberOfListEmails;
 	}
@@ -1306,6 +1018,7 @@ public class UserMailBox {
 	}
 
 	@Hidden
+	@javax.jdo.annotations.Persistent
 	public int getNumberOfDirectEmails() {
 		return numberOfDirectEmails;
 	}
@@ -1315,6 +1028,7 @@ public class UserMailBox {
 	}
 
 	@Hidden
+	@javax.jdo.annotations.Persistent
 	public int getNumberOfListEmailsReplied() {
 		return numberOfListEmailsReplied;
 	}
@@ -1324,6 +1038,7 @@ public class UserMailBox {
 	}
 
 	@Hidden
+	@javax.jdo.annotations.Persistent
 	public int getNumberOfListEmailsFlagged() {
 		return numberOfListEmailsFlagged;
 	}
@@ -1331,8 +1046,105 @@ public class UserMailBox {
 	public void setNumberOfListEmailsFlagged(int numberOfListEmailsFlagged) {
 		this.numberOfListEmailsFlagged = numberOfListEmailsFlagged;
 	}
+	
+	
+	public void printImportanceModelForMailBox(){
+		EmailReputationDataModel model = this.getReputationDataModel();
+		
+		//flagged
+		double[] importantTopicsFlaggedProfile = model.getImportantTopicsFlagged();
+		double[] importantPeopleFlaggedProfile = model.getImportantPeopleFlagged();
+		double[] importantNLPKeywordsFlaggedProfile = model.getImportantNLPKeywordsFlagged();
+		
+		double flaggedTopicProfileScore = EmailUtils.getVectorTotal(importantTopicsFlaggedProfile);
+		logger.info(" flagged direct topic profile vector sum :" + flaggedTopicProfileScore +" no : " + this.getNumberOfDirectEmailsFlagged());
+		double flaggedPeopleProfileScore = EmailUtils.getVectorTotal(importantPeopleFlaggedProfile);
+		logger.info(" flagged  direct people profile vector sum :" + flaggedPeopleProfileScore );
+		double flaggedNLPProfileScore = EmailUtils.getVectorTotal(importantNLPKeywordsFlaggedProfile);
+		logger.info(" flagged  direct keywords profile vector sum :" + flaggedNLPProfileScore);
+		
+		double[] importantListTopicsFlaggedProfile = model.getImportantListTopicsFlagged();
+		double[] importantListPeopleFlaggedProfile = model.getImportantListPeopleFlagged();
+		double[] importantListNLPKeywordsFlaggedProfile = model.getImportantListNLPKeywordsFlagged();
+		
+		double flaggedListTopicProfileScore = EmailUtils.getVectorTotal(importantListTopicsFlaggedProfile);
+		logger.info("List flagged topic profile vector sum :" + flaggedListTopicProfileScore + " no : " + this.getNumberOfListEmailsFlagged());
+		double flaggedListPeopleProfileScore = EmailUtils.getVectorTotal(importantListPeopleFlaggedProfile);
+		logger.info("List flagged people profile vector sum :" + flaggedListPeopleProfileScore);
+		double flaggedListNLPProfileScore = EmailUtils.getVectorTotal(importantListNLPKeywordsFlaggedProfile);
+		logger.info("List flagged keywords profile vector sum :" + flaggedListNLPProfileScore);
+		
+		
+		
+		double[] importantTopicsRepliedProfile = model.getImportantTopicsReplied();
+		double[] importantPeopleRepliedProfile = model.getImportantPeopleReplied();
+		double[] importantNLPKeywordsRepliedProfile = model.getImportantNLPKeywordsReplied();
+		
+		
+		double repliedTopicProfileScore = EmailUtils.getVectorTotal(importantTopicsRepliedProfile);
+		logger.info(" replied  direct topic profile vector sum :" + repliedTopicProfileScore + " no : " + this.getNumberOfDirectEmailsReplied());
+		double repliedPeopleProfileScore = EmailUtils.getVectorTotal(importantPeopleRepliedProfile);
+		logger.info(" replied  direct people profile vector sum :" + repliedPeopleProfileScore);
+		double repliedNLPProfileScore = EmailUtils.getVectorTotal(importantNLPKeywordsRepliedProfile);
+		logger.info(" replied  direct keywords profile vector sum :" + repliedNLPProfileScore);
+		
+		
+		double[] importantListTopicsRepliedProfile = model.getImportantListTopicsReplied();
+		double[] importantListPeopleRepliedProfile = model.getImportantListPeopleReplied();
+		double[] importantListNLPKeywordsRepliedProfile = model.getImportantListNLPKeywordsReplied();
+		
+		double repliedListTopicProfileScore = EmailUtils.getVectorTotal(importantListTopicsRepliedProfile);
+		logger.info("List replied topic profile vector sum :" + repliedListTopicProfileScore + " no : " + this.getNumberOfListEmailsReplied());
+		double repliedListPeopleProfileScore = EmailUtils.getVectorTotal(importantListPeopleRepliedProfile);
+		logger.info("List replied people profile vector sum :" + repliedListPeopleProfileScore);
+		double repliedListNLPProfileScore = EmailUtils.getVectorTotal(importantListNLPKeywordsRepliedProfile);
+		logger.info("List replied keywords profile vector sum :" + repliedListNLPProfileScore);
+		
+		
+		double[] importantTopicsSeenProfile = model.getImportantTopicsOnlySeen();
+		double[] importantPeopleSeenProfile = model.getImportantPeopleOnlySeen();
+		double[] importantNLPKeywordsSeenProfile = model.getImportantNLPKeywordsOnlySeen();
+		
+		double seenTopicProfileScore = EmailUtils.getVectorTotal(importantTopicsSeenProfile);
+		logger.info("seen  direct topic profile vector sum :" + seenTopicProfileScore+ " no :" + this.getNumberOfDirectEmailsSeen());
+		double seenPeopleProfileScore = EmailUtils.getVectorTotal(importantPeopleSeenProfile);
+		logger.info("seen  direct people profile vector sum :" + seenPeopleProfileScore);
+		double seenNLPProfileScore = EmailUtils.getVectorTotal(importantNLPKeywordsSeenProfile);
+		logger.info("seen  direct keywords profile vector sum :" + seenNLPProfileScore);
+		
+		
+		double[] importantListTopicsSeenProfile = model.getImportantListTopicsOnlySeen();
+		double[] importantListPeopleSeenProfile = model.getImportantListPeopleOnlySeen();
+		double[] importantListNLPKeywordsSeenProfile = model.getImportantListNLPKeywordsOnlySeen();
+		
+		double seenListTopicProfileScore = EmailUtils.getVectorTotal(importantListTopicsSeenProfile);
+		logger.info("List seen topic profile vector sum :" + seenListTopicProfileScore + " no : " + this.getNumberOfListEmailsSeen());
+		double seenListPeopleProfileScore = EmailUtils.getVectorTotal(importantListPeopleSeenProfile);
+		logger.info("List seen people profile vector sum :" + seenListPeopleProfileScore);
+		double seenListNLPProfileScore = EmailUtils.getVectorTotal(importantListNLPKeywordsSeenProfile);
+		logger.info("List seen keywords profile vector sum :" + seenListNLPProfileScore);
+		
+		
+		double[] spamTopicsVector = model.getSpamVector();
+		double[] spamPeopleVector = model.getSpamPeopleVector();
+		double[] spamKeywordsVector = model.getSpamNLPKeywordVector();
+		
+		double spamTopicProfileScore = EmailUtils.getVectorTotal(spamTopicsVector);
+		logger.info("spam topic profile vector sum :" + spamTopicProfileScore + " no : " + this.getNofOfUnimportantEmails());
+		double spamVectorSum = EmailUtils.getVectorTotal(this.getReputationDataModel().getSpamVector());
+		logger.info("reputationDataModel spam topic vector sum :" + spamVectorSum + " no : " + this.getReputationDataModel().getSpamEmails().size());
+		
+		double spamPeopleProfileScore = EmailUtils.getVectorTotal(spamPeopleVector);
+		logger.info("spam replied people profile vector sum :" + spamPeopleProfileScore);
+		double spamNLPProfileScore = EmailUtils.getVectorTotal(spamKeywordsVector);
+		logger.info("spam replied keywords profile vector sum :" + spamNLPProfileScore);
+		
+		
+		logger.info("Dunn index for content clusters : " + model.getDunnIndexForContentClusters());
+	}
 
 	@Hidden
+	@javax.jdo.annotations.Persistent
 	public int getNumberOfListEmailsSeen() {
 		return numberOfListEmailsSeen;
 	}
@@ -1342,6 +1154,7 @@ public class UserMailBox {
 	}
 	
 	@Hidden
+	@javax.jdo.annotations.Persistent
 	public int getNumberOfDirectEmailsReplied() {
 		return numberOfDirectEmailsReplied;
 	}
@@ -1351,6 +1164,7 @@ public class UserMailBox {
 	}
 
 	@Hidden
+	@javax.jdo.annotations.Persistent
 	public int getNumberOfDirectEmailsFlagged() {
 		return numberOfDirectEmailsFlagged;
 	}
@@ -1360,6 +1174,7 @@ public class UserMailBox {
 	}
 
 	@Hidden
+	@javax.jdo.annotations.Persistent
 	public int getNumberOfDirectEmailsSeen() {
 		return numberOfDirectEmailsSeen;
 	}
@@ -1376,80 +1191,25 @@ public class UserMailBox {
 		this.isUpdatingModel = isUpdatingModel;
 	}
 
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantNLPKeywordsReplied() {
-		return importantNLPKeywordsReplied;
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true") 
+	public List<RandomIndexVector> getContentVectors() {
+		return contentVectors;
 	}
 
-	public void setImportantNLPKeywordsReplied(
-			double[] importantNLPKeywordsReplied) {
-		this.importantNLPKeywordsReplied = importantNLPKeywordsReplied;
+	public void setContentVectors(List<RandomIndexVector> contentVectors) {
+		this.contentVectors = contentVectors;
 	}
 	
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantNLPKeywordsOnlySeen() {
-		return importantNLPKeywordsOnlySeen;
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true") 
+	public List<RandomIndexVector> getRecipientVectors() {
+		return recipientVectors;
 	}
 
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantNLPKeywordsFlagged() {
-		return importantNLPKeywordsFlagged;
+	public void setRecipientVectors(List<RandomIndexVector> recipientVectors) {
+		this.recipientVectors = recipientVectors;
 	}
 
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantListNLPKeywordsReplied() {
-		return importantListNLPKeywordsReplied;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantListNLPKeywordsOnlySeen() {
-		return importantListNLPKeywordsOnlySeen;
-	}
 	
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getImportantListNLPKeywordsFlagged() {
-		return importantListNLPKeywordsFlagged;
-	}
-
-	public void setImportantNLPKeywordsOnlySeen(
-			double[] importantNLPKeywordsOnlySeen) {
-		this.importantNLPKeywordsOnlySeen = importantNLPKeywordsOnlySeen;
-	}
-
-	public void setImportantNLPKeywordsFlagged(double[] importantNLPKeywordsFlagged) {
-		this.importantNLPKeywordsFlagged = importantNLPKeywordsFlagged;
-	}
-
-	public void setImportantListNLPKeywordsReplied(
-			double[] importantListNLPKeywordsReplied) {
-		this.importantListNLPKeywordsReplied = importantListNLPKeywordsReplied;
-	}
-
-	public void setImportantListNLPKeywordsOnlySeen(
-			double[] importantListNLPKeywordsOnlySeen) {
-		this.importantListNLPKeywordsOnlySeen = importantListNLPKeywordsOnlySeen;
-	}
-
-	public void setImportantListNLPKeywordsFlagged(
-			double[] importantListNLPKeywordsFlagged) {
-		this.importantListNLPKeywordsFlagged = importantListNLPKeywordsFlagged;
-	}
-
-	@javax.jdo.annotations.Column(allowsNull= "true" )
-	@Hidden
-	public double[] getUnimportantDirectKeywordVector() {
-		return unimportantDirectKeywordVector;
-	}
-	
-	public void setUnimportantDirectKeywordVector(
-			double[] unimportantDirectKeywordVector) {
-		this.unimportantDirectKeywordVector = unimportantDirectKeywordVector;
-	}
-
 }

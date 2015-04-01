@@ -7,11 +7,15 @@ import javax.jdo.annotations.IdentityType;
 import javax.jdo.annotations.VersionStrategy;
 
 import org.apache.isis.applib.annotation.ObjectType;
+import org.apache.isis.applib.annotation.Programmatic;
 import org.nic.isis.reputation.dom.Email;
+import org.nic.isis.reputation.utils.EmailUtils;
 import org.nic.isis.ri.RandomIndexing;
 import org.nic.isis.vector.VectorsMath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import edu.ucla.sspace.common.Similarity;
 
 @javax.jdo.annotations.PersistenceCapable(identityType=IdentityType.DATASTORE)
 @javax.jdo.annotations.DatastoreIdentity(
@@ -25,7 +29,7 @@ public class EmailContentCluster extends EmailCluster {
 	
 	private List<Email> contentEmails;	
 	private List<String> contentEmailIds;
-
+	
 	public EmailContentCluster(double[] v) {
 		super(v);
 		this.setClusterType(TEXT_CLUSTER_TYPE);
@@ -33,12 +37,13 @@ public class EmailContentCluster extends EmailCluster {
 	
 	public EmailContentCluster(String id) {
 		super(id);
+		this.setClusterType(TEXT_CLUSTER_TYPE);
 	}
 	
 	public void addEmail(String emailId, Email email){
 		//super.addEmail(emailId, email);
 		super.addVector(email.getTextContextVector());
-		
+	
 		if(this.getContentEmailIds() == null){
 			this.setContentEmailIds(new ArrayList<String>());
 		}
@@ -68,6 +73,11 @@ public class EmailContentCluster extends EmailCluster {
 		}
 		/*centroid = VectorsMath.addArrays(centroid, email.getTextContextVector());
 		centroid = VectorsMath.devideArray(centroid, emails.size());*/
+		
+
+		//this.subjectCentroid = VectorsMath.addArrays(subjectCentroid, email.getSubjectContextVector());
+		//this.bodyCentroid = VectorsMath.addArrays(bodyCentroid, email.getBodyContextVector());
+		
 	}
 	
 	public void removeEmail(String emailId) {
@@ -89,6 +99,9 @@ public class EmailContentCluster extends EmailCluster {
 				}
 				this.getContentEmails().remove(i);
 				//logger.info("REMOVING email : " + email.getMessageId() + " from cluster : " + this.id);
+				double[] emailContextVector = email.getTextContextVector();
+				this.centroid = VectorsMath.substractArrays(this.centroid, emailContextVector);
+				
 				break;
 			}
 		}
@@ -112,27 +125,44 @@ public class EmailContentCluster extends EmailCluster {
 		this.setReputationScore(reputationScore);
 		return this.reputationScore;
 	}
-	/**
-	 * Returns a document consisting of the average of the vectors of the
-	 * documents in the cluster.
-	 * 
-	 * @return the centroid of the cluster
-	 */
-	public double[] calculateAverageCentroid(){
-		if (emails.size() == 0) {
-			return null;
+//	/**
+//	 * Returns a document consisting of the average of the vectors of the
+//	 * documents in the cluster.
+//	 * 
+//	 * @return the centroid of the cluster
+//	 */
+//	public double[] getAverageCentroid(){
+//		if (emails.size() == 0) {
+//			return null;
+//		}
+//		
+//		double[] tempVector = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+//		for (Email em : emails) {
+//			double[] contextVector = null;
+//			contextVector = em.getTextContextVector();
+//			tempVector = VectorsMath.addArrays(tempVector, contextVector);
+//		}
+//		centroid = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+//		centroid = VectorsMath.devideArray(tempVector, emails.size());
+//		return centroid;
+//	}	
+	
+	@Programmatic
+	public double getSimilarity(double[] vector) {
+		return Similarity.cosineSimilarity(getAverageCentroid(), vector);
+	}
+	
+	public double[] getAverageCentroid() {
+		// TODO Auto-generated method stub
+		double[] avgCentroid = centroid;
+		if(this.getContentEmails() != null && this.getContentEmails().size() > 0){
+			avgCentroid = VectorsMath.devideArray(avgCentroid, this.getContentEmails().size());	
+			logger.info("getting average centroid total : " + EmailUtils.getVectorTotal(avgCentroid)+ "and the cluster content emails size : " + this.getContentEmails().size());
+			
 		}
-		
-		double[] tempVector = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
-		for (Email em : emails) {
-			double[] contextVector = null;
-			contextVector = em.getTextContextVector();
-			tempVector = VectorsMath.addArrays(tempVector, contextVector);
-		}
-		centroid = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
-		centroid = VectorsMath.devideArray(tempVector, emails.size());
-		return centroid;
-	}	
+		//setting centroid with the avg.centroid for all clusters
+		return avgCentroid ;
+	}
 	
 	public double getSumOfSquaresError(){
 		double sumOfSquaredError = 0; 
@@ -157,6 +187,8 @@ public class EmailContentCluster extends EmailCluster {
 		this.contentEmails = contentEmails;
 	}
 	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
 	public List<String> getContentEmailIds() {
 		return contentEmailIds;
 	}

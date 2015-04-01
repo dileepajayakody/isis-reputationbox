@@ -29,6 +29,7 @@ public class EmailCluster{
 
 	public final static String TEXT_CLUSTER_TYPE = "TOPIC";
 	public final static String RECIPIENT_CLUSTER_TYPE = "PEOPLE";
+	public final static String WEIGHTED_SUBJECT_BODY_CLUSTER_TYPE = "SUB_BODY";
 	
 	protected String id;
 	//cannot persist maps in Isis
@@ -127,6 +128,7 @@ public class EmailCluster{
 					this.decrementMessageDeleted();
 				}
 				emails.remove(i);
+				
 				//logger.info("REMOVING email : " + email.getMessageId() + " from cluster : " + this.id);
 				break;
 			}
@@ -242,19 +244,21 @@ public class EmailCluster{
 		this.clusterType = clusterType;
 	}
 	
+	public void setCentroid(double[] cent){
+		centroid = cent;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
 	public double[] getCentroid() {
 		return centroid;
 	}
 
-	@Programmatic
-	public double getSimilarity(double[] vector) {
-		return Similarity.cosineSimilarity(centroid, vector);
-	}
 	
 	@Programmatic
     public void addVector(double[] vector) {
 		centroid = VectorsMath.addArrays(centroid, vector);
-        centroid = VectorsMath.devideArray(centroid, 2);
+        //centroid = VectorsMath.devideArray(centroid, 2);
     }
 
 	public void merge(CentroidCluster other) {
@@ -271,8 +275,5 @@ public class EmailCluster{
 */            
     }
 	
-	public double[] calculateAverageCentroid() {
-		// TODO Auto-generated method stub
-		return centroid;
-	}
+
 }

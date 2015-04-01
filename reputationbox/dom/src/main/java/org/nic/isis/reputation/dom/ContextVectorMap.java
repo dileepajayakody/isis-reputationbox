@@ -10,26 +10,27 @@ import javax.jdo.annotations.VersionStrategy;
 
 import org.apache.isis.applib.annotation.ObjectType;
 import org.apache.isis.applib.annotation.Programmatic;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import edu.ucla.sspace.vector.TernaryVector;
 
-
-@javax.jdo.annotations.PersistenceCapable(identityType = IdentityType.DATASTORE)
-@javax.jdo.annotations.DatastoreIdentity(strategy = javax.jdo.annotations.IdGeneratorStrategy.IDENTITY, column = "id")
-@javax.jdo.annotations.Version(strategy = VersionStrategy.VERSION_NUMBER, column = "version")
-@ObjectType("CONTEXTVECTORMAP")
 public class ContextVectorMap {
 
-	List<String> contextWords = new ArrayList<String>();
-	List<double[]> contextVectors = new ArrayList<double[]>();
-
+	private List<String> contextWords;
+	private List<double[]> contextVectors;
+	private final static Logger logger = LoggerFactory
+			.getLogger(ContextVectorMap.class);
+	
 	public ContextVectorMap(){
-		
+		contextWords = new ArrayList<String>();
+		contextVectors = new ArrayList<double[]>();
 	}
 	
 	@Programmatic
 	public synchronized void putContextVector(String key, double[] value) {
-	    if (!contextWords.contains(key)) {
+	    
+		if (!contextWords.contains(key)) {
 	      contextWords.add(key);
 	      contextVectors.add(value);
 	    } else
@@ -37,9 +38,11 @@ public class ContextVectorMap {
 	  }
 	
 	 public double[] getContextVector(String key) {
-		if (!contextWords.contains(key))
+		if (!contextWords.contains(key)){
+			logger.warn("No context vector found for key : " + key
+					+ " hence returning null; VERY ODD");
 			return null;
-		else {
+		}else {
 			return contextVectors.get(contextWords.indexOf(key));
 		}
 	}
@@ -75,8 +78,18 @@ public class ContextVectorMap {
 	
 	@Programmatic
 	public void setContextVectorMap(Map<String, double[]> contxtVectors){
+		contextWords = new ArrayList<String>();
+	    contextVectors = new ArrayList<double[]>();
 		for(String key : contxtVectors.keySet()){
-			this.putContextVector(key, contxtVectors.get(key));
+			//this.putContextVector(key, contxtVectors.get(key));
+			contextWords.add(key);
+			int ind = contextWords.indexOf(key);
+			if(contextVectors.size() <= ind){
+				 while(contextVectors.size() <= (ind + 1)){
+					 contextVectors.add(null);
+		    	  }
+			}
+			contextVectors.set(ind,contxtVectors.get(key));
 		}
 	}
 

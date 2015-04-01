@@ -22,7 +22,7 @@ public class RandomIndexingTest {
 		Map<String, double[]> contextVectors =new HashMap<String, double[]>();
 		
 		String sample = "this test";
-		SemanticSpace ri = new RandomIndexing(indexVectors, contextVectors);
+		SemanticSpace ri = new RandomIndexing(indexVectors, contextVectors, RandomIndexing.textSemanticType);
 		
 		String sample2 = "another text with more words";
 		

@@ -39,6 +39,9 @@ public class Email {
 	private String mailboxId;
 	private String textClusterId;
 	private String peopleClusterId;
+	//added for subject and body based clustering
+	private String weightedSubjectBodyClusterId;
+	
 	private String messageId;
 	private String gmailThreadId;
 	private String inReplytoMessageId;
@@ -111,6 +114,14 @@ public class Email {
 	//all feature contextvector
 	private double[] allFeatureVector;
 	
+	//separate vectors to represent subject and body
+	private double[] subjectContextVector;
+	private double[] bodyContextVector;
+	//separate vectors for from,to,cc
+	private double[] fromContextVector;
+	private double[] toContextVector;
+	private double[] ccContextVector;
+	
 	
 	private boolean isAnswered = false;
 	private boolean isSeen = false;
@@ -125,12 +136,12 @@ public class Email {
 	
 	
 	
-	private Reputation reputation;
+	//private Reputation reputation;
 	//for simple score..have to extend using Reputation object
 	//these are assigned for clustering results
 	private double contentReputationScore;
 	private double recipientReputationScore;
-	
+	private double weightedSubjectBodyContentScore;
 	
 	//whether this is used for model creation or prediction
 	private boolean isModel;
@@ -406,16 +417,6 @@ public class Email {
 				break;
 			}
 		}*/
-	}
-	
-	@javax.jdo.annotations.Persistent
-	@javax.jdo.annotations.Column(allowsNull = "true")
-	public Reputation getReputation() {
-		return reputation;
-	}
-
-	public void setReputation(Reputation reputation) {
-		this.reputation = reputation;
 	}
 	
 	@javax.jdo.annotations.Persistent
@@ -1082,6 +1083,85 @@ public class Email {
 
 	public void setTotalPeopleScore(double totalPeopleScore) {
 		this.totalPeopleScore = totalPeopleScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getSubjectContextVector() {
+		return subjectContextVector;
+	}
+
+
+	public void setSubjectContextVector(double[] subjectContextVector) {
+		this.subjectContextVector = subjectContextVector;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getBodyContextVector() {
+		return bodyContextVector;
+	}
+
+
+	public void setBodyContextVector(double[] bodyContextVector) {
+		this.bodyContextVector = bodyContextVector;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getFromContextVector() {
+		return fromContextVector;
+	}
+
+
+	public void setFromContextVector(double[] fromContextVector) {
+		this.fromContextVector = fromContextVector;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getToContextVector() {
+		return toContextVector;
+	}
+
+
+	public void setToContextVector(double[] toContextVector) {
+		this.toContextVector = toContextVector;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getCcContextVector() {
+		return ccContextVector;
+	}
+
+
+	public void setCcContextVector(double[] ccContextVector) {
+		this.ccContextVector = ccContextVector;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public String getWeightedSubjectBodyClusterId() {
+		return weightedSubjectBodyClusterId;
+	}
+
+
+	public void setWeightedSubjectBodyClusterId(
+			String weightedSubjectBodyClusterId) {
+		this.weightedSubjectBodyClusterId = weightedSubjectBodyClusterId;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getWeightedSubjectBodyContentScore() {
+		return weightedSubjectBodyContentScore;
+	}
+
+
+	public void setWeightedSubjectBodyContentScore(
+			double weightedSubjectBodyContentScore) {
+		this.weightedSubjectBodyContentScore = weightedSubjectBodyContentScore;
 	}
 
 

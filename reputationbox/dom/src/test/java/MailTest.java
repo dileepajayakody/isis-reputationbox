@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -41,6 +42,7 @@ import org.json.JSONObject;
 import org.nic.isis.clustering.EmailAllFeatureCluster;
 import org.nic.isis.clustering.EmailCluster;
 import org.nic.isis.clustering.EmailContentCluster;
+import org.nic.isis.clustering.EmailWeightedSubjectBodyContentCluster;
 import org.nic.isis.clustering.KMeansClustering;
 import org.nic.isis.reputation.dom.ContextVectorMap;
 import org.nic.isis.reputation.dom.Email;
@@ -51,6 +53,7 @@ import org.nic.isis.reputation.services.EmailAnalysisService;
 import org.nic.isis.reputation.utils.EmailUtils;
 import org.nic.isis.ri.RandomIndexing;
 import org.nic.isis.ri.SemanticSpace;
+import org.nic.isis.vector.VectorsMath;
 
 import edu.stanford.nlp.dcoref.CoNLL2011DocumentReader.NamedEntityAnnotation;
 import edu.stanford.nlp.dcoref.CorefChain;
@@ -105,9 +108,10 @@ public class MailTest {
 		//mt.sendMessage();
 		
 		//mt.sendReputationResults();
-		//mt.processEnronEmailSet();
-		mt.javaMailIteratorTest();
+		mt.processEnronEmailSet();
+		//mt.javaMailIteratorTest();
 		//mt.testStanfordNlp();
+		//testVectors();
 	}
 	
 	
@@ -127,10 +131,13 @@ public class MailTest {
 		  SigFilePredictor signatureDetector = new SigFilePredictor();	
 		  EmailAnalysisService emailAnalysisService = new EmailAnalysisService();
 			
-		  SemanticSpace textSemantics = new RandomIndexing(
-					new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap());
-		  SemanticSpace recipientSemantics = new RandomIndexing(
-				  new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap());
+		  RandomIndexing textSemantics = new RandomIndexing(
+					new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap(), RandomIndexing.textSemanticType);
+		  RandomIndexing recipientSemantics = new RandomIndexing(
+				  new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap(), RandomIndexing.peopleSemanticType);
+		  
+		  textSemantics.setWordDocumentFrequencies(new HashMap<String, Integer>());
+		  recipientSemantics.setWordDocumentFrequencies(new HashMap<String, Integer>());
 
 		  List<Email> emails = new ArrayList<Email>();
 		  int x = 1;
@@ -162,8 +169,9 @@ public class MailTest {
 						newEmail, textSemantics);
 				recipientSemantics = emailAnalysisService
 						.processPeopleSemantics(newEmail, recipientSemantics);
+				
 				//get all feature vector
-				EmailUtils.getAllFeatureVector(newEmail);
+				//EmailUtils.getAllFeatureVector(newEmail);
 				
 				//speech act results
 //				System.out.println("body content token stream : " + newEmail.getBodyContent().getTokenStream());
@@ -185,22 +193,19 @@ public class MailTest {
 		  
 		  
 			KMeansClustering kmeans = new KMeansClustering();
-			List<EmailAllFeatureCluster> clusters = kmeans.clusterBasedOnAllFeatures(emails);
-			
 		
-			int totalEMailsInClusters = 0;
-			double sumOfSquaredError = 0;
-			List<EmailAllFeatureCluster> contentClusters = new ArrayList<EmailAllFeatureCluster>();
+			System.out.println("Clustering emails by Content....");
+			List<EmailContentCluster> contentClusters = kmeans.clusterBasedOnContent(emails);
+			int totalEMailsInContentClusters = 0;
+			double contentSumOfSquaredError = 0;
 			
-			for (EmailAllFeatureCluster cluster : clusters) {
+			for (EmailContentCluster cluster : contentClusters) {
 				System.out.println("-----------------------------------------------------------------------------------");
-				System.out.println("Cluster ID : " + cluster.getId() + " No.of emails : " + cluster.getEmails().size()
-						+ " No of emails flagged : " + cluster.getNoOfMessagesFlagged() + " replied : " + cluster.getNoOfMessagesAnswered()
-						+ " No of emails seen : " + cluster.getNoOfMessagesSeen() + " No of emails deleted : " + cluster.getNoOfMessagesDeleted()
-						+ " Cluster reputation score : " + cluster.calculateClusterReputationScore());
-				int clusterSize = cluster.getEmails().size();
-				totalEMailsInClusters += clusterSize;
-				for (Email email : cluster.getEmails()) {
+				System.out.println("Cluster ID : " + cluster.getId() + " No.of emails : " + cluster.getContentEmails().size());
+						
+				int clusterSize = cluster.getContentEmails().size();
+				totalEMailsInContentClusters += clusterSize;
+				for (Email email : cluster.getContentEmails()) {
 					//email.setTextClusterId(cluster.getId());
 					String toAddrs = "";
 		    		if(email.getToAddresses() != null && email.getToAddresses().size() > 0){
@@ -216,29 +221,111 @@ public class MailTest {
 			    		}	
 		    		}
 		    		System.out.println(email.getMsgUid() + " : Email subject : " + email.getSubject());
-		    		System.out.println("from : " + email.getFromAddress() + " to : " + toAddrs + " ccd : " + ccAddr
-						  + "\n body : " + email.getBodyContent().getTokenStream() + 
-							"\n");
-				    
-					System.out.println("is commit : " + email.isCommit());
-					System.out.println("is delivery : " + email.isDelivery());
-					System.out.println("is meeting : " + email.isMeeting());
-					System.out.println("is proposal : " + email.isPropose());
-					System.out.println("is request : " + email.isRequest());
-					System.out.println("\n");
-					System.out.println("is flagged : " + email.isFlagged());
-					System.out.println("is replied : " + email.isAnswered());
-					System.out.println("is seen : " + email.isSeen());
-					System.out.println("is deleted : " + email.isDeleted());
+//		    		System.out.println("from : " + email.getFromAddress() + " to : " + toAddrs + " ccd : " + ccAddr
+//						  + "\n body : " + email.getBodyContent().getTokenStream() + 
+//							"\n");
+//				    
+//					System.out.println("is commit : " + email.isCommit());
+//					System.out.println("is delivery : " + email.isDelivery());
+//					System.out.println("is meeting : " + email.isMeeting());
+//					System.out.println("is proposal : " + email.isPropose());
+//					System.out.println("is request : " + email.isRequest());
+//					System.out.println("\n");
 					
-				}
-				
-				sumOfSquaredError += cluster.getSumOfSquaresError();
-				
-				contentClusters.add(cluster);
+				}				
+				contentSumOfSquaredError += cluster.getSumOfSquaresError();
 			}
-			System.out.println("TOTAL EMAILS in all Clusters : " + totalEMailsInClusters + " No. of clusters : " + clusters.size());
-			System.out.println("Sum of Squared values for all clusters : " + sumOfSquaredError);
+			System.out.println("TOTAL EMAILS in all content Clusters : " + totalEMailsInContentClusters + " No. of clusters : " + contentClusters.size());
+			System.out.println("Sum of Squared values for all content clusters : " + contentSumOfSquaredError);
+			double dunnIndex = EmailUtils.getDunnIndexForContentClusters(contentClusters);
+			System.out.println("Dunn Index for content clusters : " + dunnIndex);
+			
+			//clustering weighted subject  body content clusters
+			System.out.println("Clustering emails by Weighted Subject Body Content....");
+			List<EmailWeightedSubjectBodyContentCluster> weightedContentClusters = kmeans.clusterBasedOnSubjectAndBody(emails);
+			int totalEMailsInWeightedContentClusters = 0;
+			//double weightedContentSumOfSquaredError = 0;
+		
+			for (EmailWeightedSubjectBodyContentCluster cluster : weightedContentClusters) {
+				System.out.println("-----------------------------------------------------------------------------------");
+				System.out.println("Cluster ID : " + cluster.getId() + " No.of emails : " + cluster.getSubjectBodyContentEmails().size());
+						
+				int clusterSize = cluster.getSubjectBodyContentEmails().size();
+				totalEMailsInWeightedContentClusters += clusterSize;
+				for (Email email : cluster.getSubjectBodyContentEmails()) {
+					//email.setTextClusterId(cluster.getId());
+					String toAddrs = "";
+		    		if(email.getToAddresses() != null && email.getToAddresses().size() > 0){
+		    			for(String toAdd : email.getToAddresses()){
+			    			toAddrs += toAdd + ", ";
+			    		}	
+		    		}
+		    		
+		    		String ccAddr = "";
+		    		if(email.getCcAddresses() != null && email.getCcAddresses().size() > 0){
+		    			for(String ccAdd : email.getCcAddresses()){
+			    			ccAddr += ccAdd + ", ";
+			    		}	
+		    		}
+		    		System.out.println(email.getMsgUid() + " : Email subject : " + email.getSubject());
+
+				}				
+				//weightedContentSumOfSquaredError += cluster.getSumOfSquaresError();
+			}
+			System.out.println("TOTAL EMAILS in all weighted content Clusters : " + totalEMailsInWeightedContentClusters + " No. of clusters : " + weightedContentClusters.size());
+			double subjectCentroidDunnIndex = EmailUtils.getDunnIndexForWeightedSubBodyContentClusters(weightedContentClusters, EmailWeightedSubjectBodyContentCluster.subjectVectorType);
+			double bodyCentroidDunnIndex = EmailUtils.getDunnIndexForWeightedSubBodyContentClusters(weightedContentClusters, EmailWeightedSubjectBodyContentCluster.bodyVectorType);
+			
+			System.out.println("Dunn Index for subject centroids : " + subjectCentroidDunnIndex);
+			System.out.println("Dunn Index for body centroids : " + bodyCentroidDunnIndex);
+			
+			
+			
+//			List<EmailAllFeatureCluster> allFeatureClusters = kmeans.clusterBasedOnAllFeatures(emails);
+//			int totalEMailsInClusters = 0;
+//			double sumOfSquaredError = 0;
+//			
+//			for (EmailAllFeatureCluster cluster : allFeatureClusters) {
+//				System.out.println("-----------------------------------------------------------------------------------");
+//				System.out.println("Cluster ID : " + cluster.getId() + " No.of emails : " + cluster.getEmails().size()
+//						+ " No of emails flagged : " + cluster.getNoOfMessagesFlagged() + " replied : " + cluster.getNoOfMessagesAnswered()
+//						+ " No of emails seen : " + cluster.getNoOfMessagesSeen() + " No of emails deleted : " + cluster.getNoOfMessagesDeleted()
+//						+ " Cluster reputation score : " + cluster.calculateClusterReputationScore());
+//				int clusterSize = cluster.getEmails().size();
+//				totalEMailsInClusters += clusterSize;
+//				for (Email email : cluster.getEmails()) {
+//					//email.setTextClusterId(cluster.getId());
+//					String toAddrs = "";
+//		    		if(email.getToAddresses() != null && email.getToAddresses().size() > 0){
+//		    			for(String toAdd : email.getToAddresses()){
+//			    			toAddrs += toAdd + ", ";
+//			    		}	
+//		    		}
+//		    		
+//		    		String ccAddr = "";
+//		    		if(email.getCcAddresses() != null && email.getCcAddresses().size() > 0){
+//		    			for(String ccAdd : email.getCcAddresses()){
+//			    			ccAddr += ccAdd + ", ";
+//			    		}	
+//		    		}
+//		    		System.out.println(email.getMsgUid() + " : Email subject : " + email.getSubject());
+//		    		System.out.println("from : " + email.getFromAddress() + " to : " + toAddrs + " ccd : " + ccAddr
+//						  + "\n body : " + email.getBodyContent().getTokenStream() + 
+//							"\n");
+//				    
+//					System.out.println("is commit : " + email.isCommit());
+//					System.out.println("is delivery : " + email.isDelivery());
+//					System.out.println("is meeting : " + email.isMeeting());
+//					System.out.println("is proposal : " + email.isPropose());
+//					System.out.println("is request : " + email.isRequest());
+//					System.out.println("\n");
+//					
+//				}				
+//				sumOfSquaredError += cluster.getSumOfSquaresError();
+//			}
+//			System.out.println("TOTAL EMAILS in all Clusters : " + totalEMailsInClusters + " No. of clusters : " + allFeatureClusters.size());
+//			System.out.println("Sum of Squared values for all clusters : " + sumOfSquaredError);
+//			
 			
 //			double dunnIndex = emailAnalysisService.getDunnIndexForContentClusters(contentClusters, EmailCluster.TEXT_CLUSTER_TYPE);
 //			System.out.println("dunn index for clusters : " + dunnIndex);
@@ -317,10 +404,10 @@ public class MailTest {
 			//initializing stanfordNLP
 			 EmailAnalysisService emailAnalysisService = new EmailAnalysisService();
 				
-			 SemanticSpace textSemantics = new RandomIndexing(
-						new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap());
-			 SemanticSpace recipientSemantics = new RandomIndexing(
-					  new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap());
+			 RandomIndexing textSemantics = new RandomIndexing(
+						new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap(), RandomIndexing.textSemanticType);
+			 RandomIndexing recipientSemantics = new RandomIndexing(
+					  new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap(), RandomIndexing.peopleSemanticType);
 
 			
 			Session session = Session.getInstance(props, null);
@@ -453,5 +540,16 @@ public class MailTest {
 			mex.printStackTrace();
 		}
 
+	}
+	
+	public static void testVectors(){
+		double[] centroid = {1.0,5.0,3.0};
+		double[] testVec = centroid;
+		
+		testVec = VectorsMath.devideArray(testVec, 2);
+		System.out.println("testVec : " + testVec[0] + " , " + testVec[1] + " , " + testVec[2] );
+		System.out.println("centroid : " + centroid[0] + " , " + centroid[1] + " , " + centroid[2] );
+		
+		
 	}
 }

@@ -9,6 +9,7 @@ import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
 import edu.stanford.nlp.pipeline.Annotation;
 import edu.stanford.nlp.pipeline.StanfordCoreNLP;
 import edu.stanford.nlp.util.CoreMap;
+import edu.ucla.sspace.common.Similarity;
 import edu.ucla.sspace.text.EnglishStemmer;
 import jangada.ReplyToAnnotator;
 import jangada.SigFilePredictor;
@@ -40,15 +41,21 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.isis.applib.annotation.Programmatic;
 import org.jfree.util.Log;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.nic.isis.clustering.EmailCluster;
+import org.nic.isis.clustering.EmailContentCluster;
+import org.nic.isis.clustering.EmailRecipientCluster;
+import org.nic.isis.clustering.EmailWeightedSubjectBodyContentCluster;
 import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.EmailBody;
 import org.nic.isis.reputation.dom.EmailReputationDataModel;
 import org.nic.isis.reputation.dom.TextContent;
 import org.nic.isis.reputation.dom.TextTokenMap;
 import org.nic.isis.reputation.dom.UserMailBox;
+import org.nic.isis.vector.VectorsMath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -376,12 +383,11 @@ public final class EmailUtils {
 		Map<String, Integer> emoticonsFrequenceMap = new HashMap<String, Integer>();
 
 		StopwordFilter stopwordFilter = new StopwordFilter();
+		
 		// logger.info("processing text : \n" + text);
 		try {
 
 			text = removeHtmlTags(text);
-			text = text.toLowerCase();
-
 			scanner = new Scanner(text);
 			StringTokenizer st = null;
 			StringBuilder passedLine = null;
@@ -468,10 +474,13 @@ public final class EmailUtils {
 			int processedTokens = 0;
 			while (st.hasMoreTokens()) {
 				String token = st.nextToken();
-				String stemmedToken = stemmer.stem(token);
-				processedText = processedText + " " + stemmedToken;
-				wordFrequenceMap = addTokenToMap(wordFrequenceMap, stemmedToken);
-				processedTokens++;
+				if(token.length() > 1 || token.equalsIgnoreCase("i")){
+					//not adding tokens with length 1
+					String stemmedToken = stemmer.stem(token);
+					processedText = processedText + " " + stemmedToken;
+					wordFrequenceMap = addTokenToMap(wordFrequenceMap, stemmedToken);
+					processedTokens++;	
+				}
 			}
 
 			// also needs to lemmatize text...
@@ -614,19 +623,23 @@ public final class EmailUtils {
 			reputationObj.put("peopleclusterid", email.getPeopleClusterId());
 			
 			//adding new fields for speech acts and nlp fields/keywords
-			reputationObj.put("emailintent", getMessageIntentString(email));
+			String intentString = getMessageIntentString(email);
+			reputationObj.put("emailintent",intentString);
 			reputationObj.put("nlpkeywords", getNLPKeywordsFromEmail(email));
-			double totalReplyScore = email.getRepliedPeoplescore()+email.getRepliedTopicscore()
-									+ email.getRepliedKeywordscore()+ email.getRepliedSpeechActscore();
+			double totalReplyScore = email.getRepliedPeoplescore() + email.getRepliedTopicscore()
+									+ email.getRepliedKeywordscore();
 			reputationObj.put("replyscore", totalReplyScore);
-			double totalFlaggedScore = email.getFlaggedPeoplescore()+email.getFlaggedTopicscore()
-					+ email.getFlaggedKeywordscore()+ email.getFlaggedSpeechActscore();
+			double totalFlaggedScore = email.getFlaggedPeoplescore() + email.getFlaggedTopicscore()
+					+ email.getFlaggedKeywordscore();
+		
 			reputationObj.put("flagscore", totalFlaggedScore);
 			
-			double totalSeenScore = email.getSeenPeoplescore()+email.getSeenTopicscore()
-					+ email.getSeenKeywordscore()+ email.getSeenSpeechActscore();
-			reputationObj.put("seenscore", totalFlaggedScore);
-			
+			double totalSeenScore = email.getSeenPeoplescore() + email.getSeenTopicscore()
+					+ email.getSeenKeywordscore();
+			reputationObj.put("seescore", totalSeenScore);
+			logger.info("the scores in results email to be sent :  uid : " + email.getMsgUid() + " contentscore : " + email.getContentReputationScore() 
+					+ " people score : " + email.getPeopleClusterId() + " content cluster : " + email.getTextClusterId() + " people cluster : " + email.getPeopleClusterId()
+					+  " email intent : " + intentString + " reply-score : " + totalReplyScore + " flag score : " + totalFlaggedScore + " see score: " + totalSeenScore);
 			
 			resultsArray.put(reputationObj);
 		}
@@ -790,7 +803,11 @@ public final class EmailUtils {
 			if (listAddress.startsWith("<") && listAddress.endsWith(">")) {
 				listAddress.substring(1, listAddress.length() - 2);
 			}
-			newEmail.setListAddress(listAddress);
+			if(listAddress.length() < 255){
+				newEmail.setListAddress(listAddress);	
+			} else {
+				newEmail.setListAddress(listAddress.substring(0, 254));
+			}
 			newEmail.setListMail(true);
 
 		} else {
@@ -800,7 +817,11 @@ public final class EmailUtils {
 				if (listAddress.startsWith("<") && listAddress.endsWith(">")) {
 					listAddress.substring(1, listAddress.length() - 2);
 				}
-				newEmail.setListAddress(listAddress);
+				if(listAddress.length() < 255){
+					newEmail.setListAddress(listAddress);	
+				} else {
+					newEmail.setListAddress(listAddress.substring(0, 254));
+				}
 				newEmail.setListMail(true);
 
 			} else {
@@ -811,7 +832,11 @@ public final class EmailUtils {
 							&& listAddress.endsWith(">")) {
 						listAddress.substring(1, listAddress.length() - 2);
 					}
-					newEmail.setListAddress(listAddress);
+					if(listAddress.length() < 255){
+						newEmail.setListAddress(listAddress);	
+					} else {
+						newEmail.setListAddress(listAddress.substring(0, 254));
+					}
 					newEmail.setListMail(true);
 
 				}else {
@@ -822,7 +847,11 @@ public final class EmailUtils {
 								&& listAddress.endsWith(">")) {
 							listAddress.substring(1, listAddress.length() - 2);
 						}
-						newEmail.setListAddress(listAddress);
+						if(listAddress.length() < 255){
+							newEmail.setListAddress(listAddress);	
+						} else {
+							newEmail.setListAddress(listAddress.substring(0, 254));
+						}
 						newEmail.setListMail(true);
 
 					}
@@ -862,13 +891,20 @@ public final class EmailUtils {
 		// processing email importance headers
 		String[] priorityHeaders = msg.getHeader("X-Priority");
 		if (priorityHeaders != null && priorityHeaders.length > 0) {
-			String importanceHeader = priorityHeaders[0];
-			int priorityLevel = Integer.parseInt(importanceHeader);
-			newEmail.setImportanceLevelByHeader(priorityLevel);
-			if (priorityLevel < 3) {
-				logger.info(" Has priority level header : " + priorityLevel);
-				newEmail.setIsImportantByHeader(true);
+			try{
+				String importanceHeader = priorityHeaders[0];
+				int priorityLevel = Integer.parseInt(importanceHeader);
+				newEmail.setImportanceLevelByHeader(priorityLevel);
+				if (priorityLevel < 3) {
+					logger.info(" Has priority level header : " + priorityLevel);
+					newEmail.setIsImportantByHeader(true);
+				}
+			}catch(Exception ex){
+				logger.error("Error occured while paring X-Spam-Score "
+						+ ex.getMessage());
+				ex.printStackTrace();
 			}
+			
 		} else {
 			// process importance
 			String[] importanceHeaders = msg.getHeader("Importance");
@@ -947,6 +983,7 @@ public final class EmailUtils {
 		}
 		//processing nlp
 		logger.info("processing NLP results for subject..");
+		subject = subject.toLowerCase();
 		newEmail = getNLPResults(subject, newEmail);
 		TextContent subjectTextContent = EmailUtils.processText(subject);
 		newEmail.setSubject(subject);
@@ -975,13 +1012,18 @@ public final class EmailUtils {
 		if (cleanedText != null && !cleanedText.equals("")) {
 			String msgWithoutQuotes = replyExtractor
 					.deleteReplyLinesFromMsg(cleanedText);
-			// String messageWithoutSignatures =
-			// signatureDetector.getMsgWithoutSignatureLines(msgWithoutQuotes);
+			//removing signatures from list emails..coz of sheer load
+			//but this part may take time to execute
+			if(newEmail.isListMail()){
+				msgWithoutQuotes =
+				signatureDetector.getMsgWithoutSignatureLines(msgWithoutQuotes);	
+			}
 			cleanedText = msgWithoutQuotes;
 		}
 		//processing nlp
 
 		logger.info("processing NLP results for email body.");
+		cleanedText = cleanedText.toLowerCase();
 		newEmail = getNLPResults(cleanedText, newEmail);
 				
 
@@ -1171,10 +1213,14 @@ public final class EmailUtils {
 	public static Email getNLPResults(String content, Email email){
         
 		try{
+			//convert the string to lower case;
+			
 			//Set<String> persons = new HashSet<String>();
 			//Set<String> locations = new HashSet<String>();
 			//Set<String> organizations = new HashSet<String>();
 			List<String> keywords = new ArrayList<String>();
+			EnglishStemmer stemmer = new EnglishStemmer();
+
 			Map<String, Integer> keywordMatrix = new HashMap<String, Integer>();
 			if(content.length() > 5000){
 				logger.info("content too large to handle for NLP pipeline; ;length : " + content.length()); 
@@ -1200,6 +1246,7 @@ public final class EmailUtils {
 			        // this is the NER label of the token
 			        String ne = token.get(NamedEntityTagAnnotation.class);
 			        if(pos.equalsIgnoreCase("NN") || pos.equalsIgnoreCase("NNS")){
+			        	word = stemmer.stem(word);
 			        	keywords.add(word);
 			        	if(keywordMatrix.containsKey(word)){
 			        		Integer val = keywordMatrix.get(word);
@@ -1266,7 +1313,7 @@ public final class EmailUtils {
 		try {
 
 			String emailIdPart = toEmailId.substring(0, toEmailId.indexOf("@"));
-
+			logger.info("Sending the results email to : " + toEmailId);
 			Message message = new MimeMessage(session);
 			message.setFrom(new InternetAddress("reputationbox1@gmail.com"));
 			message.setRecipients(
@@ -1290,9 +1337,9 @@ public final class EmailUtils {
 	
 	public static void printModelResults(UserMailBox mailbox){
 		EmailReputationDataModel reputationModel = mailbox.getReputationDataModel();
-		List<Email> flaggedDirectEmails = reputationModel.getFlaggedEmails();
-		List<Email> repliedDirectEmails = reputationModel.getRepliedEmails();
-		List<Email> seenDirectEmails = reputationModel.getSeenEmails();
+		Set<Email> flaggedDirectEmails = reputationModel.getFlaggedEmails();
+		Set<Email> repliedDirectEmails = reputationModel.getRepliedEmails();
+		Set<Email> seenDirectEmails = reputationModel.getSeenEmails();
 		if(flaggedDirectEmails != null && repliedDirectEmails != null && seenDirectEmails != null){
 			logger.info("Number of direct emails flagged : " + flaggedDirectEmails.size()
 					+ " replied : " + repliedDirectEmails.size()
@@ -1356,9 +1403,9 @@ public final class EmailUtils {
 			}
 		}
 		
-		List<Email> flaggedListEmails = reputationModel.getFlaggedListEmails();
-		List<Email> repliedListEmails = reputationModel.getRepliedListEmails();
-		List<Email> seenListEmails = reputationModel.getSeenListEmails();
+		Set<Email> flaggedListEmails = reputationModel.getFlaggedListEmails();
+		Set<Email> repliedListEmails = reputationModel.getRepliedListEmails();
+		Set<Email> seenListEmails = reputationModel.getSeenListEmails();
 		
 		Map<String, Integer> flaggedListMatrix = new HashMap<String, Integer>();
 		
@@ -1467,5 +1514,256 @@ public final class EmailUtils {
 		}
 		return total;
 	}
+	
+	public static void printImportanceModelForMailBox(UserMailBox mb){
+		EmailReputationDataModel model = mb.getReputationDataModel();
+		
+		//flagged
+		double[] importantTopicsFlaggedProfile = model.getImportantTopicsFlagged();
+		double[] importantPeopleFlaggedProfile = model.getImportantPeopleFlagged();
+		double[] importantNLPKeywordsFlaggedProfile = model.getImportantNLPKeywordsFlagged();
+		
+		double flaggedTopicProfileScore = EmailUtils.getVectorTotal(importantTopicsFlaggedProfile);
+		logger.info(" flagged topic profile vector sum :" + flaggedTopicProfileScore +" no : " + mb.getNumberOfDirectEmailsFlagged());
+		double flaggedPeopleProfileScore = EmailUtils.getVectorTotal(importantPeopleFlaggedProfile);
+		logger.info(" flagged people profile vector sum :" + flaggedPeopleProfileScore );
+		double flaggedNLPProfileScore = EmailUtils.getVectorTotal(importantNLPKeywordsFlaggedProfile);
+		logger.info(" flagged keywords profile vector sum :" + flaggedNLPProfileScore);
+		
+		double[] importantListTopicsFlaggedProfile = model.getImportantListTopicsFlagged();
+		double[] importantListPeopleFlaggedProfile = model.getImportantListPeopleFlagged();
+		double[] importantListNLPKeywordsFlaggedProfile = model.getImportantListNLPKeywordsFlagged();
+		
+		double flaggedListTopicProfileScore = EmailUtils.getVectorTotal(importantListTopicsFlaggedProfile);
+		logger.info("List flagged topic profile vector sum :" + flaggedListTopicProfileScore + " no : " + mb.getNumberOfListEmailsFlagged());
+		double flaggedListPeopleProfileScore = EmailUtils.getVectorTotal(importantListPeopleFlaggedProfile);
+		logger.info("List flagged people profile vector sum :" + flaggedListPeopleProfileScore);
+		double flaggedListNLPProfileScore = EmailUtils.getVectorTotal(importantListNLPKeywordsFlaggedProfile);
+		logger.info("List flagged keywords profile vector sum :" + flaggedListNLPProfileScore);
+		
+		
+		
+		double[] importantTopicsRepliedProfile = model.getImportantTopicsReplied();
+		double[] importantPeopleRepliedProfile = model.getImportantPeopleReplied();
+		double[] importantNLPKeywordsRepliedProfile = model.getImportantNLPKeywordsReplied();
+		
+		
+		double repliedTopicProfileScore = EmailUtils.getVectorTotal(importantTopicsRepliedProfile);
+		logger.info(" replied topic profile vector sum :" + repliedTopicProfileScore + " no : " + mb.getNumberOfDirectEmailsReplied());
+		double repliedPeopleProfileScore = EmailUtils.getVectorTotal(importantPeopleRepliedProfile);
+		logger.info(" replied people profile vector sum :" + repliedPeopleProfileScore);
+		double repliedNLPProfileScore = EmailUtils.getVectorTotal(importantNLPKeywordsRepliedProfile);
+		logger.info(" replied keywords profile vector sum :" + repliedNLPProfileScore);
+		
+		
+		double[] importantListTopicsRepliedProfile = model.getImportantListTopicsReplied();
+		double[] importantListPeopleRepliedProfile = model.getImportantListPeopleReplied();
+		double[] importantListNLPKeywordsRepliedProfile = model.getImportantListNLPKeywordsReplied();
+		
+		double repliedListTopicProfileScore = EmailUtils.getVectorTotal(importantListTopicsRepliedProfile);
+		logger.info("List replied topic profile vector sum :" + repliedListTopicProfileScore + " no : " + mb.getNumberOfListEmailsReplied());
+		double repliedListPeopleProfileScore = EmailUtils.getVectorTotal(importantListPeopleRepliedProfile);
+		logger.info("List replied people profile vector sum :" + repliedListPeopleProfileScore);
+		double repliedListNLPProfileScore = EmailUtils.getVectorTotal(importantListNLPKeywordsRepliedProfile);
+		logger.info("List replied keywords profile vector sum :" + repliedListNLPProfileScore);
+		
+		
+		double[] importantTopicsSeenProfile = model.getImportantTopicsOnlySeen();
+		double[] importantPeopleSeenProfile = model.getImportantPeopleOnlySeen();
+		double[] importantNLPKeywordsSeenProfile = model.getImportantNLPKeywordsOnlySeen();
+		
+		double seenTopicProfileScore = EmailUtils.getVectorTotal(importantTopicsSeenProfile);
+		logger.info("seen topic profile vector sum :" + seenTopicProfileScore+ " no :" + mb.getNumberOfDirectEmailsSeen());
+		double seenPeopleProfileScore = EmailUtils.getVectorTotal(importantPeopleSeenProfile);
+		logger.info("seen people profile vector sum :" + seenPeopleProfileScore);
+		double seenNLPProfileScore = EmailUtils.getVectorTotal(importantNLPKeywordsSeenProfile);
+		logger.info("seen keywords profile vector sum :" + seenNLPProfileScore);
+		
+		
+		double[] importantListTopicsSeenProfile = model.getImportantListTopicsOnlySeen();
+		double[] importantListPeopleSeenProfile = model.getImportantListPeopleOnlySeen();
+		double[] importantListNLPKeywordsSeenProfile = model.getImportantListNLPKeywordsOnlySeen();
+		
+		double seenListTopicProfileScore = EmailUtils.getVectorTotal(importantListTopicsSeenProfile);
+		logger.info("List seen topic profile vector sum :" + seenListTopicProfileScore + " no : " + mb.getNumberOfListEmailsSeen());
+		double seenListPeopleProfileScore = EmailUtils.getVectorTotal(importantListPeopleSeenProfile);
+		logger.info("List seen people profile vector sum :" + seenListPeopleProfileScore);
+		double seenListNLPProfileScore = EmailUtils.getVectorTotal(importantListNLPKeywordsSeenProfile);
+		logger.info("List seen keywords profile vector sum :" + seenListNLPProfileScore);
+		
+		
+		double[] spamTopicsVector = model.getSpamVector();
+		double[] spamPeopleVector = model.getSpamPeopleVector();
+		double[] spamKeywordsVector = model.getSpamNLPKeywordVector();
+		
+		double spamTopicProfileScore = EmailUtils.getVectorTotal(spamTopicsVector);
+		logger.info("spam topic profile vector sum :" + spamTopicProfileScore + " no : " + mb.getNofOfUnimportantEmails());
+		double spamPeopleProfileScore = EmailUtils.getVectorTotal(spamPeopleVector);
+		logger.info("spam replied people profile vector sum :" + spamPeopleProfileScore);
+		double spamNLPProfileScore = EmailUtils.getVectorTotal(spamKeywordsVector);
+		
+		logger.info("\n\nSpam replied keywords profile vector sum :" + spamNLPProfileScore);
+		logger.info("Dunn index for content clusters : " + model.getDunnIndexForContentClusters());
+	}
 
+
+	/**
+	 * returns the positive cosine similarity without looking at minus sim and very small sim
+	 * @param a vector
+	 * @param b vector
+	 * @return
+	 */
+	public static double calculateCosineSimilarity(double[] a , double[] b){
+		double result = 0;
+		result = Similarity.cosineSimilarity(a, b);
+		if(result < 0.00001){
+			result = 0;
+		}
+		return result;
+	}
+	
+	public static double getIncrementalLogIDF(int noOfDocsIndexed, int noOfDocsWithTheWord){
+		double result = 0;
+		if(noOfDocsIndexed > 0 && noOfDocsWithTheWord > 0){
+			double logidf =Math.log(noOfDocsIndexed/noOfDocsWithTheWord);		
+			result = 1 + logidf;
+			//logger.info("the incremental log idf result : " + result);	
+		}else {
+			throw new IllegalArgumentException("The no of docs indexed or no of docs with the word is zero");
+		}
+		return result;
+	}
+	
+	/**
+	 * for content clusters
+	 * if min Distance(Ci,Cj) / max Diam(Cx) >1 ; then clusters are compact and well clustered
+	 * @return dunnIndex to validate cluster quality
+	 */
+	public static double getDunnIndexForContentClusters(List<EmailContentCluster> clusters){
+		//min Distance(Ci,Cj) / max Diam(Cx) >1 ; then clusters are CWS
+		double di = 0;
+		double minInterClusterDistance = 0;
+		double maxIntraClusterDistance = 0;
+		
+		for(EmailContentCluster c1: clusters){
+			for(EmailContentCluster c2 : clusters){
+				
+				if(c1.getId() != c2.getId()){
+					double[] v1 = c1.getCentroid();
+					double[] v2 = c2.getCentroid();
+					double dis = VectorsMath.getDistance(v1, v2);
+					logger.info("inter-cluster distance between : " + c1.getId() + " and " + c2.getId() 
+								+ " distance: "+ dis);
+					
+					if(minInterClusterDistance == 0) {
+						minInterClusterDistance = dis;
+					} else {
+						if(dis < minInterClusterDistance) {
+							minInterClusterDistance = dis;
+						}
+					}
+				}
+			}
+		}
+		
+		for(EmailContentCluster c: clusters){
+			double sumOfIntraClusterDistance = 0;
+			double intraClusterDistance = 0;
+			
+			List<Email> emails = null;
+			EmailContentCluster contentCluster = (EmailContentCluster)c;
+			emails = contentCluster.getContentEmails();
+			
+			for(Email mail : emails){
+				//distance from the centroid
+				double[] v1 = mail.getTextContextVector();
+				double dis = VectorsMath.getDistance(v1, c.getCentroid());
+				sumOfIntraClusterDistance += dis;
+			}
+			
+			intraClusterDistance = sumOfIntraClusterDistance / emails.size();
+			//logger.info("intracluster distance : " + intraClusterDistance);
+			if(maxIntraClusterDistance < intraClusterDistance){
+				maxIntraClusterDistance = intraClusterDistance;
+			}
+		}
+		
+		logger.info("min inter-cluster distance : " + minInterClusterDistance + " max. intracluster distance : " + maxIntraClusterDistance );
+		double dunnIndex = minInterClusterDistance/maxIntraClusterDistance;
+		
+		return dunnIndex;
+	}
+	
+	/**
+	 * for weighted subject body content clusters
+	 * if min Distance(Ci,Cj) / max Diam(Cx) >1 ; then clusters are compact and well clustered
+	 * @return dunnIndex to validate cluster quality
+	 */
+	public static double getDunnIndexForWeightedSubBodyContentClusters(List<EmailWeightedSubjectBodyContentCluster> clusters, String vectorType){
+		//min Distance(Ci,Cj) / max Diam(Cx) >1 ; then clusters are CWS
+		double di = 0;
+		double minInterClusterDistance = 0;
+		double maxIntraClusterDistance = 0;
+		
+		for(EmailWeightedSubjectBodyContentCluster c1: clusters){
+			for(EmailWeightedSubjectBodyContentCluster c2 : clusters){
+				double[] v1 = null;
+				double[] v2 = null;
+				if(c1.getId() != c2.getId()){
+					if(vectorType.equals(EmailWeightedSubjectBodyContentCluster.subjectVectorType)){
+						v1 = c1.getSubjectCentroid();
+						v2 = c2.getSubjectCentroid();	
+					}else if(vectorType.equals(EmailWeightedSubjectBodyContentCluster.bodyVectorType)){
+						v1 = c1.getBodyCentroid();
+						v2 = c2.getBodyCentroid();	
+					}
+					double dis = VectorsMath.getDistance(v1, v2);
+					logger.info("inter-cluster vector distance between : " + c1.getId() + " and " + c2.getId() 
+								+ " distance: "+ dis);
+					
+					if(minInterClusterDistance == 0) {
+						minInterClusterDistance = dis;
+					} else {
+						if(dis < minInterClusterDistance) {
+							minInterClusterDistance = dis;
+						}
+					}
+				}
+			}
+		}
+		
+		for(EmailWeightedSubjectBodyContentCluster c: clusters){
+			double sumOfIntraClusterDistance = 0;
+			double intraClusterDistance = 0;
+			
+			List<Email> emails = null;
+			emails = c.getSubjectBodyContentEmails();
+			
+			for(Email mail : emails){
+				//distance from the centroid
+				if(vectorType.equals(EmailWeightedSubjectBodyContentCluster.subjectVectorType)){
+					double[] v1 = mail.getSubjectContextVector();
+					double dis = VectorsMath.getDistance(v1, c.getSubjectCentroid());
+					sumOfIntraClusterDistance += dis;	
+				} else if (vectorType.equals(EmailWeightedSubjectBodyContentCluster.bodyVectorType)){
+					double[] v1 = mail.getBodyContextVector();
+					double dis = VectorsMath.getDistance(v1, c.getBodyCentroid());
+					sumOfIntraClusterDistance += dis;	
+				}
+				
+			}
+			
+			intraClusterDistance = sumOfIntraClusterDistance / emails.size();
+			//logger.info("intracluster distance : " + intraClusterDistance);
+			if(maxIntraClusterDistance < intraClusterDistance){
+				maxIntraClusterDistance = intraClusterDistance;
+			}
+		}
+		
+		logger.info("min inter-cluster distance : " + minInterClusterDistance + " max. intracluster distance : " + maxIntraClusterDistance );
+		double dunnIndex = minInterClusterDistance/maxIntraClusterDistance;
+		
+		return dunnIndex;
+	}
+	
 }

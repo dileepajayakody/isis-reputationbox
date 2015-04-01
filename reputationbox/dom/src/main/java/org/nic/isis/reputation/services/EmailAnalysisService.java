@@ -8,6 +8,7 @@ import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -19,14 +20,12 @@ import org.apache.commons.collections4.map.HashedMap;
 import org.apache.isis.applib.DomainObjectContainer;
 import org.apache.isis.applib.annotation.Hidden;
 import org.apache.isis.applib.annotation.Programmatic;
-import org.jfree.util.ArrayUtils;
 import org.nic.isis.clustering.EmailCluster;
 import org.nic.isis.clustering.EmailContentCluster;
 import org.nic.isis.clustering.EmailRecipientCluster;
+import org.nic.isis.clustering.EmailWeightedSubjectBodyContentCluster;
 import org.nic.isis.clustering.KMeansClustering;
-import org.nic.isis.clustering.similarity.CosineSimilarity;
 import org.nic.isis.reputation.dom.Email;
-import org.nic.isis.reputation.dom.EmailFlag;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.reputation.utils.EmailUtils;
 import org.nic.isis.ri.RandomIndexing;
@@ -65,10 +64,15 @@ public class EmailAnalysisService {
 	 * @throws IOException
 	 */
 	@Programmatic
-	public SemanticSpace processTextSemantics(Email email,
-			SemanticSpace textSemantics) throws IOException {
+	public RandomIndexing processTextSemantics(Email email,
+			RandomIndexing textSemantics) throws IOException {
 		
 		double[] emailTextContextVector = new double[textSemantics.getVectorLength()];
+		double[] emailSubjectTextContextVector = new double[textSemantics.getVectorLength()];
+		double[] emailBodyTextContextVector = new double[textSemantics.getVectorLength()];
+		
+		//to calculate incremental log idf
+		System.out.println("no of docs processed by text semantics" + textSemantics.getNoOfDocumentsProcessed());
 		
 		// processing subject and body separately as 2 documents
 		if(email.getSubjectContent() != null){
@@ -81,7 +85,7 @@ public class EmailAnalysisService {
 			// calculating the sum of all words semantic vectors in the document
 			//processing email subject content
 			Set<String> subjectWords = email.getSubjectContent().getStringTokens().keySet();
-			
+					
 			int totalSubjectWordCount = 0;
 			for(String word: subjectWords){
 				double[] wordSemanticVector = textSemantics.getVector(word);
@@ -90,12 +94,29 @@ public class EmailAnalysisService {
 					//logger.info("adding c.vector for subject word : " + word);
 					int frequency = email.getSubjectContent().getStringTokens()
 							.get(word);
+				
 					totalSubjectWordCount += frequency;
 					int totalNumberOfTokens = email.getSubjectContent().getStringTokens().size();
 					// add the semantic vector of the word * the no. of times(normalized) its
 					// mentioned in the doc (normalized for 100 words per document)
+//					emailTextContextVector = VectorsMath.addArrays(emailTextContextVector,
+//							wordSemanticVector, EmailUtils.getNormalizedFrequency(frequency, totalNumberOfTokens));
+//					
+//					emailSubjectTextContextVector = VectorsMath.addArrays(emailSubjectTextContextVector,
+//							wordSemanticVector, EmailUtils.getNormalizedFrequency(frequency, totalNumberOfTokens));
+//					
+					//with incremental log idf
+					int noOfDocsWithTheWord = textSemantics.getWordFrequency(word);
+					double normalizedFrequency = EmailUtils.getNormalizedFrequency(frequency, totalNumberOfTokens);
+					double incrementalLogIDF = EmailUtils.getIncrementalLogIDF(textSemantics.getNoOfDocumentsProcessed(), noOfDocsWithTheWord);
+					double weight = incrementalLogIDF * normalizedFrequency;
+					
 					emailTextContextVector = VectorsMath.addArrays(emailTextContextVector,
-							wordSemanticVector, EmailUtils.getNormalizedFrequency(frequency, totalNumberOfTokens));
+							wordSemanticVector, weight);
+					
+					emailSubjectTextContextVector = VectorsMath.addArrays(emailSubjectTextContextVector,
+							wordSemanticVector, weight);
+					
 					
 				} else {
 					logger.info("the frequency for word : " + word + " is null " );
@@ -127,9 +148,20 @@ public class EmailAnalysisService {
 						int totalNumberOfTokens = email.getBodyContent().getStringTokens().size();
 						// add the semantic vector of the word * the no. of times its
 						// mentioned in the doc
-
+//						emailTextContextVector = VectorsMath.addArrays(emailTextContextVector,
+//								wordSemanticVector, EmailUtils.getNormalizedFrequency(frequency, totalNumberOfTokens));
+//						emailBodyTextContextVector = VectorsMath.addArrays(emailBodyTextContextVector,
+//								wordSemanticVector, EmailUtils.getNormalizedFrequency(frequency, totalNumberOfTokens));
+//					
+						//with incremental log idf
+						int noOfDocsWithTheWord = textSemantics.getWordFrequency(word);
+						double normalizedFrequency = EmailUtils.getNormalizedFrequency(frequency, totalNumberOfTokens);
+						double incrementalLogIDF = EmailUtils.getIncrementalLogIDF(textSemantics.getNoOfDocumentsProcessed(), noOfDocsWithTheWord);
+						double weight = incrementalLogIDF * normalizedFrequency;
 						emailTextContextVector = VectorsMath.addArrays(emailTextContextVector,
-								wordSemanticVector, EmailUtils.getNormalizedFrequency(frequency, totalNumberOfTokens));
+								wordSemanticVector, weight);
+						emailBodyTextContextVector = VectorsMath.addArrays(emailBodyTextContextVector,
+								wordSemanticVector, weight);
 						
 						} else {
 						logger.info("the frequency for word : " + word + " is null " );
@@ -140,6 +172,8 @@ public class EmailAnalysisService {
 		}
  		
 		email.setTextContextVector(emailTextContextVector);
+		email.setSubjectContextVector(emailSubjectTextContextVector);
+		email.setBodyContextVector(emailBodyTextContextVector);
 		
 		//processing NLP text contextvector
 		if(email.getKeywordMatrix() != null){
@@ -159,8 +193,8 @@ public class EmailAnalysisService {
 	 * @throws IOException
 	 */
 	@Programmatic
-	public SemanticSpace processPeopleSemantics(Email email,
-			SemanticSpace peopleSemantics) throws IOException {
+	public RandomIndexing processPeopleSemantics(Email email,
+			RandomIndexing peopleSemantics) throws IOException {
 		List<String> toAddresses = email.getToAddresses();
 		List<String> ccAddresses = email.getCcAddresses();
 		String fromAddress = email.getFromAddress();
@@ -189,6 +223,16 @@ public class EmailAnalysisService {
 
 		double[] emailPeopleContextVector = new double[peopleSemantics
 				.getVectorLength()];
+		
+		double[] emailFromContextVector = new double[peopleSemantics
+		                             				.getVectorLength()];
+		
+		double[] emailToContextVector = new double[peopleSemantics
+			                             				.getVectorLength()];
+		double[] emailCcContextVector = new double[peopleSemantics
+			                             				.getVectorLength()];
+			
+		
 		//adding toAddresses
 		if(toAddresses != null){
 			for (String toAddress : toAddresses) {
@@ -200,7 +244,8 @@ public class EmailAnalysisService {
 					
 					emailPeopleContextVector = RandomIndexing.add(
 							emailPeopleContextVector, toAddressIndexVector);
-					
+					emailToContextVector = RandomIndexing.add(
+							emailToContextVector, toAddressIndexVector);
 				}
 			}
 		}
@@ -215,6 +260,8 @@ public class EmailAnalysisService {
 				if (ccAddressIndexVector != null) {
 					emailPeopleContextVector = RandomIndexing.add(
 							emailPeopleContextVector, ccAddressIndexVector);
+					emailCcContextVector = RandomIndexing.add(
+							emailCcContextVector, ccAddressIndexVector);
 				}
 			}
 		}
@@ -227,6 +274,8 @@ public class EmailAnalysisService {
 		if (fromAddressIndexVector != null) {
 			emailPeopleContextVector = RandomIndexing.add(
 					emailPeopleContextVector, fromAddressIndexVector);
+			emailFromContextVector = RandomIndexing.add(
+					emailFromContextVector, fromAddressIndexVector);
 		}
 		
 		String vecStr = "";
@@ -235,6 +284,12 @@ public class EmailAnalysisService {
 		}
 		//logger.info("The email people context vector : " + vecStr);
 		email.setRecipientContextVector(emailPeopleContextVector);
+		
+		//setting separate context vectors
+		email.setToContextVector(emailToContextVector);
+		email.setFromContextVector(emailFromContextVector);
+		email.setCcContextVector(emailCcContextVector);
+		
 		return peopleSemantics;
 	}
 
@@ -271,6 +326,46 @@ public class EmailAnalysisService {
 		}
 		logger.info("TOTAL EMAILS in all Clusters : " + totalEMailsInClusters + " No. of clusters : " + clusters.size());
 		logger.info("Sum of Squared values for all clusters : " + sumOfSquaredError);
+		
+		return clusters;
+	}
+	
+	@Programmatic
+	public List<EmailWeightedSubjectBodyContentCluster> kMeansClusterWeightedSubjectBodyContent(List<Email> emails) {
+		KMeansClustering kmeans = new KMeansClustering();
+		List<EmailWeightedSubjectBodyContentCluster> clusters = kmeans.clusterBasedOnSubjectAndBody(emails);
+
+		int totalEMailsInClusters = 0;
+		double subjectSumOfSquaredError = 0;
+		double bodySumOfSquaredError = 0;
+		
+		for (EmailWeightedSubjectBodyContentCluster cluster : clusters) {
+			double contentScore = cluster.calculateClusterReputationScore();
+			logger.info(" ");
+			logger.info("Cluster ID : " + cluster.getId() + " No.of emails : " + cluster.getSubjectBodyContentEmails().size()
+					+ " No.of emails starred : " + cluster.getNoOfMessagesFlagged() 
+					+ " No.of emails answerred : " + cluster.getNoOfMessagesAnswered()
+					+ " No.of emails seen : " + cluster.getNoOfMessagesSeen()
+					+ " No.of emails deleted : " + cluster.getNoOfMessagesDeleted()
+					+ " Cluster reputation score : " + contentScore);
+			int clusterSize = cluster.getSubjectBodyContentEmails().size();
+			totalEMailsInClusters += clusterSize;
+			for (Email email : cluster.getSubjectBodyContentEmails()) {
+				//email.setTextClusterId(cluster.getId());
+				logger.info(cluster.getId() + " : Email subject : " + email.getSubject() + "\n" + 
+						"\n");
+				email.setWeightedSubjectBodyContentScore(contentScore);
+				email.setWeightedSubjectBodyClusterId(cluster.getId());
+				//setting reputation scores
+				//logger.info("Email text stream : " + email.getBodyContent().getTokenStream());
+			}
+			
+			subjectSumOfSquaredError += cluster.getSumOfSquaresErrorForSubject();
+			bodySumOfSquaredError += cluster.getSumOfSquaresErrorForBody();
+		}
+		logger.info("TOTAL EMAILS in all Clusters : " + totalEMailsInClusters + " No. of clusters : " + clusters.size());
+		logger.info("Subject sum of Squared values for all clusters : " + subjectSumOfSquaredError);
+		logger.info("Body sum of Squared values for all clusters : " + bodySumOfSquaredError);
 		
 		return clusters;
 	}
@@ -489,70 +584,7 @@ public class EmailAnalysisService {
 		
 	}
 	
-	/**
-	 * for content clusters
-	 * if min Distance(Ci,Cj) / max Diam(Cx) >1 ; then clusters are compact and well clustered
-	 * @return dunnIndex to validate cluster quality
-	 */
-	@Programmatic
-	public double getDunnIndexForContentClusters(List<EmailCluster> clusters, String clusterType){
-		//min Distance(Ci,Cj) / max Diam(Cx) >1 ; then clusters are CWS
-		double di = 0;
-		double minInterClusterDistance = 0;
-		double maxIntraClusterDistance = 0;
-		
-		for(EmailCluster c1: clusters){
-			for(EmailCluster c2 : clusters){
-				
-				if(c1.getId() != c2.getId()){
-					double[] v1 = c1.getCentroid();
-					double[] v2 = c2.getCentroid();
-					double dis = VectorsMath.getDistance(v1, v2);
-					logger.info("inter-cluster distance between : " + c1.getId() + " and " + c2.getId() 
-								+ " distance: "+ dis);
-					
-					if(minInterClusterDistance == 0) {
-						minInterClusterDistance = dis;
-					} else {
-						if(dis < minInterClusterDistance) {
-							minInterClusterDistance = dis;
-						}
-					}
-				}
-			}
-		}
-		
-		for(EmailCluster c: clusters){
-			double sumOfIntraClusterDistance = 0;
-			double intraClusterDistance = 0;
-			
-			List<Email> emails = null;
-			if(clusterType.equalsIgnoreCase(EmailCluster.TEXT_CLUSTER_TYPE)){
-				EmailContentCluster contentCluster = (EmailContentCluster)c;
-				emails = contentCluster.getContentEmails();
-			}else if(clusterType.equalsIgnoreCase(EmailCluster.RECIPIENT_CLUSTER_TYPE)){
-				EmailRecipientCluster recipientCluster = (EmailRecipientCluster) c;
-				emails = recipientCluster.getRecipientEmails();
-			}
-			for(Email mail : emails){
-				//distance from the centroid
-				double[] v1 = mail.getTextContextVector();
-				double dis = VectorsMath.getDistance(v1, c.getCentroid());
-				sumOfIntraClusterDistance += dis;
-			}
-			
-			intraClusterDistance = sumOfIntraClusterDistance / emails.size();
-			//logger.info("intracluster distance : " + intraClusterDistance);
-			if(maxIntraClusterDistance < intraClusterDistance){
-				maxIntraClusterDistance = intraClusterDistance;
-			}
-		}
-		
-		logger.info("min inter-cluster distance : " + minInterClusterDistance + " max. intracluster distance : " + maxIntraClusterDistance );
-		double dunnIndex = minInterClusterDistance/maxIntraClusterDistance;
-		
-		return dunnIndex;
-	}
+	
 	// region > dependencies
 	@Inject
 	DomainObjectContainer container;

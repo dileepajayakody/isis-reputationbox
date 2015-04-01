@@ -178,6 +178,7 @@ public class StopwordFilter {
 		stopwordSet.add("sup");
 		stopwordSet.add("th");
 		stopwordSet.add("thank");
+		stopwordSet.add("thanks");
 		stopwordSet.add("thanx");
 		stopwordSet.add("that");
 		stopwordSet.add("thats");
@@ -237,6 +238,11 @@ public class StopwordFilter {
 		stopwordSet.add("yourself");
 		stopwordSet.add("yourselves");
 		
+		//punctuation marks
+		//stopwordSet.add("*");
+		//stopwordSet.add("!");
+		//stopwordSet.add(";");
+		//stopwordSet.add(",");
 		
 	}
 

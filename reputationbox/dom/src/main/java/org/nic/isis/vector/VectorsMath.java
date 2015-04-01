@@ -43,6 +43,25 @@ public class VectorsMath {
 		return vector1;
 	}
 	
+	/**
+	 * Math function to substract (vector2 to vector1)
+	 * 
+	 * @param vector1
+	 * @param vector2
+	 * @return
+	 */
+	public static double[] substractArrays(double[] vector1, double[] vector2) {
+		if (vector2.length != vector1.length)
+			throw new IllegalArgumentException(
+					"int arrays of different sizes cannot be added");
+
+		int length = vector2.length;
+		for (int i = 0; i < length; i++) {
+			double value = vector1[i] - vector2[i];
+			vector1[i] = value;
+		}
+		return vector1;
+	}
 	
 	/**
 	 * Math function to add vector2 to vector1

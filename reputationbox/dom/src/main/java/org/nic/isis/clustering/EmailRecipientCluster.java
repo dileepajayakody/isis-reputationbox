@@ -7,11 +7,14 @@ import javax.jdo.annotations.IdentityType;
 import javax.jdo.annotations.VersionStrategy;
 
 import org.apache.isis.applib.annotation.ObjectType;
+import org.apache.isis.applib.annotation.Programmatic;
 import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.ri.RandomIndexing;
 import org.nic.isis.vector.VectorsMath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import edu.ucla.sspace.common.Similarity;
 
 @javax.jdo.annotations.PersistenceCapable(identityType=IdentityType.DATASTORE)
 @javax.jdo.annotations.DatastoreIdentity(
@@ -44,6 +47,7 @@ public class EmailRecipientCluster extends EmailCluster {
 
 	public EmailRecipientCluster(String id) {
 		super(id);
+		this.setClusterType(RECIPIENT_CLUSTER_TYPE);
 	}
 	
 	public void addEmail(String emailId, Email email){
@@ -137,6 +141,9 @@ public class EmailRecipientCluster extends EmailCluster {
 
 				this.getRecipientEmails().remove(i);
 				//logger.info("REMOVING email : " + email.getMessageId() + " from cluster : " + this.id);
+				double[] emailRecipientContextVector = email.getRecipientContextVector();
+				this.centroid = VectorsMath.substractArrays(this.centroid, emailRecipientContextVector);
+				
 				break;
 			}
 		}
@@ -170,28 +177,22 @@ public class EmailRecipientCluster extends EmailCluster {
 		this.setReputationScore(reputationScore);
 		return this.reputationScore;
 	}
-	/**
-	 * Returns a document consisting of the average of the vectors of the
-	 * documents in the cluster.
-	 * 
-	 * @return the centroid of the cluster
-	 */
-	public double[] calculateAverageCentroid(){
-		if (emails.size() == 0) {
-			return null;
-		}
-		double[] d = null;
-		double[] tempVector = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
-		for (Email em : emails) {
-			double[] contextVector = null;
-			contextVector = em.getRecipientContextVector();
-			tempVector = VectorsMath.addArrays(tempVector, contextVector);
-		}
-		centroid = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
-		centroid = VectorsMath.devideArray(tempVector, emails.size());
-		return centroid;
-	}
 
+	@Programmatic
+	public double getSimilarity(double[] vector) {
+		return Similarity.cosineSimilarity(getAverageCentroid(), vector);
+	}
+	
+	public double[] getAverageCentroid() {
+		// TODO Auto-generated method stub
+		double[] avgCentroid = centroid;
+		if(this.getRecipientEmails() != null && this.getRecipientEmails().size() > 0){
+			avgCentroid = VectorsMath.devideArray(avgCentroid, this.getRecipientEmails().size());	
+		
+		}
+		return avgCentroid ;
+	}
+	
 	public double getSumOfSquaresError(){
 		double sumOfSquaredError = 0; 
 		for(Email email : this.getRecipientEmails()){

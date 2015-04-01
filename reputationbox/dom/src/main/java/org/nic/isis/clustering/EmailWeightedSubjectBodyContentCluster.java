@@ -4,11 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.jdo.annotations.IdentityType;
-import javax.jdo.annotations.VersionStrategy;
 
 import org.apache.isis.applib.annotation.ObjectType;
 import org.apache.isis.applib.annotation.Programmatic;
 import org.nic.isis.reputation.dom.Email;
+import org.nic.isis.reputation.dom.EmailBody;
 import org.nic.isis.reputation.utils.EmailUtils;
 import org.nic.isis.ri.RandomIndexing;
 import org.nic.isis.vector.VectorsMath;
@@ -21,20 +21,22 @@ import edu.ucla.sspace.common.Similarity;
 @javax.jdo.annotations.DatastoreIdentity(
         strategy=javax.jdo.annotations.IdGeneratorStrategy.IDENTITY,
          column="id")
-@javax.jdo.annotations.Version(
-        strategy=VersionStrategy.VERSION_NUMBER, 
-        column="version")
-@ObjectType("EMAILALLFEATURECLUSTER")
-public class EmailAllFeatureCluster {
-	public final static String TEXT_CLUSTER_TYPE = "TOPIC";
-	public final static String RECIPIENT_CLUSTER_TYPE = "PEOPLE";
+@ObjectType("EMAILWEIGHTEDSUBJECTBODYCONTENTCLUSTER")
+public class EmailWeightedSubjectBodyContentCluster {
 	
 	protected String id;
 	//cannot persist maps in Isis
-	protected List<Email> emails;
+	protected List<Email> subjectBodyContentEmails;
 	protected List<String> emailIds;
-	protected double[] centroid = new double[8016];
-	protected String clusterType;
+	
+	private double[] subjectCentroid  = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+	private double[]  bodyCentroid  = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+
+	protected String clusterType = "WEIGHTED_SUBJECT_BODY_CONTENT";
+	
+	public static final String subjectVectorType = "SUBJECT_VECTOR";
+	public static final String bodyVectorType = "BODY_VECTOR";
+	
 	
 	protected int noOfMessagesAnswered;
 	protected int noOfMessagesSeen;
@@ -49,16 +51,13 @@ public class EmailAllFeatureCluster {
 	private final static Logger logger = LoggerFactory
 			.getLogger(EmailAllFeatureCluster.class);
 	
-	public EmailAllFeatureCluster(){
-		centroid = new double[8016];
-	}
-
-	public EmailAllFeatureCluster(double[] v){
-		 centroid = v;
+	public EmailWeightedSubjectBodyContentCluster(){
+		this.setClusterType(EmailCluster.WEIGHTED_SUBJECT_BODY_CLUSTER_TYPE);
 	}
 	
-	public EmailAllFeatureCluster(String id) {
+	public EmailWeightedSubjectBodyContentCluster(String id) {
 		this.id = id;
+		this.setClusterType(EmailCluster.WEIGHTED_SUBJECT_BODY_CLUSTER_TYPE);
 	}
 
 	public String getId() {
@@ -73,17 +72,19 @@ public class EmailAllFeatureCluster {
 
 
 	public void addEmail(String emailId, Email email) {
-		addVector(email.getAllFeatureVector());
+		
+		subjectCentroid = VectorsMath.addArrays(subjectCentroid, email.getSubjectContextVector());
+		bodyCentroid = VectorsMath.addArrays(bodyCentroid, email.getBodyContextVector());
 		
 		if(this.getEmailIds() == null){
 			this.setEmailIds(new ArrayList<String>());
 		}
-		if(this.getEmails() == null){
-			this.setEmails(new ArrayList<Email>());
+		if(this.getSubjectBodyContentEmails() == null){
+			this.setSubjectBodyContentEmails(new ArrayList<Email>());
 		}
 		
 		logger.info(" Adding email " + email.getMessageId() + "to content cluster : " + this.id);
-		this.emails.add(email);
+		this.subjectBodyContentEmails.add(email);
 		this.emailIds.add(emailId);
 		
 		//addEmailAtributes
@@ -107,8 +108,8 @@ public class EmailAllFeatureCluster {
 
 	public void removeEmail(String emailId) {
 		
-		for(int i=0; i< emails.size(); i++){
-			Email email = emails.get(i);
+		for(int i=0; i< subjectBodyContentEmails.size(); i++){
+			Email email = subjectBodyContentEmails.get(i);
 			if(email.getMessageId().equals(emailId)){
 				if(email.isAnswered()){
 					decrementMessageAnswered();
@@ -122,8 +123,13 @@ public class EmailAllFeatureCluster {
 				if(email.isDeleted()){
 					this.decrementMessageDeleted();
 				}
-				emails.remove(i);
+				subjectBodyContentEmails.remove(i);
 				//logger.info("REMOVING email : " + email.getMessageId() + " from cluster : " + this.id);
+				double[] emailSubjectContextVector = email.getSubjectContextVector();
+				double[] emailBodyContextVector = email.getBodyContextVector();
+				
+				this.subjectCentroid = VectorsMath.substractArrays(this.subjectCentroid, emailSubjectContextVector);
+				this.bodyCentroid = VectorsMath.substractArrays(this.bodyCentroid, emailBodyContextVector);
 				break;
 			}
 		}
@@ -140,17 +146,17 @@ public class EmailAllFeatureCluster {
 	}
 
 	public int size() {
-		return getEmails().size();
+		return getSubjectBodyContentEmails().size();
 	}
 
 	@javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull = "true")
-	public List<Email> getEmails() {
-		return emails;
+	public List<Email> getSubjectBodyContentEmails() {
+		return subjectBodyContentEmails;
 	}
 
-	public void setEmails(List<Email> emails) {
-		this.emails = emails;
+	public void setSubjectBodyContentEmails(List<Email> emails) {
+		this.subjectBodyContentEmails = emails;
 	}
 
 	@javax.jdo.annotations.Persistent
@@ -238,65 +244,104 @@ public class EmailAllFeatureCluster {
 		this.clusterType = clusterType;
 	}
 	
-	public double[] getCentroid() {
-		return centroid;
-	}
-
 	@Programmatic
-	public double getSimilarity(double[] vector) {
-		return Similarity.cosineSimilarity(centroid, vector);
+	public double getSimilarity(double[] subjectVector, double[] bodyVector) {
+		
+		double subjectSimilarity = Similarity.cosineSimilarity(getAverageSubjectCentroid(), subjectVector);
+		double bodySimilarity = Similarity.cosineSimilarity(getAverageBodyCentroid(), bodyVector);
+		
+		double avgSimilarity = (subjectSimilarity + bodySimilarity)/2;
+		return avgSimilarity;
 	}
 	
-	@Programmatic
-    public void addVector(double[] vector) {
-		centroid = VectorsMath.addArrays(centroid, vector);
-        //centroid = VectorsMath.devideArray(centroid, 2);
-    }
-
-	public void merge(CentroidCluster other) {
-        centroid = VectorsMath.addArrays(centroid, other.getCentroid());
-        centroid = VectorsMath.devideArray(centroid, 2);
-          
-    }
-	
-	public double[] getAverageCentroid() {
+	/**
+	 * gets the avg. subject centroid
+	 * @return
+	 */
+	public double[] getAverageSubjectCentroid() {
 		// TODO Auto-generated method stub
-		double[] avgCentroid = centroid;
-		if(this.getEmails() != null && this.getEmails().size() > 0){
-			avgCentroid = VectorsMath.devideArray(avgCentroid, this.getEmails().size());	
+		double[] avgCentroid = subjectCentroid;
+		if(this.getSubjectBodyContentEmails() != null && this.getSubjectBodyContentEmails().size() > 0){
+			avgCentroid = VectorsMath.devideArray(avgCentroid, this.getSubjectBodyContentEmails().size());	
 			logger.info("getting average centroid total : " + EmailUtils.getVectorTotal(avgCentroid)
-					+ "and the cluster content emails size : " + this.getEmails().size());			
+					+ "and the cluster content emails size : " + this.getSubjectBodyContentEmails().size());			
 		}
 		return avgCentroid ;
 	}
 	
-	public double getSumOfSquaresError(){
+	/**
+	 * gets the avg. body centroid
+	 * @return
+	 */
+	public double[] getAverageBodyCentroid() {
+		// TODO Auto-generated method stub
+		double[] avgCentroid = bodyCentroid;
+		if(this.getSubjectBodyContentEmails() != null && this.getSubjectBodyContentEmails().size() > 0){
+			avgCentroid = VectorsMath.devideArray(avgCentroid, this.getSubjectBodyContentEmails().size());	
+			logger.info("getting average centroid total : " + EmailUtils.getVectorTotal(avgCentroid)
+					+ "and the cluster content emails size : " + this.getSubjectBodyContentEmails().size());			
+		}
+		return avgCentroid ;
+	}
+	
+	public double getSumOfSquaresErrorForSubject(){
 		double sumOfSquaredError = 0; 
-		for(Email email : this.getEmails()){
-			double[] x = email.getAllFeatureVector();
-			double[] centroid = this.getCentroid();
+		for(Email email : this.getSubjectBodyContentEmails()){
+			double[] x = email.getSubjectContextVector();
+			double[] centroid = this.getSubjectCentroid();
 			double squaredDistance = VectorsMath.getSquaredDistance(x, centroid);
 			sumOfSquaredError += squaredDistance;
 		}
 		return sumOfSquaredError;
 	}
 
+	public double getSumOfSquaresErrorForBody(){
+		double sumOfSquaredError = 0; 
+		for(Email email : this.getSubjectBodyContentEmails()){
+			double[] x = email.getBodyContextVector();
+			double[] centroid = this.getBodyCentroid();
+			double squaredDistance = VectorsMath.getSquaredDistance(x, centroid);
+			sumOfSquaredError += squaredDistance;
+		}
+		return sumOfSquaredError;
+	}
+	
 	public double calculateClusterReputationScore(){
 		int totalPositiveWeight = FLAGGED_WEIGHT + ANSWERERD_WEIGHT
 				+ SEEN_WEIGHT;
 		double reputationScore = (double)((noOfMessagesFlagged * FLAGGED_WEIGHT)
 				+ (noOfMessagesAnswered * ANSWERERD_WEIGHT)
 				+ (noOfMessagesSeen * SEEN_WEIGHT) - (noOfMessagesDeleted * DELETED_WEIGHT)) 
-				/ (double)(this.getEmails().size() * totalPositiveWeight);
+				/ (double)(this.getSubjectBodyContentEmails().size() * totalPositiveWeight);
 		
 		logger.info("Calculating reputation score of content cluster id : " + this.id 
 				+ " : ("+ noOfMessagesFlagged + " * " + FLAGGED_WEIGHT + ") + ("
 				+ noOfMessagesAnswered + " * " + ANSWERERD_WEIGHT + ") + ("
 				+ noOfMessagesSeen + " * " + SEEN_WEIGHT + ") - ("
 				+ noOfMessagesDeleted + " * " + DELETED_WEIGHT + ") / (" 
-				+ this.getEmails().size() +" * " + totalPositiveWeight + ")"
+				+ this.getSubjectBodyContentEmails().size() +" * " + totalPositiveWeight + ")"
 				+ " Score: " + reputationScore);
 		this.setReputationScore(reputationScore);
 		return this.reputationScore;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getSubjectCentroid() {
+		return subjectCentroid;
+	}
+
+	public void setSubjectCentroid(double[] subjectCentroid) {
+		this.subjectCentroid = subjectCentroid;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getBodyCentroid() {
+		return bodyCentroid;
+	}
+
+	public void setBodyCentroid(double[] bodyCentroid) {
+		this.bodyCentroid = bodyCentroid;
 	}
 }

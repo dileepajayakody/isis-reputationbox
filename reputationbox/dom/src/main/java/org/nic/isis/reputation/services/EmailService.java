@@ -12,6 +12,7 @@ import javax.inject.Inject;
 
 import org.nic.isis.clustering.EmailContentCluster;
 import org.nic.isis.clustering.EmailRecipientCluster;
+import org.nic.isis.clustering.EmailWeightedSubjectBodyContentCluster;
 import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.EmailReputationDataModel;
 import org.nic.isis.reputation.dom.UserMailBox;
@@ -27,6 +28,8 @@ import org.apache.isis.applib.query.QueryDefault;
 import org.apache.isis.applib.value.Password;
 import org.apache.isis.objectstore.jdo.applib.service.support.IsisJdoSupport;
 
+import edu.ucla.sspace.common.Similarity;
+
 public class EmailService {
 
 	private final static Logger logger = LoggerFactory
@@ -35,66 +38,90 @@ public class EmailService {
 	@Named("Update MailBox Model and Predict for new emails")
 	public synchronized List<UserMailBox> updateNew(){
 		List<UserMailBox> mailBoxes = listAllMailBoxes();
+//		if (mailBoxes == null || mailBoxes.isEmpty()) {
+//			logger.info("No mail-box added to the application. Please add a new mailbox via the web console");
+//		
+//		}
 		if (mailBoxes == null || mailBoxes.isEmpty()) {
-			logger.info("No mail-box added to the application. Please add a new mailbox via the web console");
+			logger.info("There is no mailboxes in test-datastore. creating test mailbox");
+			mailBoxes = new ArrayList<UserMailBox>();
+			createSample();
+		}
 		
-		}else {
+	//	else {
+			int modelSize = 1100;
 			for (UserMailBox mailBox : mailBoxes) {
 				//if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() == 0)){
-				if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() < 300)){
-						
+				if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() < modelSize)){
+					
+					logger.info("Loading mailbox : " + mailBox.getEmailId());	
 					logger.info("No emails loaded to mailbox..creating the importance model..");
-					javaMailService.createImportanceModel(mailBox);
+					mailBox = javaMailService.createImportanceModel(mailBox);
+					//create the content and people clusters at the end of the model email retrieval
+					if(mailBox.getAllEmails().size() >= modelSize){
+						EmailReputationDataModel model = mailBox.getReputationDataModel();
+						logger.info("Creating the content and people clusters from training dataset");	
+						List<Email> allEmails = mailBox.getAllEmails();
+						List<EmailContentCluster> contentClusters = emailAnalysisService.kMeansClusterText(allEmails);
+						List<EmailRecipientCluster> recipientClusters = emailAnalysisService.kMeansClusterRecipients(allEmails);
+						model.setContentClusters(contentClusters);
+						model.setRecipientClusters(recipientClusters);
+						logger.info("Dunn index for content clusters : " + model.getDunnIndexForContentClusters());
+					}
 					
 				//} else if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() > 0)){
-				} else if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() >= 300)){
-						
+				} else if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() >= modelSize)){
+					//mailBox.setEmailId("dileepajayakody@gmail.com");
+					logger.info("Loading mailbox : " + mailBox.getEmailId());	
+					
 					logger.info("Updaing mailbox and predicting email importance for emails for mailbox : " + mailBox.getEmailId() + " since email count: " + mailBox.getAllEmails().size()
 							+ " last indexed email  UID : " + mailBox.getLastIndexedMsgUid());
-					javaMailService.predictImportanceForNewEmails(mailBox);
+					mailBox = javaMailService.predictImportanceForNewEmails(mailBox);
+					
+					
 				}
 				
 				//mailbox needs to be persisted.
 				//container.persist(mailBox);
 			}	
-		}
+	//	}
 		container.flush();
 		return mailBoxes;
 	}
 
 	
-	@Named("Update MailBoxes")
-	@Hidden
-	public synchronized List<UserMailBox> updateMailBoxes(){
-		
-		List<UserMailBox> mailBoxes = listAllMailBoxes();	
-		if (mailBoxes == null || mailBoxes.isEmpty()) {
-			//logger.info("There is no mailboxes in test-datastore. creating test mailboxes for connected accounts in contextio");
-			//mailBoxes = new ArrayList<UserMailBox>();
-			//mailBoxes.add(createSample());
-			logger.info("No mail-box added to the application. Please add a new mailbox via the web console");
-		}else {
-			for (UserMailBox mailBox : mailBoxes) {
-				logger.info("Updaing mailbox : " + mailBox.getEmailId() + " since email count: " + mailBox.getAllEmails().size()
-						+ " last indexed email  UID : " + mailBox.getLastIndexedMsgUid());
-				try {
-						javaMailService.updateMailBox(mailBox);
-						logger.info("updated the mailBox: " + mailBox.getEmailId()
-								+ " with " + mailBox.getAllEmails().size() + " emails");
-				
-				//printing mb cluster results..
-				//printClusters(mailBox);
-				
-				} catch (Exception e) {
-					logger.error("Error occurred  ", e);
-				}
-				//mailbox needs to be persisted.
-				//container.persist(mailBox);
-			}	
-		}
-		container.flush();
-		return mailBoxes;
-	}
+//	@Named("Update MailBoxes")
+//	@Hidden
+//	public synchronized List<UserMailBox> updateMailBoxes(){
+//		
+//		List<UserMailBox> mailBoxes = listAllMailBoxes();	
+//		if (mailBoxes == null || mailBoxes.isEmpty()) {
+//			//logger.info("There is no mailboxes in test-datastore. creating test mailboxes for connected accounts in contextio");
+//			//mailBoxes = new ArrayList<UserMailBox>();
+//			//mailBoxes.add(createSample());
+//			logger.info("No mail-box added to the application. Please add a new mailbox via the web console");
+//		}else {
+//			for (UserMailBox mailBox : mailBoxes) {
+//				logger.info("Updaing mailbox : " + mailBox.getEmailId() + " since email count: " + mailBox.getAllEmails().size()
+//						+ " last indexed email  UID : " + mailBox.getLastIndexedMsgUid());
+//				try {
+//						javaMailService.updateMailBox(mailBox);
+//						logger.info("updated the mailBox: " + mailBox.getEmailId()
+//								+ " with " + mailBox.getAllEmails().size() + " emails");
+//				
+//				//printing mb cluster results..
+//				//printClusters(mailBox);
+//				
+//				} catch (Exception e) {
+//					logger.error("Error occurred  ", e);
+//				}
+//				//mailbox needs to be persisted.
+//				//container.persist(mailBox);
+//			}	
+//		}
+//		container.flush();
+//		return mailBoxes;
+//	}
 	/**
 	 * sync all mailboxes with new emails since last offset (email count)
 	 */
@@ -191,6 +218,7 @@ public class EmailService {
 			List<Email> allEmails = mb.getAllEmails();
 			List<EmailContentCluster> contentClusters = emailAnalysisService.kMeansClusterText(allEmails);
 			List<EmailRecipientCluster> recipientClusters = emailAnalysisService.kMeansClusterRecipients(allEmails);
+		
 			model.setContentClusters(contentClusters);
 			model.setRecipientClusters(recipientClusters);
 			logger.info("Dunn index for content clusters : " + model.getDunnIndexForContentClusters());
@@ -199,102 +227,85 @@ public class EmailService {
 
 	}
 	
-	@Named("Print Email Importance Models")
-	public void printImportanceModels(){
+	@Named("Cluster all emails based on weighted subject and body")
+	public void clusterEmailsBasedOnWeightedTopics(){
 		List<UserMailBox> mailBoxes = listAllMailBoxes();
 		for (UserMailBox mb : mailBoxes){
 			EmailReputationDataModel model = mb.getReputationDataModel();
 			
-			//flagged
-			double[] importantTopicsFlaggedProfile = mb.getImportantTopicsFlagged();
-			double[] importantPeopleFlaggedProfile = mb.getImportantPeopleFlagged();
-			double[] importantNLPKeywordsFlaggedProfile = mb.getImportantNLPKeywordsFlagged();
-			
-			double flaggedTopicProfileScore = EmailUtils.getVectorTotal(importantTopicsFlaggedProfile);
-			logger.info(" flagged topic profile vector sum :" + flaggedTopicProfileScore +" no : " + mb.getNumberOfDirectEmailsFlagged());
-			double flaggedPeopleProfileScore = EmailUtils.getVectorTotal(importantPeopleFlaggedProfile);
-			logger.info(" flagged people profile vector sum :" + flaggedPeopleProfileScore );
-			double flaggedNLPProfileScore = EmailUtils.getVectorTotal(importantNLPKeywordsFlaggedProfile);
-			logger.info(" flagged keywords profile vector sum :" + flaggedNLPProfileScore);
-			
-			double[] importantListTopicsFlaggedProfile = mb.getImportantListTopicsFlagged();
-			double[] importantListPeopleFlaggedProfile = mb.getImportantListPeopleFlagged();
-			double[] importantListNLPKeywordsFlaggedProfile = mb.getImportantListNLPKeywordsFlagged();
-			
-			double flaggedListTopicProfileScore = EmailUtils.getVectorTotal(importantListTopicsFlaggedProfile);
-			logger.info("List flagged topic profile vector sum :" + flaggedListTopicProfileScore + " no : " + mb.getNumberOfListEmailsFlagged());
-			double flaggedListPeopleProfileScore = EmailUtils.getVectorTotal(importantListPeopleFlaggedProfile);
-			logger.info("List flagged people profile vector sum :" + flaggedListPeopleProfileScore);
-			double flaggedListNLPProfileScore = EmailUtils.getVectorTotal(importantListNLPKeywordsFlaggedProfile);
-			logger.info("List flagged keywords profile vector sum :" + flaggedListNLPProfileScore);
-			
-			
-			
-			double[] importantTopicsRepliedProfile = mb.getImportantTopicsReplied();
-			double[] importantPeopleRepliedProfile = mb.getImportantPeopleReplied();
-			double[] importantNLPKeywordsRepliedProfile = mb.getImportantNLPKeywordsReplied();
-			
-			
-			double repliedTopicProfileScore = EmailUtils.getVectorTotal(importantTopicsRepliedProfile);
-			logger.info(" replied topic profile vector sum :" + repliedTopicProfileScore + " no : " + mb.getNumberOfDirectEmailsReplied());
-			double repliedPeopleProfileScore = EmailUtils.getVectorTotal(importantPeopleRepliedProfile);
-			logger.info(" replied people profile vector sum :" + repliedPeopleProfileScore);
-			double repliedNLPProfileScore = EmailUtils.getVectorTotal(importantNLPKeywordsRepliedProfile);
-			logger.info(" replied keywords profile vector sum :" + repliedNLPProfileScore);
-			
-			
-			double[] importantListTopicsRepliedProfile = mb.getImportantListTopicsReplied();
-			double[] importantListPeopleRepliedProfile = mb.getImportantListPeopleReplied();
-			double[] importantListNLPKeywordsRepliedProfile = mb.getImportantListNLPKeywordsReplied();
-			
-			double repliedListTopicProfileScore = EmailUtils.getVectorTotal(importantListTopicsRepliedProfile);
-			logger.info("List replied topic profile vector sum :" + repliedListTopicProfileScore + " no : " + mb.getNumberOfListEmailsReplied());
-			double repliedListPeopleProfileScore = EmailUtils.getVectorTotal(importantListPeopleRepliedProfile);
-			logger.info("List replied people profile vector sum :" + repliedListPeopleProfileScore);
-			double repliedListNLPProfileScore = EmailUtils.getVectorTotal(importantListNLPKeywordsRepliedProfile);
-			logger.info("List replied keywords profile vector sum :" + repliedListNLPProfileScore);
-			
-			
-			double[] importantTopicsSeenProfile = mb.getImportantTopicsOnlySeen();
-			double[] importantPeopleSeenProfile = mb.getImportantPeopleOnlySeen();
-			double[] importantNLPKeywordsSeenProfile = mb.getImportantNLPKeywordsOnlySeen();
-			
-			double seenTopicProfileScore = EmailUtils.getVectorTotal(importantTopicsSeenProfile);
-			logger.info("seen topic profile vector sum :" + seenTopicProfileScore+ " no :" + mb.getNumberOfDirectEmailsSeen());
-			double seenPeopleProfileScore = EmailUtils.getVectorTotal(importantPeopleSeenProfile);
-			logger.info("seen people profile vector sum :" + seenPeopleProfileScore);
-			double seenNLPProfileScore = EmailUtils.getVectorTotal(importantNLPKeywordsSeenProfile);
-			logger.info("seen keywords profile vector sum :" + seenNLPProfileScore);
-			
-			
-			double[] importantListTopicsSeenProfile = mb.getImportantListTopicsOnlySeen();
-			double[] importantListPeopleSeenProfile = mb.getImportantListPeopleOnlySeen();
-			double[] importantListNLPKeywordsSeenProfile = mb.getImportantListNLPKeywordsOnlySeen();
-			
-			double seenListTopicProfileScore = EmailUtils.getVectorTotal(importantListTopicsSeenProfile);
-			logger.info("List seen topic profile vector sum :" + seenListTopicProfileScore + " no : " + mb.getNumberOfListEmailsSeen());
-			double seenListPeopleProfileScore = EmailUtils.getVectorTotal(importantListPeopleSeenProfile);
-			logger.info("List seen people profile vector sum :" + seenListPeopleProfileScore);
-			double seenListNLPProfileScore = EmailUtils.getVectorTotal(importantListNLPKeywordsSeenProfile);
-			logger.info("List seen keywords profile vector sum :" + seenListNLPProfileScore);
-			
-			
-			double[] spamTopicsVector = mb.getUnimportanttopicsVector();
-			double[] spamPeopleVector = mb.getUnimportantPeopleVector();
-			double[] spamSAVector = mb.getUnimportantSpeechActVector();
-			double[] spamKeywordsVector = mb.getUnimportantDirectKeywordVector();
-			
-			double spamTopicProfileScore = EmailUtils.getVectorTotal(spamTopicsVector);
-			logger.info("spam topic profile vector sum :" + spamTopicProfileScore + " no : " + mb.getNofOfUnimportantEmails());
-			double spamPeopleProfileScore = EmailUtils.getVectorTotal(spamPeopleVector);
-			logger.info("spam replied people profile vector sum :" + spamPeopleProfileScore);
-			double spamNLPProfileScore = EmailUtils.getVectorTotal(spamKeywordsVector);
-			logger.info("spam replied keywords profile vector sum :" + spamNLPProfileScore);
-			
-			
+			List<Email> allEmails = mb.getAllEmails();
+			List<EmailWeightedSubjectBodyContentCluster> clusters = emailAnalysisService.kMeansClusterWeightedSubjectBodyContent(allEmails);
+			model.setWeightedSubjectBodyClusters(clusters);
 			logger.info("Dunn index for content clusters : " + model.getDunnIndexForContentClusters());
 		}
+		container.flush();
+
+	}
+	
+	@Named("Update mailbox importance profiles")
+	public void updateMailBoxImportanceProfiles(){
+		List<UserMailBox> mailBoxes = listAllMailBoxes();
+		for (UserMailBox mb : mailBoxes){
+			mb.setNumberOfDirectEmailsFlagged(0);
+			mb.setNumberOfDirectEmailsReplied(0);
+			mb.setNumberOfDirectEmailsSeen(0);
+			
+			mb.setNumberOfListEmailsFlagged(0);
+			mb.setNumberOfListEmailsReplied(0);
+			mb.setNumberOfListEmailsSeen(0);
+			
+			mb.setNofOfUnimportantEmails(0);
+			
+			List<Email> emails = mb.getAllEmails();
+			logger.info("updating importance profile for emails : " + emails.size());
+			for(Email email : emails){
+				mb.updateMailBoxProfiles(email);
+			}
+			logger.info("\n\n");
+			//EmailUtils.printImportanceModelForMailBox(mb);
+			mb.printImportanceModelForMailBox();
+		}
+		container.flush();
+	}
+	
+	@Named("Print Email Importance Models")
+	public void printImportanceModels(){
+		List<UserMailBox> mailBoxes = listAllMailBoxes();
+		for (UserMailBox mb : mailBoxes){
+			//EmailUtils.printImportanceModelForMailBox(mb);
+			mb.printImportanceModelForMailBox();
+		}
 		
+	}
+	
+	@Named("Print Cluster Centroids")
+	public void printClusterCentroids(){
+		List<UserMailBox> mailBoxes = listAllMailBoxes();
+		for (UserMailBox mb : mailBoxes){
+			List<EmailContentCluster> emailContentClusters = mb.getReputationDataModel().getContentClusters();
+			logger.info("printing cluster centroids...");
+			for(EmailContentCluster cluster : emailContentClusters){
+				logger.info("cluster : " + cluster.getId() + " centroid : " + EmailUtils.getVectorTotal(cluster.getCentroid()));
+			}
+		}
+	}
+	
+	@Named("Check Similarity with the same vector")
+	public void checkSimilarity(){
+		List<UserMailBox> mailBoxes = listAllMailBoxes();
+		for (UserMailBox mb : mailBoxes){
+			List<Email> emails = mb.getAllEmails();
+			logger.info("Checking similarity with own vector");
+			
+			for(Email email : emails){
+				double[] textVector = email.getTextContextVector();
+				double[] peopleVector= email.getRecipientContextVector();
+				
+				logger.info("email id  " + email.getMsgUid() + " text vector cosine sim : " + Similarity.cosineSimilarity(textVector, textVector));
+				logger.info("email id  " + email.getMsgUid() + " people vector cosine sim : " + Similarity.cosineSimilarity(peopleVector, peopleVector));
+				logger.info("\n");
+			}
+		}
 	}
 	
 	@Programmatic
@@ -517,9 +528,13 @@ public class EmailService {
 	@Programmatic
 	//sample mailbox
 	public UserMailBox createSample() {
-		UserMailBox mb = container.newTransientInstance(UserMailBox.class);
+		UserMailBox mb = container.newTransientInstance(UserMailBox.class);	
+		mb.setEmailId("test@gmail.com");
+		mb.setImapHostId("imap.gmail.com");
+		mb.setPassword("pass");
+		mb.setUserFirstName("Dileepa");
+		mb.setUserLastName("Jayakody");
 		
-		mb.setEmailId("gdc2013demo@gmail.com");
 		//mb.setAccountId("530f0d8eb4810fd65d6d2149");
 		
 		Date today = new Date();
@@ -569,6 +584,7 @@ public class EmailService {
 		List<UserMailBox> mailBoxes = listAllMailBoxes();
 		for(UserMailBox mb : mailBoxes){
 			List<Email> allEmails = mb.getAllEmails();
+			logger.info("the number of emails for the csv : " + allEmails.size());
 			
 			PrintWriter writer = null;		
 			try {
@@ -576,13 +592,14 @@ public class EmailService {
 				String headerRecord = "mailId,sub,ismodel,ispredicted,isSpam,isDirect,isCCd,isList,"
 						+ "isAnswered,isFlagged,isSeen,isImportantByHeader,importanceLevel,precedenceLevel,isSensitiveByHeader,"
 						+ "isCommit,isDeliver,isMeeting,isRequest,attachments,images,"
-						+ "contentScore,recipientScore,flaggedTopicScore,flaggedPeopleScore,flaggedSAScore,flaggedKeywordScore,"
-						+ "repliedTopicScore,repliedPeopleScore,repliedSAScore,repliedKeywordScore,"
-						+ "seenTopicScore,seenPeopleScore,seenSAScore,seenKeywordScore,"
+						+ "contentScore,recipientScore,flaggedTopicScore,flaggedPeopleScore,flaggedKeywordScore,"
+						+ "repliedTopicScore,repliedPeopleScore,repliedKeywordScore,"
+						+ "seenTopicScore,seenPeopleScore,seenKeywordScore,"
 						+ "contentClusterId,peopleClusterId";
 				writer.println(headerRecord);
 				
 				for(Email mail : allEmails){
+					String messageId = mail.getMessageId();
 					String sub = mail.getSubject();
 					//sub.replace("'", " ");
 					boolean model = mail.isModel();
@@ -632,21 +649,21 @@ public class EmailService {
 					String contentClusterId = mail.getTextClusterId();
 					String peopleClusterId = mail.getPeopleClusterId();
 					
-					String record = mail.getMessageId() + "," + "'" + sub + "'"+ "," + model + "," + predicted
+					String record = messageId + "," + "'" + sub + "'"+ "," + model + "," + predicted
 					+ "," + isSpam + "," + isDirect + "," + isCCd + "," + isList
 					+ "," + isAnswered  + "," + isFlagged  + "," + isSeen
 					+ "," + isImportantByHeader + "," + importanceLevel + "," + precedenceLevel + "," + isSensitiveByHeader
 					+ "," + isCommit + "," + isDelivery + "," + isMeeting + "," + isRequest
 					+ "," + attachments + "," + images
-					+ "," + contentScore + "," + recipientScore + "," + flaggedTopicScore + "," + flaggedPeopleScore + "," + flaggedSAScore + "," + flaggedKeywordScore
-					+ "," + repliedTopicScore + "," + repliedPeopleScore + "," + repliedSAScore + "," + repliedKeywordScore
-					+ "," + seenTopicScore + "," + seenPeopleScore + "," + seenSAScore + "," + seenKeywordScore
+					+ "," + contentScore + "," + recipientScore + "," + flaggedTopicScore + "," + flaggedPeopleScore  + "," + flaggedKeywordScore
+					+ "," + repliedTopicScore + "," + repliedPeopleScore + "," + repliedKeywordScore
+					+ "," + seenTopicScore + "," + seenPeopleScore + "," + seenKeywordScore
 					+ "," + contentClusterId + "," +peopleClusterId;
 					
 					
-					String simpleRecord = mail.getMessageId()+ "," + "'" + sub + "'"+ "," + model + "," + predicted;
+					//String simpleRecord = mail.getMessageId()+ "," + "'" + sub + "'"+ "," + model + "," + predicted;
 					//record = record.substring(0, (record.length()-1));
-					writer.println(simpleRecord);
+					writer.println(record);
 						
 				}			
 				writer.close();			

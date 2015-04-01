@@ -34,6 +34,7 @@ import edu.ucla.sspace.vector.Vectors;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,6 +48,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.isis.applib.annotation.Named;
+import org.nic.isis.reputation.dom.RandomIndexVector;
 import org.nic.isis.vector.VectorsMath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +60,12 @@ import org.slf4j.LoggerFactory;
  */
 public class RandomIndexing implements SemanticSpace {
 
+	public static final String textSemanticType = "TEXT";
+	public static final String peopleSemanticType = "PEOPLE";
+	
+			
+	private String semanticType;
+	
 	public static final String RI_SSPACE_NAME = "random-indexing";
 
 	/**
@@ -176,20 +184,26 @@ public class RandomIndexing implements SemanticSpace {
 	private RandomIndexVectorGenerator generator;
 
 	/**
+	 * before processing this document how many documents had this word
+	 */
+	private Map<String, Integer> wordDocumentFrequencies;
+	//required to calculate the incremental logIdf to weight words
+	private int noOfDocumentsProcessed;
+	
+	/**
 	 * Creates a new {@code RandomIndexing} instance from an existing
 	 * wordToIndexVector and wordToMeaning map
 	 */
 	public RandomIndexing(Map<String, TernaryVector> indexVectors,
-			Map<String, double[]> contextVectors) {
+			Map<String, double[]> contextVectors, String semType) {
 		vectorLength = DEFAULT_VECTOR_LENGTH;
 		windowSize = DEFAULT_WINDOW_SIZE;
 		usePermutations = false;
 		permutationFunc = new TernaryPermutationFunction();
 		wordToIndexVector = indexVectors;
 		useSparseSemantics = true;
-		
 		generator = new RandomIndexVectorGenerator(DEFAULT_VECTOR_LENGTH);
-		
+		semanticType = semType;
 		//the context vectors of words depends on the contextual usage within each doc
 		//hence cannot have a global set of context vectors for a mailbox like index vectors
 		//test this also with a global contextVectors in the mailbox and compare results
@@ -221,21 +235,26 @@ public class RandomIndexing implements SemanticSpace {
 	 * @return the {@code SemanticVector} for the provide word.
 	 */
 	private synchronized double[] getSemanticVector(String word) {
-		double[] v = wordToMeaning.get(word);
-		if (v == null) {
+		double[] sv = wordToMeaning.get(word);
+		if (sv == null) {
 			// lock on the word in case multiple threads attempt to add it at
 			// once
 			synchronized (this) {
 				// recheck in case another thread added it while we were waiting
 				// for the lock
-				v = wordToMeaning.get(word);
-				if (v == null) {
-					v = new double[vectorLength];
-					wordToMeaning.put(word, v);
+				sv = wordToMeaning.get(word);
+				if (sv == null) {
+					sv = new double[vectorLength];
+					//adding the index vector to the word context vector 
+					//modified by dileepa
+					TernaryVector iv = wordToIndexVector.get(word);
+					sv = add(sv, iv);
+					//end of modification by dileepa
+					wordToMeaning.put(word, sv);
 				}
 			}
 		}
-		return v;
+		return sv;
 	}
 
 	public synchronized void putSemanticVector(String word, double[] vector){
@@ -343,14 +362,14 @@ public class RandomIndexing implements SemanticSpace {
 			if (v == null) {
 				// Generate the index vector for this term and store it.
 				v = generator.generate();
-				wordToIndexVector.put((String) word, v);
+				wordToIndexVector.put((String) word, v);			
 			}
 			return v;
 	}
     
     /**
      * just like processDocument, but not using context location of the word.
-     * 
+     * used for NLP keyword processing
      * @param word
      */
     public double[] processWords(Map<String,Integer> words){
@@ -360,7 +379,8 @@ public class RandomIndexing implements SemanticSpace {
     		//if the word doesn't have a indexVector create one and put in the IndexVectorMap
     		if(iv == null) {
     			iv = this.generateIndexVector(word);
-    			wordToIndexVector.put(word, iv);   		
+    			wordToIndexVector.put(word, iv);  
+    			
     		}
     		
     		int frequency = words.get(word);
@@ -376,6 +396,10 @@ public class RandomIndexing implements SemanticSpace {
 	 *            {@inheritDoc}
 	 */
 	public void processDocument(BufferedReader document) throws IOException {
+		this.noOfDocumentsProcessed++;
+		//to flag already added words to the wordDocFrequencies from this document
+		Set<String> addedWordsToWordFrequencies = new HashSet<String>();
+		
 		Queue<String> prevWords = new ArrayDeque<String>(windowSize);
 		Queue<String> nextWords = new ArrayDeque<String>(windowSize);
 
@@ -385,12 +409,31 @@ public class RandomIndexing implements SemanticSpace {
 		String focusWord = null;
 
 		// prefetch the first windowSize words
-		for (int i = 0; i < windowSize && documentTokens.hasNext(); ++i)
-			nextWords.offer(documentTokens.next());
+		for (int i = 0; i < windowSize && documentTokens.hasNext(); ++i){
+			String word = documentTokens.next();
+			nextWords.offer(word);
+		}
 
 		while (!nextWords.isEmpty()) {
 			focusWord = nextWords.remove();
-
+			
+			//since it seems some of the focusWords are not going into indexWords
+			TernaryVector focusIv = wordToIndexVector.get(focusWord);
+			//check if iv is null and generate vector
+			//modified by dileepa
+			if(focusIv == null){
+				//logger.error("No index vector for previous word : " + word + " putting new one");
+				focusIv = this.generateIndexVector(focusWord);
+				wordToIndexVector.put(focusWord, focusIv);				
+				
+			}
+			
+			//for wordDocFreqMap
+			if(this.semanticType.equals(textSemanticType)){
+				addedWordsToWordFrequencies = addToWordDocFrequencyMap(focusWord, addedWordsToWordFrequencies);					
+			}
+			//end:modified by dileepa
+			
 			// shift over the window to the next word
 			if (documentTokens.hasNext()) {
 				String windowEdge = documentTokens.next();
@@ -407,7 +450,7 @@ public class RandomIndexing implements SemanticSpace {
 
 			if (calculateSemantics) {
 				double[] focusMeaning = getSemanticVector(focusWord);
-
+				
 				// Sum up the index vector for all the surrounding words. If
 				// permutations are enabled, permute the index vector based on
 				// its relative position to the focus word.
@@ -428,7 +471,8 @@ public class RandomIndexing implements SemanticSpace {
 					if(iv == null){
 						//logger.error("No index vector for previous word : " + word + " putting new one");
 						iv = this.generateIndexVector(word);
-						wordToIndexVector.put(word, iv);
+						wordToIndexVector.put(word, iv);				
+						
 					}
 					
 					 
@@ -459,6 +503,7 @@ public class RandomIndexing implements SemanticSpace {
 						//logger.error("No index vector for next word : " + word + " putting new one");
 						iv = this.generateIndexVector(word);
 						wordToIndexVector.put(word, iv);
+						
 					}
 					
 					//logger.info("PROCESSING WORD in processDocument: " + word);
@@ -585,6 +630,68 @@ public class RandomIndexing implements SemanticSpace {
 	@Override
 	public void processSpace(Properties properties) {
 		// TODO Auto-generated method stub
+		
+	}
+
+	public Map<String, Integer> getWordDocumentFrequencies() {
+		return wordDocumentFrequencies;
+	}
+
+	public Integer getWordFrequency(String word){
+		return this.wordDocumentFrequencies.get(word);
+	}
+	public void setWordDocumentFrequencies(Map<String, Integer> wordDocumentFrequencies) {
+		this.wordDocumentFrequencies = wordDocumentFrequencies;
+	}
+
+	public int getNoOfDocumentsProcessed() {
+		return noOfDocumentsProcessed;
+	}
+
+	public void setNoOfDocumentsProcessed(int noOfDocumentsProcessed) {
+		this.noOfDocumentsProcessed = noOfDocumentsProcessed;
+	}
+	
+	public Set<String> addToWordDocFrequencyMap(String word, Set<String> addedWordsToWordFrequencies){
+		//for wordDocFrequencyMap 
+		Integer freq = wordDocumentFrequencies.get(word);
+		if(freq == null){
+			this.wordDocumentFrequencies.put(word, 1);	
+		}else {
+			if(!addedWordsToWordFrequencies.contains(word)){
+				freq = freq + 1;
+				this.wordDocumentFrequencies.put(word, freq);	
+			}
+		}
+		addedWordsToWordFrequencies.add(word);
+		return addedWordsToWordFrequencies;
+	}
+
+	public String getSemanticType() {
+		return semanticType;
+	}
+
+	public void setSemanticType(String semanticType) {
+		this.semanticType = semanticType;
+	}
+	
+	public List<RandomIndexVector> getRandomIndexingVectors(){
+		List<RandomIndexVector> riVectors = new ArrayList<RandomIndexVector>();
+		for(String word : wordToIndexVector.keySet()){
+			RandomIndexVector riVector = new RandomIndexVector();
+			riVector.setWord(word);
+			riVector.setIndexVector(wordToIndexVector.get(word));
+			riVector.setContextVector(wordToMeaning.get(word));
+			if(wordDocumentFrequencies!=null ){
+				if(wordDocumentFrequencies.get(word) != null){
+					riVector.setWordDocFrequency(wordDocumentFrequencies.get(word));
+				}else {
+					logger.info("the freq is not defined for word : " + word + " from indexVector");
+				}	
+			}
+			riVectors.add(riVector);
+		}
+		return riVectors;
 		
 	}
 }

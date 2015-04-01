@@ -15,21 +15,18 @@ public class KMeansClustering {
 	private final static Logger logger = LoggerFactory
 			.getLogger(KMeansClustering.class);
 
-	private String[] initialClusterAssignments = null;
+	//private String[] initialClusterAssignments = null;
 	//need scientific reasoning for these values
 	private static double contentClusterThreshold = 0.6;
 	private static double peopleClusterThreshold = 0.4;
 	//private static int maxClusters = 100;
-
-	public void setInitialClusterAssignments(String[] documentNames) {
-		this.initialClusterAssignments = documentNames;
-	}
 
 	public List<EmailContentCluster> clusterBasedOnContent(List<Email> emailCollection) {
 		int numDocs = emailCollection.size();
 		int numClusters = 0;
 		
 		List<EmailContentCluster> clusters = new ArrayList<EmailContentCluster>();
+		String[]  initialClusterAssignments = null;
 		
 		if (initialClusterAssignments == null) {
 			// compute initial cluster assignments randomly
@@ -52,27 +49,19 @@ public class KMeansClustering {
 			numClusters = initialClusterAssignments.length;
 		}
 
-		// build initial clusters
-		/*for (int i = 0; i < numClusters; i++) {
-			EmailContentCluster cluster = new EmailContentCluster(String.valueOf(i));
-			cluster.addEmail(initialClusterAssignments[i],
-					emailCollection.get(i));
-			clusters.add(cluster);
-		}*/
-
 		List<EmailContentCluster> prevClusters = new ArrayList<EmailContentCluster>();
 
 		// Repeat until termination conditions are satisfied
 		while (true) {
 			// For every cluster i, recompute the centroid based on the
 			// current member documents.
-			List<double[]> centroids = new ArrayList<double[]>();
-			for (int i = 0; i < numClusters; i++) {
-				//double[] centroid = clusters.get(i).calculateAverageCentroid();
-				//testing get centroid
-				double[] centroid = clusters.get(i).getCentroid();
-				centroids.add(i, centroid);
-			}
+//			List<double[]> centroids = new ArrayList<double[]>();
+//			for (int i = 0; i < numClusters; i++) {
+//				//double[] centroid = clusters.get(i).calculateAverageCentroid();
+//				//testing get centroid
+//				double[] centroid = clusters.get(i).getAverageCentroid();
+//				centroids.add(i, centroid);
+//			}
 			// For every document d, find the cluster i whose centroid is
 			// most similar, assign d to cluster i. (If a document is
 			// equally similar from all centroids, then just dump it into
@@ -118,47 +107,37 @@ public class KMeansClustering {
 		// build initial clusters
 		List<EmailRecipientCluster> clusters = new ArrayList<EmailRecipientCluster>();
 		
-		if (initialClusterAssignments == null) {
-			// compute initial cluster assignments randomly
-			Random randomGen = new Random();
-			//the number of clusters is taken as the square-root value of total no.of docs
-			numClusters = (int) Math.floor(Math.sqrt(numDocs));
-			initialClusterAssignments = new String[numClusters];
-			for (int i = 0; i < numClusters; i++) {
-				int docIndex = randomGen.nextInt(numDocs);
-				Email randomEmail = emailCollection.get(docIndex);
-				initialClusterAssignments[i] = emailCollection.get(docIndex)
-						.getMessageId();
-				
-				//building initial clusters
-				EmailRecipientCluster cluster = new EmailRecipientCluster("p" + String.valueOf(i));
-				cluster.addEmail(initialClusterAssignments[i], randomEmail);
-				clusters.add(cluster);
-			}
-		} else {
-			numClusters = initialClusterAssignments.length;
-		}
-
-		
-		/*for (int i = 0; i < numClusters; i++) {
-			EmailRecipientCluster cluster = new EmailRecipientCluster(String.valueOf(i));
-			cluster.addEmail(initialClusterAssignments[i],
-					emailCollection.get(i));
+		String[]  initialClusterAssignments = null;
+		// compute initial cluster assignments randomly
+		Random randomGen = new Random();
+		//the number of clusters is taken as the square-root value of total no.of docs
+		numClusters = (int) Math.floor(Math.sqrt(numDocs));
+		initialClusterAssignments = new String[numClusters];
+		for (int i = 0; i < numClusters; i++) {
+			int docIndex = randomGen.nextInt(numDocs);
+			Email randomEmail = emailCollection.get(docIndex);
+			initialClusterAssignments[i] = emailCollection.get(docIndex)
+					.getMessageId();
+			
+			//building initial clusters
+			EmailRecipientCluster cluster = new EmailRecipientCluster("p" + String.valueOf(i));
+			cluster.addEmail(initialClusterAssignments[i], randomEmail);
 			clusters.add(cluster);
-		}*/
-
+		}
+		
 		List<EmailRecipientCluster> prevClusters = new ArrayList<EmailRecipientCluster>();
 
 		// Repeat until termination conditions are satisfied
 		while (true) {
 			// For every cluster i, recompute the centroid based on the
 			// current member documents.
-			List<double[]> centroids = new ArrayList<double[]>();
-			for (int i = 0; i < numClusters; i++) {
-				//double[] centroid = clusters.get(i).calculateAverageCentroid();
-				double[] centroid = clusters.get(i).getCentroid();
-				centroids.add(i, centroid);
-			}
+//			List<double[]> centroids = new ArrayList<double[]>();
+//			for (int i = 0; i < numClusters; i++) {
+//				//double[] centroid = clusters.get(i).calculateAverageCentroid();
+//				double[] centroid = clusters.get(i).getAverageCentroid();
+//				centroids.add(i, centroid);
+//			}
+			
 			// For every document d, find the cluster i whose centroid is
 			// most similar, assign d to cluster i. (If a document is
 			// equally similar from all centroids, then just dump it into
@@ -206,28 +185,26 @@ public class KMeansClustering {
 		int numClusters = 0;
 		// build initial clusters
 		List<EmailAllFeatureCluster> clusters = new ArrayList<EmailAllFeatureCluster>();
-		
-		if (initialClusterAssignments == null) {
-			// compute initial cluster assignments randomly
-			Random randomGen = new Random();
-			//the number of clusters is taken as the square-root value of total no.of docs
-			numClusters = (int) Math.floor(Math.sqrt(numDocs));
-			initialClusterAssignments = new String[numClusters];
-			for (int i = 0; i < numClusters; i++) {
-				int docIndex = randomGen.nextInt(numDocs);
-				Email randomEmail = emailCollection.get(docIndex);
-				initialClusterAssignments[i] = emailCollection.get(docIndex)
-						.getMessageId();
-				
-				//building initial clusters
-				EmailAllFeatureCluster cluster = new EmailAllFeatureCluster("p" + String.valueOf(i));
-				cluster.addEmail(initialClusterAssignments[i], randomEmail);
-				clusters.add(cluster);
-			}
-		} else {
-			numClusters = initialClusterAssignments.length;
-		}
+		String[]  initialClusterAssignments = null;
 
+		// compute initial cluster assignments randomly
+		Random randomGen = new Random();
+		// the number of clusters is taken as the square-root value of total
+		// no.of docs
+		numClusters = (int) Math.floor(Math.sqrt(numDocs));
+		initialClusterAssignments = new String[numClusters];
+		for (int i = 0; i < numClusters; i++) {
+			int docIndex = randomGen.nextInt(numDocs);
+			Email randomEmail = emailCollection.get(docIndex);
+			initialClusterAssignments[i] = emailCollection.get(docIndex)
+					.getMessageId();
+
+			// building initial clusters
+			EmailAllFeatureCluster cluster = new EmailAllFeatureCluster("p"
+					+ String.valueOf(i));
+			cluster.addEmail(initialClusterAssignments[i], randomEmail);
+			clusters.add(cluster);
+		}
 		
 		/*for (int i = 0; i < numClusters; i++) {
 			EmailRecipientCluster cluster = new EmailRecipientCluster(String.valueOf(i));
@@ -312,6 +289,7 @@ public class KMeansClustering {
 				if (bestMatchCluster != null) {
 					logger.info("The best content cluster for email found... clusterId : "
 							+ bestMatchCluster.getId() + " similarity : " + maxSimilarity);		
+					
 					bestMatchCluster.addEmail(messageId, newEmail);
 					double clusterRepuScore = bestMatchCluster
 							.calculateClusterReputationScore();
@@ -410,4 +388,92 @@ public class KMeansClustering {
             }
 		return recipientClusters;
 	}
+	
+	
+//clustering based on separate vector for subject,body	
+
+	public List<EmailWeightedSubjectBodyContentCluster> clusterBasedOnSubjectAndBody(List<Email> emailCollection) {
+		int numDocs = emailCollection.size();
+		int numClusters = 0;
+		
+		List<EmailWeightedSubjectBodyContentCluster> clusters = new ArrayList<EmailWeightedSubjectBodyContentCluster>();
+		String[] initialClusterAssignments = null;
+
+		// compute initial cluster assignments randomly
+		Random randomGen = new Random();
+		// the number of clusters is taken as the square-root value of total
+		// no.of docs
+		numClusters = (int) Math.floor(Math.sqrt(numDocs));
+		initialClusterAssignments = new String[numClusters];
+
+		for (int i = 0; i < numClusters; i++) {
+			int docIndex = randomGen.nextInt(numDocs);
+			Email randomEmail = emailCollection.get(docIndex);
+			initialClusterAssignments[i] = randomEmail.getMessageId();
+
+			// building initial clusters
+			EmailWeightedSubjectBodyContentCluster cluster = new EmailWeightedSubjectBodyContentCluster(
+					"sb" + String.valueOf(i));
+			cluster.addEmail(initialClusterAssignments[i], randomEmail);
+			clusters.add(cluster);
+		}
+
+		List<EmailWeightedSubjectBodyContentCluster> prevClusters = new ArrayList<EmailWeightedSubjectBodyContentCluster>();
+
+		// Repeat until termination conditions are satisfied
+		while (true) {
+			// For every cluster i, recompute the centroid based on the
+			// current member documents.
+//			List<double[]> subjectCentroids = new ArrayList<double[]>();
+//			List<double[]> bodyCentroids = new ArrayList<double[]>();
+//			
+//			for (int i = 0; i < numClusters; i++) {
+//				double[] subCentroid = clusters.get(i).getAverageSubjectCentroid();
+//				subjectCentroids.add(i, subCentroid);
+//				
+//				double[] bodyCentroid = clusters.get(i).getAverageBodyCentroid();
+//				bodyCentroids.add(i, bodyCentroid);
+//				
+//			}
+			// For every document d, find the cluster i whose centroid is
+			// most similar, assign d to cluster i. (If a document is
+			// equally similar from all centroids, then just dump it into
+			// cluster 0).
+			for (int i = 0; i < numDocs; i++) {
+				int bestCluster = 0;
+				double maxSimilarity = Double.MIN_VALUE;
+				Email email = emailCollection.get(i);
+				String messageId = email.getMessageId();
+				//System.out.println("no of clusters for sb clusters : " + clusters.size());
+				for (int j = 0; j < clusters.size(); j++) {
+					double similarity = 0.0D;
+					EmailWeightedSubjectBodyContentCluster sbCluster = clusters.get(j);
+				//	System.out.println("j [" + j +  "] sb cluster id : " + sbCluster.id + " no of emails : " + sbCluster.getEmails().size());
+					
+					similarity = clusters.get(j).getSimilarity(
+								email.getSubjectContextVector(), email.getBodyContextVector());
+					
+					if (similarity > maxSimilarity) {
+						bestCluster = j;
+						maxSimilarity = similarity;
+					}
+				}
+				for (EmailWeightedSubjectBodyContentCluster cluster : clusters) {
+					//if (cluster.getEmail(messageId) != null) {
+						cluster.removeEmail(messageId);
+					//}
+				}
+				clusters.get(bestCluster).addEmail(messageId, email);
+			}
+			// Check for termination -- minimal or no change to the assignment
+			// of documents to clusters.
+			if (CollectionUtils.isEqualCollection(clusters, prevClusters)) {
+				break;
+			}
+			prevClusters.clear();
+			prevClusters.addAll(clusters);
+		}
+		return clusters;
+	}
+	
 }

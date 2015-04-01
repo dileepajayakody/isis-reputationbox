@@ -21,20 +21,23 @@ import edu.ucla.sspace.vector.TernaryVector;
  * @author dileepa
  *
  */
-@javax.jdo.annotations.PersistenceCapable(identityType = IdentityType.DATASTORE)
-@javax.jdo.annotations.DatastoreIdentity(strategy = javax.jdo.annotations.IdGeneratorStrategy.IDENTITY, column = "id")
-@javax.jdo.annotations.Version(strategy = VersionStrategy.VERSION_NUMBER, column = "version")
-@ObjectType("INDEXVECTORMAP")
+
 public class IndexVectorMap {
 
-	List<String> indexWords = new ArrayList<String>();
-	List<TernaryVector> indexVectors = new ArrayList<TernaryVector>();
+	private List<String> indexWords;
+	private List<TernaryVector> indexVectors;
 
+	//for computing incremental logidf keeping track of word document frequencies
+	//how many documents has this word
+	private List<Integer> wordFrequencies = new ArrayList<Integer>();
+	
+	
 	private final static Logger logger = LoggerFactory
 			.getLogger(IndexVectorMap.class);
 	
 	public IndexVectorMap(){
-		
+		indexWords = new ArrayList<String>();
+		indexVectors = new ArrayList<TernaryVector>();
 	}
 	
 	public synchronized void putIndexVector(String key, TernaryVector value) {
@@ -45,43 +48,96 @@ public class IndexVectorMap {
 		}
 		valueStr += ">";
 		*/
-		int[] posArray = value.positiveDimensions();
-		int[] negArray = value.negativeDimensions();
-		String posIndexes = "";
-		for(int index :  posArray){
-			posIndexes += index + ", ";
-		}
-		String negIndexes = "";
-		for(int index :  negArray){
-			negIndexes += index + ", ";
-		}
+//		int[] posArray = value.positiveDimensions();
+//		int[] negArray = value.negativeDimensions();
+//		String posIndexes = "";
+//		for(int index :  posArray){
+//			posIndexes += index + ", ";
+//		}
+//		String negIndexes = "";
+//		for(int index :  negArray){
+//			negIndexes += index + ", ";
+//		}
 		
-		//logger.warn("putting indexVector for word : " + key + " pos Indexes : " + posIndexes + " neg Indexes : " + negIndexes);
-	    if (!indexWords.contains(key)) {
+	    //if (!indexWords.contains(key)) {
+	      //logger.info("Adding new word to IndexVectorMap : " + key);	
 	      indexWords.add(key);
 	      indexVectors.add(value);
-	    } else
-	      indexVectors.set(indexWords.indexOf(key), value);
+	     // wordFrequencies.add(new Integer(1));
+	    
+	    //} else {
+	    //  logger.info("the word : " + key + " is already in the indexVectorMap");
+	      //int index = indexWords.indexOf(key);
+	      //indexVectors.set(index, value);
+	    //}
+	      
 	  }
 	
-	 public TernaryVector getIndexVector(String key) {
+//	public int getFrequencyForWord(String key){
+//		if (!indexWords.contains(key)) {
+//			/*logger.warn("No index vector found for key : " + key
+//					+ " hence returning null");*/
+//			return 0;
+//		} else {
+//			Integer frequency = wordFrequencies.get(indexWords.indexOf(key));
+//			return frequency;
+//			//logger.warn("GETTING indexVector for word : " + key + " pos Indexes : " + posIndexes +  " neg Indexes : " + negIndexes);
+//		}
+//		
+//	}
+	
+	public Integer getWordFrequency(String key){
+		Integer frequency = 0;
+		if(!indexWords.contains(key)){
+			return 0;
+		}else {
+			frequency = wordFrequencies.get(indexWords.indexOf(key));
+		}
+		return frequency;
+	}
+	
+	public void setWordDocFrequencies(Map<String,Integer> wordDocFrequencies){
+		for(String key: wordDocFrequencies.keySet()){
+			
+			      int index = indexWords.indexOf(key);
+			      logger.info("index vector  : [" + index + "] word : " + key);
+			      if(index < 0){
+			    	  logger.info("the word: " + key + " is not properly added to indexWords..disregarding ");
+			      }
+			      else if(index == 0){
+			    	  wordFrequencies.add(0, wordDocFrequencies.get(key));
+					  
+			      }else if(wordFrequencies.size() <= index){
+			    	  while(wordFrequencies.size() <= (index + 1)){
+			    		  wordFrequencies.add(null);
+			    	  }
+			    	  wordFrequencies.set(index, wordDocFrequencies.get(key));
+			      } else {
+			    	  wordFrequencies.set(index, wordDocFrequencies.get(key));				        
+			      }
+		}
+	}
+	
+
+
+	public TernaryVector getIndexVector(String key) {
 		TernaryVector returnedVector = null; 
 		if (!indexWords.contains(key)) {
-			/*logger.warn("No index vector found for key : " + key
-					+ " hence returning null");*/
+			logger.warn("No index vector found for key : " + key
+					+ " hence returning null; VERY ODD");
 			returnedVector = null;
 		} else {
 			returnedVector = indexVectors.get(indexWords.indexOf(key));
-			int[] posArray = returnedVector.positiveDimensions();
-			int[] negArray = returnedVector.negativeDimensions();
-			String posIndexes = "";
-			for (int index : posArray) {
-				posIndexes += index + ", ";
-			}
-			String negIndexes = "";
-			for (int index : negArray) {
-				negIndexes += index + ", ";
-			}
+//			int[] posArray = returnedVector.positiveDimensions();
+//			int[] negArray = returnedVector.negativeDimensions();
+//			String posIndexes = "";
+//			for (int index : posArray) {
+//				posIndexes += index + ", ";
+//			}
+//			String negIndexes = "";
+//			for (int index : negArray) {
+//				negIndexes += index + ", ";
+//			}
 			//logger.warn("GETTING indexVector for word : " + key + " pos Indexes : " + posIndexes +  " neg Indexes : " + negIndexes);
 		}
 		
@@ -127,11 +183,39 @@ public class IndexVectorMap {
 	}
 	
 	@Programmatic
-	public void setIndexVectorMap(Map<String, TernaryVector> indexVectors){
-		
-		for(String key : indexVectors.keySet()){
-			this.putIndexVector(key, indexVectors.get(key));
+	public Map<String, Integer> getWordDocFrequencyMap(){
+		Map<String, Integer> wordDocFrequencyMap = new HashMap<String, Integer>();
+		for(String word : indexWords){
+			wordDocFrequencyMap.put(word, getWordFrequency(word));
 		}
+		return wordDocFrequencyMap;
+	}
+	
+	@Programmatic
+	public void setIndexVectorMap(Map<String, TernaryVector> ivs){
+		this.indexWords = new ArrayList<String>();
+		this.indexVectors = new ArrayList<TernaryVector>();
+		for(String key : ivs.keySet()){
+			//this.putIndexVector(key, ivs.get(key));
+			indexWords.add(key);
+			int ind = indexWords.indexOf(key);
+			if(indexVectors.size() <= ind){
+				 while(indexVectors.size() <= (ind + 1)){
+		    		  indexVectors.add(null);
+		    	  }
+			}
+			indexVectors.set(ind,ivs.get(key));
+		}
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<Integer> getWordFrequencies() {
+		return wordFrequencies;
+	}
+
+	public void setWordFrequencies(List<Integer> wordFrequencies) {
+		this.wordFrequencies = wordFrequencies;
 	}
 
 	public String toString(){
