@@ -17,6 +17,8 @@ import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.EmailReputationDataModel;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.reputation.utils.EmailUtils;
+import org.nic.isis.ri.RandomIndexing;
+import org.nic.isis.vector.VectorsMath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.isis.applib.DomainObjectContainer;
@@ -30,6 +32,10 @@ import org.apache.isis.objectstore.jdo.applib.service.support.IsisJdoSupport;
 
 import edu.ucla.sspace.common.Similarity;
 
+/**
+ * @author dileepa
+ *
+ */
 public class EmailService {
 
 	private final static Logger logger = LoggerFactory
@@ -49,15 +55,19 @@ public class EmailService {
 		}
 		
 	//	else {
-			int modelSize = 1100;
 			for (UserMailBox mailBox : mailBoxes) {
+
+				//set the modelSize by calculating the no.of emails to retrieve for the time-period
+				int modelSize = 500;
 				//if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() == 0)){
-				if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() < modelSize)){
+				if(!mailBox.isUpdatingModel() && mailBox.isRequireNewModel() && (mailBox.getAllEmails().size() < modelSize)){
 					
 					logger.info("Loading mailbox : " + mailBox.getEmailId());	
-					logger.info("No emails loaded to mailbox..creating the importance model..");
-					mailBox = javaMailService.createImportanceModel(mailBox);
-					//create the content and people clusters at the end of the model email retrieval
+					logger.info("No emails loaded to mailbox..creating the email training model..");
+					mailBox = javaMailService.addMailsToModel(mailBox);
+					
+					//create the content and people clusters and average vectors for flagged,replied,seen emails
+					//at the end of the model email retrieval
 					if(mailBox.getAllEmails().size() >= modelSize){
 						EmailReputationDataModel model = mailBox.getReputationDataModel();
 						logger.info("Creating the content and people clusters from training dataset");	
@@ -67,10 +77,20 @@ public class EmailService {
 						model.setContentClusters(contentClusters);
 						model.setRecipientClusters(recipientClusters);
 						logger.info("Dunn index for content clusters : " + model.getDunnIndexForContentClusters());
+						mailBox.setReputationDataModel(model);
+						
+						logger.info("Updating profile vector indexes ..");
+						mailBox = EmailUtils.calculateImportanceModel(mailBox);
+						//mailBox = EmailUtils.updateAverageImportanceVectors(mailBox);
+						//setting the average profiles for direct replied, flagged, seen and list replied, flagged, seen
+				
+						//since the model has sufficient model data
+						mailBox.setRequireNewModel(false);
+						
 					}
 					
 				//} else if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() > 0)){
-				} else if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() >= modelSize)){
+				} else if(!mailBox.isUpdatingModel() && !mailBox.isRequireNewModel() && (mailBox.getAllEmails().size() >= modelSize)){
 					//mailBox.setEmailId("dileepajayakody@gmail.com");
 					logger.info("Loading mailbox : " + mailBox.getEmailId());	
 					
@@ -256,11 +276,7 @@ public class EmailService {
 			
 			mb.setNofOfUnimportantEmails(0);
 			
-			List<Email> emails = mb.getAllEmails();
-			logger.info("updating importance profile for emails : " + emails.size());
-			for(Email email : emails){
-				mb.updateMailBoxProfiles(email);
-			}
+			mb = EmailUtils.calculateImportanceModel(mb);
 			logger.info("\n\n");
 			//EmailUtils.printImportanceModelForMailBox(mb);
 			mb.printImportanceModelForMailBox();
@@ -488,6 +504,17 @@ public class EmailService {
 		}
 	}
 	
+	
+	/**
+	 * setting this mailbox requires a new email model (need to call this monthly)
+	 */
+	public void setNewEmailModelsForMailBoxes() {
+		List<UserMailBox> mailBoxes = listAllMailBoxes();
+		for(UserMailBox mb : mailBoxes){
+			mb.setRequireNewModel(true);
+		}
+	}
+	
 	@Named("List Mail Boxes")
 	public List<UserMailBox> listAllMailBoxes() {
 		//if(this.mailBoxes == null){
@@ -529,9 +556,9 @@ public class EmailService {
 	//sample mailbox
 	public UserMailBox createSample() {
 		UserMailBox mb = container.newTransientInstance(UserMailBox.class);	
-		mb.setEmailId("test@gmail.com");
+		mb.setEmailId("dileepajayakody@gmail.com");
 		mb.setImapHostId("imap.gmail.com");
-		mb.setPassword("pass");
+		mb.setPassword("hirundaangel198764");
 		mb.setUserFirstName("Dileepa");
 		mb.setUserLastName("Jayakody");
 		
@@ -679,6 +706,18 @@ public class EmailService {
 		}
 	}
 	
+	
+	//sample rest object retrieval from backend
+	public String returnNameString()
+	{
+		return "success";
+	}
+	
+	//sample rest object retrieval from backend using a param
+	public String returnParamString(String param)
+	{
+		return "got "+param ;
+	}
 
 	// region > dependencies
 	@Inject

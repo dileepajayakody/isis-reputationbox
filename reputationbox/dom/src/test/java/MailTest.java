@@ -49,6 +49,7 @@ import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.EmailBody;
 import org.nic.isis.reputation.dom.IndexVectorMap;
 import org.nic.isis.reputation.dom.TextTokenMap;
+import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.reputation.services.EmailAnalysisService;
 import org.nic.isis.reputation.utils.EmailUtils;
 import org.nic.isis.ri.RandomIndexing;
@@ -108,7 +109,7 @@ public class MailTest {
 		//mt.sendMessage();
 		
 		//mt.sendReputationResults();
-		mt.processEnronEmailSet();
+		mt.processEnronImportanceResults();
 		//mt.javaMailIteratorTest();
 		//mt.testStanfordNlp();
 		//testVectors();
@@ -190,146 +191,8 @@ public class MailTest {
 		    	 e.printStackTrace();
 		     }
 		  }
-		  
-		  
-			KMeansClustering kmeans = new KMeansClustering();
-		
-			System.out.println("Clustering emails by Content....");
-			List<EmailContentCluster> contentClusters = kmeans.clusterBasedOnContent(emails);
-			int totalEMailsInContentClusters = 0;
-			double contentSumOfSquaredError = 0;
-			
-			for (EmailContentCluster cluster : contentClusters) {
-				System.out.println("-----------------------------------------------------------------------------------");
-				System.out.println("Cluster ID : " + cluster.getId() + " No.of emails : " + cluster.getContentEmails().size());
-						
-				int clusterSize = cluster.getContentEmails().size();
-				totalEMailsInContentClusters += clusterSize;
-				for (Email email : cluster.getContentEmails()) {
-					//email.setTextClusterId(cluster.getId());
-					String toAddrs = "";
-		    		if(email.getToAddresses() != null && email.getToAddresses().size() > 0){
-		    			for(String toAdd : email.getToAddresses()){
-			    			toAddrs += toAdd + ", ";
-			    		}	
-		    		}
-		    		
-		    		String ccAddr = "";
-		    		if(email.getCcAddresses() != null && email.getCcAddresses().size() > 0){
-		    			for(String ccAdd : email.getCcAddresses()){
-			    			ccAddr += ccAdd + ", ";
-			    		}	
-		    		}
-		    		System.out.println(email.getMsgUid() + " : Email subject : " + email.getSubject());
-//		    		System.out.println("from : " + email.getFromAddress() + " to : " + toAddrs + " ccd : " + ccAddr
-//						  + "\n body : " + email.getBodyContent().getTokenStream() + 
-//							"\n");
-//				    
-//					System.out.println("is commit : " + email.isCommit());
-//					System.out.println("is delivery : " + email.isDelivery());
-//					System.out.println("is meeting : " + email.isMeeting());
-//					System.out.println("is proposal : " + email.isPropose());
-//					System.out.println("is request : " + email.isRequest());
-//					System.out.println("\n");
-					
-				}				
-				contentSumOfSquaredError += cluster.getSumOfSquaresError();
-			}
-			System.out.println("TOTAL EMAILS in all content Clusters : " + totalEMailsInContentClusters + " No. of clusters : " + contentClusters.size());
-			System.out.println("Sum of Squared values for all content clusters : " + contentSumOfSquaredError);
-			double dunnIndex = EmailUtils.getDunnIndexForContentClusters(contentClusters);
-			System.out.println("Dunn Index for content clusters : " + dunnIndex);
-			
-			//clustering weighted subject  body content clusters
-			System.out.println("Clustering emails by Weighted Subject Body Content....");
-			List<EmailWeightedSubjectBodyContentCluster> weightedContentClusters = kmeans.clusterBasedOnSubjectAndBody(emails);
-			int totalEMailsInWeightedContentClusters = 0;
-			//double weightedContentSumOfSquaredError = 0;
-		
-			for (EmailWeightedSubjectBodyContentCluster cluster : weightedContentClusters) {
-				System.out.println("-----------------------------------------------------------------------------------");
-				System.out.println("Cluster ID : " + cluster.getId() + " No.of emails : " + cluster.getSubjectBodyContentEmails().size());
-						
-				int clusterSize = cluster.getSubjectBodyContentEmails().size();
-				totalEMailsInWeightedContentClusters += clusterSize;
-				for (Email email : cluster.getSubjectBodyContentEmails()) {
-					//email.setTextClusterId(cluster.getId());
-					String toAddrs = "";
-		    		if(email.getToAddresses() != null && email.getToAddresses().size() > 0){
-		    			for(String toAdd : email.getToAddresses()){
-			    			toAddrs += toAdd + ", ";
-			    		}	
-		    		}
-		    		
-		    		String ccAddr = "";
-		    		if(email.getCcAddresses() != null && email.getCcAddresses().size() > 0){
-		    			for(String ccAdd : email.getCcAddresses()){
-			    			ccAddr += ccAdd + ", ";
-			    		}	
-		    		}
-		    		System.out.println(email.getMsgUid() + " : Email subject : " + email.getSubject());
-
-				}				
-				//weightedContentSumOfSquaredError += cluster.getSumOfSquaresError();
-			}
-			System.out.println("TOTAL EMAILS in all weighted content Clusters : " + totalEMailsInWeightedContentClusters + " No. of clusters : " + weightedContentClusters.size());
-			double subjectCentroidDunnIndex = EmailUtils.getDunnIndexForWeightedSubBodyContentClusters(weightedContentClusters, EmailWeightedSubjectBodyContentCluster.subjectVectorType);
-			double bodyCentroidDunnIndex = EmailUtils.getDunnIndexForWeightedSubBodyContentClusters(weightedContentClusters, EmailWeightedSubjectBodyContentCluster.bodyVectorType);
-			
-			System.out.println("Dunn Index for subject centroids : " + subjectCentroidDunnIndex);
-			System.out.println("Dunn Index for body centroids : " + bodyCentroidDunnIndex);
-			
-			
-			
-//			List<EmailAllFeatureCluster> allFeatureClusters = kmeans.clusterBasedOnAllFeatures(emails);
-//			int totalEMailsInClusters = 0;
-//			double sumOfSquaredError = 0;
-//			
-//			for (EmailAllFeatureCluster cluster : allFeatureClusters) {
-//				System.out.println("-----------------------------------------------------------------------------------");
-//				System.out.println("Cluster ID : " + cluster.getId() + " No.of emails : " + cluster.getEmails().size()
-//						+ " No of emails flagged : " + cluster.getNoOfMessagesFlagged() + " replied : " + cluster.getNoOfMessagesAnswered()
-//						+ " No of emails seen : " + cluster.getNoOfMessagesSeen() + " No of emails deleted : " + cluster.getNoOfMessagesDeleted()
-//						+ " Cluster reputation score : " + cluster.calculateClusterReputationScore());
-//				int clusterSize = cluster.getEmails().size();
-//				totalEMailsInClusters += clusterSize;
-//				for (Email email : cluster.getEmails()) {
-//					//email.setTextClusterId(cluster.getId());
-//					String toAddrs = "";
-//		    		if(email.getToAddresses() != null && email.getToAddresses().size() > 0){
-//		    			for(String toAdd : email.getToAddresses()){
-//			    			toAddrs += toAdd + ", ";
-//			    		}	
-//		    		}
-//		    		
-//		    		String ccAddr = "";
-//		    		if(email.getCcAddresses() != null && email.getCcAddresses().size() > 0){
-//		    			for(String ccAdd : email.getCcAddresses()){
-//			    			ccAddr += ccAdd + ", ";
-//			    		}	
-//		    		}
-//		    		System.out.println(email.getMsgUid() + " : Email subject : " + email.getSubject());
-//		    		System.out.println("from : " + email.getFromAddress() + " to : " + toAddrs + " ccd : " + ccAddr
-//						  + "\n body : " + email.getBodyContent().getTokenStream() + 
-//							"\n");
-//				    
-//					System.out.println("is commit : " + email.isCommit());
-//					System.out.println("is delivery : " + email.isDelivery());
-//					System.out.println("is meeting : " + email.isMeeting());
-//					System.out.println("is proposal : " + email.isPropose());
-//					System.out.println("is request : " + email.isRequest());
-//					System.out.println("\n");
-//					
-//				}				
-//				sumOfSquaredError += cluster.getSumOfSquaresError();
-//			}
-//			System.out.println("TOTAL EMAILS in all Clusters : " + totalEMailsInClusters + " No. of clusters : " + allFeatureClusters.size());
-//			System.out.println("Sum of Squared values for all clusters : " + sumOfSquaredError);
-//			
-			
-//			double dunnIndex = emailAnalysisService.getDunnIndexForContentClusters(contentClusters, EmailCluster.TEXT_CLUSTER_TYPE);
-//			System.out.println("dunn index for clusters : " + dunnIndex);
-//			
+		  //kmeans clustering
+		  clusterEnronEmails(emails);			
 	}
 
 	public static void testStanfordNlp(){
@@ -494,48 +357,7 @@ public class MailTest {
 //				emailsList.add(email);
 			//}	    
 		}//end for loop for messages
-			
-//			KMeansClustering kmeans = new KMeansClustering();
-//		    //List<EmailContentCluster> emailClustersForAllFeatures = kmeans.clusterBasedOnAllFeatures(emailsList);
-//		    List<EmailContentCluster> emailClustersForAllFeatures = kmeans.clusterBasedOnContent(emailsList);
-//			int clusterNo = 0;
-//		    System.out.println("\n\n ===================================================================================================");
-//		    System.out.println("printing cluster results.................");
-//		    for(EmailContentCluster c : emailClustersForAllFeatures){
-//		    	System.out.println("Cluster c" + clusterNo + " : no of emails : " + c.getContentEmails().size() + " no.of emails seen : " + c.getNoOfMessagesSeen()
-//		    			+ " no.of emails answered : " + c.getNoOfMessagesAnswered() + " no.of emails flagged : " + c.getNoOfMessagesFlagged() + " no.of emails deleted " + c.getNoOfMessagesDeleted());
-//		    	List<Email> emails = c.getContentEmails();
-//		    	int count = 1;
-//		    	for(Email email :emails){
-//		    		System.out.println(count + " : Subject : " + email.getSubject());
-//		    		System.out.println("words in the email : ");
-//		    		TextTokenMap tokenMap = email.getWordFrequencyMap();
-//		    		Set<String> keys = tokenMap.getWordFrequencyMap().keySet();
-//		    		for(String key : keys){
-//		    			System.out.println("word : " + key + " : " + tokenMap.getWordFrequency(key));
-//		    		}
-//		    		String toAddrs = "";
-//		    		if(email.getToAddresses() != null && email.getToAddresses().size() > 0){
-//		    			for(String toAdd : email.getToAddresses()){
-//			    			toAddrs += toAdd + ", ";
-//			    		}	
-//		    		}
-//		    		
-//		    		String ccAddr = "";
-//		    		if(email.getCcAddresses() != null && email.getCcAddresses().size() > 0){
-//		    			for(String ccAdd : email.getCcAddresses()){
-//			    			ccAddr += ccAdd + ", ";
-//			    		}	
-//		    		}
-//		    		System.out.println("from : " + email.getFromAddress() + " to : " + toAddrs + " ccd : " + ccAddr);
-//		    		count++;
-//		    	}
-//		    	clusterNo++;
-//		    	System.out.println("\n\n");
-//		    }
-//		    
-			
-			
+				
 		} catch (Exception mex) {
 			mex.printStackTrace();
 		}
@@ -549,7 +371,194 @@ public class MailTest {
 		testVec = VectorsMath.devideArray(testVec, 2);
 		System.out.println("testVec : " + testVec[0] + " , " + testVec[1] + " , " + testVec[2] );
 		System.out.println("centroid : " + centroid[0] + " , " + centroid[1] + " , " + centroid[2] );
-		
-		
 	}
+	
+	
+	public void processEnronImportanceResults(){
+		 File importantMailDir = new File("/home/dileepa/Desktop/research/DATA/reputationBasedSpamFilter/Enron_Sample_Data/enron_mail_20110402/maildir/stclair-c/important_e_mails");
+		 	
+		 File[] mailFiles = importantMailDir.listFiles();
+		 String host = "host.com";
+		 java.util.Properties properties = System.getProperties();
+		 properties.setProperty("mail.smtp.host", host);
+		 Session session = Session.getDefaultInstance(properties);
+		 EmailAnalysisService emailAnalysisService = new EmailAnalysisService();
+			
+		  RandomIndexing textSemantics = new RandomIndexing(
+					new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap(), RandomIndexing.textSemanticType);
+		  RandomIndexing recipientSemantics = new RandomIndexing(
+				  new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap(), RandomIndexing.peopleSemanticType);
+		  
+		  textSemantics.setWordDocumentFrequencies(new HashMap<String, Integer>());
+		  recipientSemantics.setWordDocumentFrequencies(new HashMap<String, Integer>());
+
+		  List<Email> emails = new ArrayList<Email>();
+		  int x = 1;
+		  System.out.println("no of mails in the directory : " + mailFiles.length);
+		  for (File tmpFile : mailFiles) {
+		     MimeMessage email = null;
+		     try {
+		        FileInputStream fis = new FileInputStream(tmpFile);
+		        email = new MimeMessage(session, fis);
+		        System.out.println("-------------------------------------");
+		        System.out.println("mailNo : " + x);
+		        System.out.println("content type: " + email.getContentType());
+		        System.out.println("subject: " + email.getSubject());
+		      
+		       //System.out.println("recipients: " + Arrays.asList(email.getRecipients(Message.RecipientType.TO))); 
+		       //String messageContent = EmailUtils.getTextFromEmail(email);
+//		        EmailBody emailBody = EmailUtils.getEmailBody(email, new EmailBody());
+//		        String messageContent = emailBody.getMessageContent();
+//		        System.out.println("message : \n" + messageContent);
+//		        
+//		        String replyLines = replyExtractor.getMsgReplyLines(messageContent);
+//		        String signature = signatureDetector.getSignatureLines(messageContent);
+//		        //System.out.println("Reply Line : " + replyLines);
+		        //System.out.println("Signature : " + signature);
+		        
+		        Email newEmail = EmailUtils.processEmail(email, "carol.clair@enron.com", x);
+		        
+		        textSemantics = emailAnalysisService.processTextSemantics(
+						newEmail, textSemantics);
+				recipientSemantics = emailAnalysisService
+						.processPeopleSemantics(newEmail, recipientSemantics);
+				
+				//setting these emails as important by flagging emails
+				newEmail.setFlagged(true);
+				newEmail.setSeen(true);
+				
+				emails.add(newEmail);
+					
+		        System.out.println("\n");
+		        x++;
+		        
+		     } catch (Exception e) {
+		    	 System.err.println("Error while processing email : " + e.getMessage());
+		    	 e.printStackTrace();
+		     }
+		  }
+		 
+		  UserMailBox mb = new UserMailBox();
+		  mb.setAllEmails(emails);
+		  //now create the importance model using it
+		  mb = EmailUtils.calculateImportanceModel(mb);
+		  
+		  clusterEnronEmails(emails);
+		  
+		  List<Email> allEmails = mb.getAllEmails();
+		  for(Email email : allEmails){
+			  mb.predictImportanceFormEmail(email);
+			  email.getContentReputationScore();
+			  double flaggedKeywordScore = email.getFlaggedKeywordscore();
+			  double flaggedFromScore = email.getFlaggedPeopleFromscore();
+			  double flaggedCCScore = email.getFlaggedPeopleCCscore();
+			  double flaggedToScore = email.getFlaggedPeopleToscore();
+			  double flaggedTopicScore = email.getFlaggedTopicscore();
+			  double flaggedSubjectScore = email.getFlaggedTopicSubjectscore();
+			  double flaggedBodyScore = email.getFlaggedTopicBodyscore();
+			
+			  System.out.println("email : uid : " + email.getMsgUid() + " subject : " + email.getSubject() );
+			  String toAddrs = "";
+	    		if(email.getToAddresses() != null && email.getToAddresses().size() > 0){
+	    			for(String toAdd : email.getToAddresses()){
+		    			toAddrs += toAdd + ", ";
+		    		}	
+	    		}
+	    		
+	    		String ccAddr = "";
+	    		if(email.getCcAddresses() != null && email.getCcAddresses().size() > 0){
+	    			for(String ccAdd : email.getCcAddresses()){
+		    			ccAddr += ccAdd + ", ";
+		    		}	
+	    		}
+			  System.out.println(" from : " + email.getFromAddress() + " to : " + toAddrs + " cc :" + ccAddr);
+			  System.out.println("predicted scores for email; flaggedKeywordScore: " + flaggedKeywordScore + 
+					  " flaggedFromScore : " + flaggedFromScore + " flaggedToScore : " + flaggedToScore + " flagged cc score : " + flaggedCCScore + 
+					  " flaggedTopicScore : " + flaggedTopicScore + " flaggedSubject score : " + flaggedSubjectScore + " flagged bodyscore : " + flaggedBodyScore);
+			  System.out.println("\n\n");
+		  }
+		  
+	}
+	
+	public void clusterEnronEmails(List<Email> emails){
+		KMeansClustering kmeans = new KMeansClustering();
+		
+		System.out.println("Clustering emails by Content....");
+		List<EmailContentCluster> contentClusters = kmeans.clusterBasedOnContent(emails);
+		int totalEMailsInContentClusters = 0;
+		double contentSumOfSquaredError = 0;
+		
+		for (EmailContentCluster cluster : contentClusters) {
+			System.out.println("-----------------------------------------------------------------------------------");
+			System.out.println("Cluster ID : " + cluster.getId() + " No.of emails : " + cluster.getContentEmails().size());
+					
+			int clusterSize = cluster.getContentEmails().size();
+			totalEMailsInContentClusters += clusterSize;
+			for (Email email : cluster.getContentEmails()) {
+				//email.setTextClusterId(cluster.getId());
+				String toAddrs = "";
+	    		if(email.getToAddresses() != null && email.getToAddresses().size() > 0){
+	    			for(String toAdd : email.getToAddresses()){
+		    			toAddrs += toAdd + ", ";
+		    		}	
+	    		}
+	    		
+	    		String ccAddr = "";
+	    		if(email.getCcAddresses() != null && email.getCcAddresses().size() > 0){
+	    			for(String ccAdd : email.getCcAddresses()){
+		    			ccAddr += ccAdd + ", ";
+		    		}	
+	    		}
+	    		System.out.println(email.getMsgUid() + " : Email subject : " + email.getSubject());
+			}				
+			contentSumOfSquaredError += cluster.getSumOfSquaresError();
+		}
+		System.out.println("TOTAL EMAILS in all content Clusters : " + totalEMailsInContentClusters + " No. of clusters : " + contentClusters.size());
+		System.out.println("Sum of Squared values for all content clusters : " + contentSumOfSquaredError);
+		double dunnIndex = EmailUtils.getDunnIndexForContentClusters(contentClusters);
+		System.out.println("Dunn Index for content clusters : " + dunnIndex);
+		
+		//clustering weighted subject  body content clusters
+		System.out.println("Clustering emails by Weighted Subject Body Content....");
+		List<EmailWeightedSubjectBodyContentCluster> weightedContentClusters = kmeans.clusterBasedOnSubjectAndBody(emails);
+		int totalEMailsInWeightedContentClusters = 0;
+		//double weightedContentSumOfSquaredError = 0;
+	
+		for (EmailWeightedSubjectBodyContentCluster cluster : weightedContentClusters) {
+			System.out.println("-----------------------------------------------------------------------------------");
+			System.out.println("Cluster ID : " + cluster.getId() + " No.of emails : " + cluster.getSubjectBodyContentEmails().size());
+					
+			int clusterSize = cluster.getSubjectBodyContentEmails().size();
+			totalEMailsInWeightedContentClusters += clusterSize;
+			for (Email email : cluster.getSubjectBodyContentEmails()) {
+				//email.setTextClusterId(cluster.getId());
+				String toAddrs = "";
+	    		if(email.getToAddresses() != null && email.getToAddresses().size() > 0){
+	    			for(String toAdd : email.getToAddresses()){
+		    			toAddrs += toAdd + ", ";
+		    		}	
+	    		}
+	    		
+	    		String ccAddr = "";
+	    		if(email.getCcAddresses() != null && email.getCcAddresses().size() > 0){
+	    			for(String ccAdd : email.getCcAddresses()){
+		    			ccAddr += ccAdd + ", ";
+		    		}	
+	    		}
+	    		System.out.println(email.getMsgUid() + " : Email subject : " + email.getSubject());
+
+			}				
+			//weightedContentSumOfSquaredError += cluster.getSumOfSquaresError();
+		}
+		System.out.println("TOTAL EMAILS in all weighted content Clusters : " + totalEMailsInWeightedContentClusters + " No. of clusters : " + weightedContentClusters.size());
+		double subjectCentroidDunnIndex = EmailUtils.getDunnIndexForWeightedSubBodyContentClusters(weightedContentClusters, EmailWeightedSubjectBodyContentCluster.subjectVectorType);
+		double bodyCentroidDunnIndex = EmailUtils.getDunnIndexForWeightedSubBodyContentClusters(weightedContentClusters, EmailWeightedSubjectBodyContentCluster.bodyVectorType);
+		
+		System.out.println("Dunn Index for subject centroids : " + subjectCentroidDunnIndex);
+		System.out.println("Dunn Index for body centroids : " + bodyCentroidDunnIndex);
+	}
+	
+	
+	
+
 }

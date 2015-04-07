@@ -26,6 +26,7 @@ import org.nic.isis.clustering.EmailRecipientCluster;
 import org.nic.isis.clustering.EmailWeightedSubjectBodyContentCluster;
 import org.nic.isis.clustering.KMeansClustering;
 import org.nic.isis.reputation.dom.Email;
+import org.nic.isis.reputation.dom.EmailReputationDataModel;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.reputation.utils.EmailUtils;
 import org.nic.isis.ri.RandomIndexing;
@@ -110,12 +111,16 @@ public class EmailAnalysisService {
 					double normalizedFrequency = EmailUtils.getNormalizedFrequency(frequency, totalNumberOfTokens);
 					double incrementalLogIDF = EmailUtils.getIncrementalLogIDF(textSemantics.getNoOfDocumentsProcessed(), noOfDocsWithTheWord);
 					double weight = incrementalLogIDF * normalizedFrequency;
-					
-					emailTextContextVector = VectorsMath.addArrays(emailTextContextVector,
-							wordSemanticVector, weight);
-					
-					emailSubjectTextContextVector = VectorsMath.addArrays(emailSubjectTextContextVector,
-							wordSemanticVector, weight);
+					if(weight != 0){
+						emailTextContextVector = VectorsMath.addArrays(emailTextContextVector,
+								wordSemanticVector, weight);
+						
+						emailSubjectTextContextVector = VectorsMath.addArrays(emailSubjectTextContextVector,
+								wordSemanticVector, weight);
+						
+					}else {
+						logger.warn("the weight(inc.log.idf*freq) for word : " + word + " is : " + weight + " so not added to the vectors");
+					}
 					
 					
 				} else {
@@ -158,10 +163,15 @@ public class EmailAnalysisService {
 						double normalizedFrequency = EmailUtils.getNormalizedFrequency(frequency, totalNumberOfTokens);
 						double incrementalLogIDF = EmailUtils.getIncrementalLogIDF(textSemantics.getNoOfDocumentsProcessed(), noOfDocsWithTheWord);
 						double weight = incrementalLogIDF * normalizedFrequency;
-						emailTextContextVector = VectorsMath.addArrays(emailTextContextVector,
-								wordSemanticVector, weight);
-						emailBodyTextContextVector = VectorsMath.addArrays(emailBodyTextContextVector,
-								wordSemanticVector, weight);
+						
+						if(weight != 0){
+							emailTextContextVector = VectorsMath.addArrays(emailTextContextVector,
+									wordSemanticVector, weight);
+							emailBodyTextContextVector = VectorsMath.addArrays(emailBodyTextContextVector,
+									wordSemanticVector, weight);
+						}else {
+							logger.warn("the weight(inc.log.idf*freq) for word : " + word + " is : " + weight + " so not added to the vectors");
+						}		
 						
 						} else {
 						logger.info("the frequency for word : " + word + " is null " );
@@ -531,6 +541,9 @@ public class EmailAnalysisService {
 		logger.info("completed creating EmailTopics file");
 		
 	}
+	
+	
+	
 	//creating the data file to weka
 	@Programmatic
 	public void createTopicWekaDataFile(UserMailBox mb){

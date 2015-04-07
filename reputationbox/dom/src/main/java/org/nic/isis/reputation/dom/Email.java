@@ -81,19 +81,19 @@ public class Email {
 	private boolean isListMail;
 	//1: Highest, 2:High, 3:Normal, 5:low
 	private  int importanceLevelByHeader;
-	private boolean isImportantByHeader;
+	private boolean isImportantByHeader = false;
 	//personal, private, company confidential
-	private boolean isSensitiveByHeader;
+	private boolean isSensitiveByHeader = false;
 	//list, bulk, first-class, junk
 	private String precedenceLevelByHeader;
 	
 	//speech act features
 	//request, delivery, commit, propose, meeting
-	private boolean isRequest;
-	private boolean isDelivery;
-	private boolean isCommit;
-	private boolean isPropose;
-	private boolean isMeeting;
+	private boolean isRequest = false;
+	private boolean isDelivery = false;
+	private boolean isCommit = false;
+	private boolean isPropose = false;
+	private boolean isMeeting = false;
 	
 	private String contentType;
 	private String charSet;	
@@ -135,24 +135,21 @@ public class Email {
 	private boolean isBCCd = false;
 	
 	
-	
-	//private Reputation reputation;
-	//for simple score..have to extend using Reputation object
-	//these are assigned for clustering results
+	//these are assigned from clustering results
 	private double contentReputationScore;
 	private double recipientReputationScore;
 	private double weightedSubjectBodyContentScore;
 	
 	//whether this is used for model creation or prediction
-	private boolean isModel;
-	private boolean isPredicted;
+	private boolean isModel = false;
+	private boolean isPredicted = false;
 	
 	//recommended actions for new emails to classify
-	private boolean needReply;
-	private boolean needRead;
-	private boolean needFlag;
-	private boolean needIgnore;
-	private boolean needDelete;
+	private boolean needReply = false;
+	private boolean needRead = false;
+	private boolean needFlag = false;
+	private boolean needIgnore = false;
+	private boolean needDelete = false;
 	
 	//new scores for each category flaggedTopicScore, repliedTopicScore etc
 	private double flaggedTopicscore;
@@ -160,12 +157,47 @@ public class Email {
 	private double seenTopicscore;
 	private double spamTopicScore;
 	private double totalTopicScore;
+
+	//for separate subject, body scores
+	private double flaggedTopicSubjectscore;
+	private double repliedTopicSubjectscore; 
+	private double seenTopicSubjectscore;
+	private double spamTopicSubjectScore;
+	private double totalTopicSubjectScore;
+
+
+	private double flaggedTopicBodyscore;
+	private double repliedTopicBodyscore; 
+	private double seenTopicBodyscore;
+	private double spamTopicBodyScore;
+	private double totalTopicBodyScore;
+
 	
 	private double flaggedPeoplescore;
 	private double repliedPeoplescore; 
 	private double seenPeoplescore;
 	private double spamPeopleScore;
 	private double totalPeopleScore;
+	
+	
+	private double flaggedPeopleFromscore;
+	private double repliedPeopleFromscore; 
+	private double seenPeopleFromscore;
+	private double spamPeopleFromScore;
+	private double totalPeopleFromScore;
+	
+	private double flaggedPeopleToscore;
+	private double repliedPeopleToscore; 
+	private double seenPeopleToscore;
+	private double spamPeopleToScore;
+	private double totalPeopleToScore;
+
+	private double flaggedPeopleCCscore;
+	private double repliedPeopleCCscore; 
+	private double seenPeopleCCscore;
+	private double spamPeopleCCScore;
+	private double totalPeopleCCScore;
+
 	
 	//nlp keywords
 	private double flaggedKeywordscore;
@@ -1162,6 +1194,281 @@ public class Email {
 	public void setWeightedSubjectBodyContentScore(
 			double weightedSubjectBodyContentScore) {
 		this.weightedSubjectBodyContentScore = weightedSubjectBodyContentScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getFlaggedTopicSubjectscore() {
+		return flaggedTopicSubjectscore;
+	}
+
+
+	public void setFlaggedTopicSubjectscore(double flaggedTopicSubjectscore) {
+		this.flaggedTopicSubjectscore = flaggedTopicSubjectscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getRepliedTopicSubjectscore() {
+		return repliedTopicSubjectscore;
+	}
+
+
+	public void setRepliedTopicSubjectscore(double repliedTopicSubjectscore) {
+		this.repliedTopicSubjectscore = repliedTopicSubjectscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSeenTopicSubjectscore() {
+		return seenTopicSubjectscore;
+	}
+
+
+	public void setSeenTopicSubjectscore(double seenTopicSubjectscore) {
+		this.seenTopicSubjectscore = seenTopicSubjectscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSpamTopicSubjectScore() {
+		return spamTopicSubjectScore;
+	}
+
+
+	public void setSpamTopicSubjectScore(double spamTopicSubjectScore) {
+		this.spamTopicSubjectScore = spamTopicSubjectScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getTotalTopicSubjectScore() {
+		return totalTopicSubjectScore;
+	}
+
+
+	public void setTotalTopicSubjectScore(double totalTopicSubjectScore) {
+		this.totalTopicSubjectScore = totalTopicSubjectScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getFlaggedTopicBodyscore() {
+		return flaggedTopicBodyscore;
+	}
+
+
+	public void setFlaggedTopicBodyscore(double flaggedTopicBodyscore) {
+		this.flaggedTopicBodyscore = flaggedTopicBodyscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getRepliedTopicBodyscore() {
+		return repliedTopicBodyscore;
+	}
+
+
+	public void setRepliedTopicBodyscore(double repliedTopicBodyscore) {
+		this.repliedTopicBodyscore = repliedTopicBodyscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSeenTopicBodyscore() {
+		return seenTopicBodyscore;
+	}
+
+
+	public void setSeenTopicBodyscore(double seenTopicBodyscore) {
+		this.seenTopicBodyscore = seenTopicBodyscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSpamTopicBodyScore() {
+		return spamTopicBodyScore;
+	}
+
+
+	public void setSpamTopicBodyScore(double spamTopicBodyScore) {
+		this.spamTopicBodyScore = spamTopicBodyScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getTotalTopicBodyScore() {
+		return totalTopicBodyScore;
+	}
+
+
+	public void setTotalTopicBodyScore(double totalTopicBodyScore) {
+		this.totalTopicBodyScore = totalTopicBodyScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getFlaggedPeopleFromscore() {
+		return flaggedPeopleFromscore;
+	}
+
+
+	public void setFlaggedPeopleFromscore(double flaggedPeopleFromscore) {
+		this.flaggedPeopleFromscore = flaggedPeopleFromscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getRepliedPeopleFromscore() {
+		return repliedPeopleFromscore;
+	}
+
+
+	public void setRepliedPeopleFromscore(double repliedPeopleFromscore) {
+		this.repliedPeopleFromscore = repliedPeopleFromscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSeenPeopleFromscore() {
+		return seenPeopleFromscore;
+	}
+
+
+	public void setSeenPeopleFromscore(double seenPeopleFromscore) {
+		this.seenPeopleFromscore = seenPeopleFromscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSpamPeopleFromScore() {
+		return spamPeopleFromScore;
+	}
+
+
+	public void setSpamPeopleFromScore(double spamPeopleFromScore) {
+		this.spamPeopleFromScore = spamPeopleFromScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getTotalPeopleFromScore() {
+		return totalPeopleFromScore;
+	}
+
+
+	public void setTotalPeopleFromScore(double totalPeopleFromScore) {
+		this.totalPeopleFromScore = totalPeopleFromScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getFlaggedPeopleToscore() {
+		return flaggedPeopleToscore;
+	}
+
+
+	public void setFlaggedPeopleToscore(double flaggedPeopleToscore) {
+		this.flaggedPeopleToscore = flaggedPeopleToscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getRepliedPeopleToscore() {
+		return repliedPeopleToscore;
+	}
+
+
+	public void setRepliedPeopleToscore(double repliedPeopleToscore) {
+		this.repliedPeopleToscore = repliedPeopleToscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSeenPeopleToscore() {
+		return seenPeopleToscore;
+	}
+
+
+	public void setSeenPeopleToscore(double seenPeopleToscore) {
+		this.seenPeopleToscore = seenPeopleToscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSpamPeopleToScore() {
+		return spamPeopleToScore;
+	}
+
+
+	public void setSpamPeopleToScore(double spamPeopleToScore) {
+		this.spamPeopleToScore = spamPeopleToScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getTotalPeopleToScore() {
+		return totalPeopleToScore;
+	}
+
+
+	public void setTotalPeopleToScore(double totalPeopleToScore) {
+		this.totalPeopleToScore = totalPeopleToScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getFlaggedPeopleCCscore() {
+		return flaggedPeopleCCscore;
+	}
+
+
+	public void setFlaggedPeopleCCscore(double flaggedPeopleCCscore) {
+		this.flaggedPeopleCCscore = flaggedPeopleCCscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getRepliedPeopleCCscore() {
+		return repliedPeopleCCscore;
+	}
+
+
+	public void setRepliedPeopleCCscore(double repliedPeopleCCscore) {
+		this.repliedPeopleCCscore = repliedPeopleCCscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSeenPeopleCCscore() {
+		return seenPeopleCCscore;
+	}
+
+
+	public void setSeenPeopleCCscore(double seenPeopleCCscore) {
+		this.seenPeopleCCscore = seenPeopleCCscore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSpamPeopleCCScore() {
+		return spamPeopleCCScore;
+	}
+
+
+	public void setSpamPeopleCCScore(double spamPeopleCCScore) {
+		this.spamPeopleCCScore = spamPeopleCCScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getTotalPeopleCCScore() {
+		return totalPeopleCCScore;
+	}
+
+
+	public void setTotalPeopleCCScore(double totalPeopleCCScore) {
+		this.totalPeopleCCScore = totalPeopleCCScore;
 	}
 
 

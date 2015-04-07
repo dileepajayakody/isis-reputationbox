@@ -30,6 +30,7 @@ public class EmailDataModelSyncServiceSession extends AbstractIsisSessionTemplat
 
 	public void updateDataModel() {
 		logger.info("Updating the email data model periodically...");
-		emailService.updateEmailModels();
+		//emailService.updateEmailModels();
+		emailService.setNewEmailModelsForMailBoxes();
 	}
 }

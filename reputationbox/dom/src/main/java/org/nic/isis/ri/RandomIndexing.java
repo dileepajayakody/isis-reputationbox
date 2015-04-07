@@ -207,8 +207,8 @@ public class RandomIndexing implements SemanticSpace {
 		//the context vectors of words depends on the contextual usage within each doc
 		//hence cannot have a global set of context vectors for a mailbox like index vectors
 		//test this also with a global contextVectors in the mailbox and compare results
-		wordToMeaning = contextVectors;
-		//wordToMeaning = new HashMap<String, double[]>();
+		//wordToMeaning = contextVectors;
+		wordToMeaning = new HashMap<String, double[]>();
 		
 		semanticFilter = new HashSet<String>();
 	}
@@ -422,16 +422,16 @@ public class RandomIndexing implements SemanticSpace {
 			//check if iv is null and generate vector
 			//modified by dileepa
 			if(focusIv == null){
-				//logger.error("No index vector for previous word : " + word + " putting new one");
+				logger.error("No index vector for previous word : " + focusWord + " putting new one");
 				focusIv = this.generateIndexVector(focusWord);
 				wordToIndexVector.put(focusWord, focusIv);				
 				
 			}
 			
 			//for wordDocFreqMap
-			if(this.semanticType.equals(textSemanticType)){
+			//if(this.semanticType.equals(textSemanticType)){
 				addedWordsToWordFrequencies = addToWordDocFrequencyMap(focusWord, addedWordsToWordFrequencies);					
-			}
+			//}
 			//end:modified by dileepa
 			
 			// shift over the window to the next word
@@ -519,7 +519,8 @@ public class RandomIndexing implements SemanticSpace {
 					
 					focusMeaning = add(focusMeaning, iv);
 				}
-				//putSemanticVector(focusWord, focusMeaning);
+				//modified by dileepa, this was commented out earlier
+				putSemanticVector(focusWord, focusMeaning);
 			}
 
 			// Last put this focus word in the prev words and shift off the
@@ -681,12 +682,14 @@ public class RandomIndexing implements SemanticSpace {
 			RandomIndexVector riVector = new RandomIndexVector();
 			riVector.setWord(word);
 			riVector.setIndexVector(wordToIndexVector.get(word));
-			riVector.setContextVector(wordToMeaning.get(word));
-			if(wordDocumentFrequencies!=null ){
+			//riVector.setContextVector(wordToMeaning.get(word));
+			if(wordDocumentFrequencies!= null ){
 				if(wordDocumentFrequencies.get(word) != null){
 					riVector.setWordDocFrequency(wordDocumentFrequencies.get(word));
 				}else {
 					logger.info("the freq is not defined for word : " + word + " from indexVector");
+					//this word is there, so adding atleast one
+					riVector.setWordDocFrequency(1);
 				}	
 			}
 			riVectors.add(riVector);

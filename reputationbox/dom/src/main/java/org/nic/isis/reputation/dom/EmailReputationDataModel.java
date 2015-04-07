@@ -49,10 +49,36 @@ public class EmailReputationDataModel {
 	private double[] importantTopicsReplied;
 	private double[] importantTopicsOnlySeen;
 	private double[] importantTopicsFlagged;
+	
+	//for subject/body separately
+	private double[] importantTopicsSubjectsReplied;
+	private double[] importantTopicsSubjectsOnlySeen;
+	private double[] importantTopicsSubjectsFlagged;
+
+	private double[] importantTopicsBodyReplied;
+	private double[] importantTopicsBodyOnlySeen;
+	private double[] importantTopicsBodyFlagged;
+	
+	
 	//important people profiles for the mailbox
 	private double[] importantPeopleReplied;
 	private double[] importantPeopleOnlySeen;
 	private double[] importantPeopleFlagged;
+	
+	//for separate from/to/cc vectors
+	private double[] importantPeopleFromReplied;
+	private double[] importantPeopleFromOnlySeen;
+	private double[] importantPeopleFromFlagged;
+	
+	private double[] importantPeopleToReplied;
+	private double[] importantPeopleToOnlySeen;
+	private double[] importantPeopleToFlagged;
+	
+	private double[] importantPeopleCCReplied;
+	private double[] importantPeopleCCOnlySeen;
+	private double[] importantPeopleCCFlagged;
+	
+	
 	
 	private double[] importantNLPKeywordsReplied;
 	private double[] importantNLPKeywordsOnlySeen;
@@ -63,10 +89,32 @@ public class EmailReputationDataModel {
 	private double[] importantListTopicsReplied;
 	private double[] importantListTopicsOnlySeen;
 	private double[] importantListTopicsFlagged;
+	
+	private double[] importantListTopicsSubjectsReplied;
+	private double[] importantListTopicsSubjectsOnlySeen;
+	private double[] importantListTopicsSubjectsFlagged;
+
+	private double[] importantListTopicsBodyReplied;
+	private double[] importantListTopicsBodyOnlySeen;
+	private double[] importantListTopicsBodyFlagged;
+	
 	//important people profiles for the mailbox
 	private double[] importantListPeopleReplied;
 	private double[] importantListPeopleOnlySeen;
 	private double[] importantListPeopleFlagged;
+	
+	//for separate from/to/cc vectors
+	private double[] importantListPeopleFromReplied;
+	private double[] importantListPeopleFromOnlySeen;
+	private double[] importantListPeopleFromFlagged;
+		
+	private double[] importantListPeopleToReplied;
+	private double[] importantListPeopleToOnlySeen;
+	private double[] importantListPeopleToFlagged;
+		
+	private double[] importantListPeopleCCReplied;
+	private double[] importantListPeopleCCOnlySeen;
+	private double[] importantListPeopleCCFlagged;
 	
 	private double[] importantListNLPKeywordsReplied;
 	private double[] importantListNLPKeywordsOnlySeen;
@@ -114,10 +162,31 @@ public class EmailReputationDataModel {
 		importantTopicsOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 		importantTopicsFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 		
+		importantTopicsSubjectsReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantTopicsSubjectsOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantTopicsSubjectsFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+
+		importantTopicsBodyReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantTopicsBodyOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantTopicsBodyFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		
+		
 		//important people profiles for the mailbox
 		importantPeopleReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 		importantPeopleOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 		importantPeopleFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		
+		importantPeopleFromReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantPeopleFromOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantPeopleFromFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		
+		importantPeopleToReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantPeopleToOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantPeopleToFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		
+		importantPeopleCCReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantPeopleCCOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantPeopleCCFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 		
 		importantNLPKeywordsReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 		importantNLPKeywordsOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
@@ -128,10 +197,32 @@ public class EmailReputationDataModel {
 		importantListTopicsReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 		importantListTopicsOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 		importantListTopicsFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		
+		importantListTopicsSubjectsReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantListTopicsSubjectsOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantListTopicsSubjectsFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+
+		importantListTopicsBodyReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantListTopicsBodyOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantListTopicsBodyFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		
+		
 		//important people profiles for the mailbox
 		importantListPeopleReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 		importantListPeopleOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 		importantListPeopleFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		
+		importantListPeopleFromReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantListPeopleFromOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantListPeopleFromFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		
+		importantListPeopleToReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantListPeopleToOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantListPeopleToFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		
+		importantListPeopleCCReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantListPeopleCCOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
+		importantListPeopleCCFlagged = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 		
 		importantListNLPKeywordsReplied = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 		importantListNLPKeywordsOnlySeen = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
@@ -579,6 +670,324 @@ public class EmailReputationDataModel {
 	public void setWeightedSubjectBodyClusters(
 			List<EmailWeightedSubjectBodyContentCluster> weightedSubjectBodyClusters) {
 		this.weightedSubjectBodyClusters = weightedSubjectBodyClusters;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantTopicsSubjectsReplied() {
+		return importantTopicsSubjectsReplied;
+	}
+
+	public void setImportantTopicsSubjectsReplied(
+			double[] importantTopicsSubjectsReplied) {
+		this.importantTopicsSubjectsReplied = importantTopicsSubjectsReplied;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantTopicsSubjectsOnlySeen() {
+		return importantTopicsSubjectsOnlySeen;
+	}
+
+	public void setImportantTopicsSubjectsOnlySeen(
+			double[] importantTopicsSubjectsOnlySeen) {
+		this.importantTopicsSubjectsOnlySeen = importantTopicsSubjectsOnlySeen;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantTopicsSubjectsFlagged() {
+		return importantTopicsSubjectsFlagged;
+	}
+
+	public void setImportantTopicsSubjectsFlagged(
+			double[] importantTopicsSubjectsFlagged) {
+		this.importantTopicsSubjectsFlagged = importantTopicsSubjectsFlagged;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantTopicsBodyReplied() {
+		return importantTopicsBodyReplied;
+	}
+
+	public void setImportantTopicsBodyReplied(double[] importantTopicsBodyReplied) {
+		this.importantTopicsBodyReplied = importantTopicsBodyReplied;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantTopicsBodyOnlySeen() {
+		return importantTopicsBodyOnlySeen;
+	}
+
+	public void setImportantTopicsBodyOnlySeen(double[] importantTopicsBodyOnlySeen) {
+		this.importantTopicsBodyOnlySeen = importantTopicsBodyOnlySeen;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantTopicsBodyFlagged() {
+		return importantTopicsBodyFlagged;
+	}
+
+	public void setImportantTopicsBodyFlagged(double[] importantTopicsBodyFlagged) {
+		this.importantTopicsBodyFlagged = importantTopicsBodyFlagged;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantPeopleFromReplied() {
+		return importantPeopleFromReplied;
+	}
+
+	public void setImportantPeopleFromReplied(double[] importantPeopleFromReplied) {
+		this.importantPeopleFromReplied = importantPeopleFromReplied;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantPeopleFromOnlySeen() {
+		return importantPeopleFromOnlySeen;
+	}
+
+	public void setImportantPeopleFromOnlySeen(double[] importantPeopleFromOnlySeen) {
+		this.importantPeopleFromOnlySeen = importantPeopleFromOnlySeen;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantPeopleFromFlagged() {
+		return importantPeopleFromFlagged;
+	}
+
+	public void setImportantPeopleFromFlagged(double[] importantPeopleFromFlagged) {
+		this.importantPeopleFromFlagged = importantPeopleFromFlagged;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantPeopleToReplied() {
+		return importantPeopleToReplied;
+	}
+
+	public void setImportantPeopleToReplied(double[] importantPeopleToReplied) {
+		this.importantPeopleToReplied = importantPeopleToReplied;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantPeopleToOnlySeen() {
+		return importantPeopleToOnlySeen;
+	}
+
+	public void setImportantPeopleToOnlySeen(double[] importantPeopleToOnlySeen) {
+		this.importantPeopleToOnlySeen = importantPeopleToOnlySeen;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantPeopleToFlagged() {
+		return importantPeopleToFlagged;
+	}
+
+	public void setImportantPeopleToFlagged(double[] importantPeopleToFlagged) {
+		this.importantPeopleToFlagged = importantPeopleToFlagged;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantPeopleCCReplied() {
+		return importantPeopleCCReplied;
+	}
+
+	public void setImportantPeopleCCReplied(double[] importantPeopleCCReplied) {
+		this.importantPeopleCCReplied = importantPeopleCCReplied;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantPeopleCCOnlySeen() {
+		return importantPeopleCCOnlySeen;
+	}
+
+	public void setImportantPeopleCCOnlySeen(double[] importantPeopleCCOnlySeen) {
+		this.importantPeopleCCOnlySeen = importantPeopleCCOnlySeen;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantPeopleCCFlagged() {
+		return importantPeopleCCFlagged;
+	}
+
+	public void setImportantPeopleCCFlagged(double[] importantPeopleCCFlagged) {
+		this.importantPeopleCCFlagged = importantPeopleCCFlagged;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListTopicsSubjectsReplied() {
+		return importantListTopicsSubjectsReplied;
+	}
+
+	public void setImportantListTopicsSubjectsReplied(
+			double[] importantListTopicsSubjectsReplied) {
+		this.importantListTopicsSubjectsReplied = importantListTopicsSubjectsReplied;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListTopicsSubjectsOnlySeen() {
+		return importantListTopicsSubjectsOnlySeen;
+	}
+
+	public void setImportantListTopicsSubjectsOnlySeen(
+			double[] importantListTopicsSubjectsOnlySeen) {
+		this.importantListTopicsSubjectsOnlySeen = importantListTopicsSubjectsOnlySeen;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListTopicsSubjectsFlagged() {
+		return importantListTopicsSubjectsFlagged;
+	}
+
+	public void setImportantListTopicsSubjectsFlagged(
+			double[] importantListTopicsSubjectsFlagged) {
+		this.importantListTopicsSubjectsFlagged = importantListTopicsSubjectsFlagged;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListTopicsBodyReplied() {
+		return importantListTopicsBodyReplied;
+	}
+
+	public void setImportantListTopicsBodyReplied(
+			double[] importantListTopicsBodyReplied) {
+		this.importantListTopicsBodyReplied = importantListTopicsBodyReplied;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListTopicsBodyOnlySeen() {
+		return importantListTopicsBodyOnlySeen;
+	}
+
+	public void setImportantListTopicsBodyOnlySeen(
+			double[] importantListTopicsBodyOnlySeen) {
+		this.importantListTopicsBodyOnlySeen = importantListTopicsBodyOnlySeen;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListTopicsBodyFlagged() {
+		return importantListTopicsBodyFlagged;
+	}
+
+	public void setImportantListTopicsBodyFlagged(
+			double[] importantListTopicsBodyFlagged) {
+		this.importantListTopicsBodyFlagged = importantListTopicsBodyFlagged;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListPeopleFromReplied() {
+		return importantListPeopleFromReplied;
+	}
+
+	public void setImportantListPeopleFromReplied(
+			double[] importantListPeopleFromReplied) {
+		this.importantListPeopleFromReplied = importantListPeopleFromReplied;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListPeopleFromOnlySeen() {
+		return importantListPeopleFromOnlySeen;
+	}
+
+	public void setImportantListPeopleFromOnlySeen(
+			double[] importantListPeopleFromOnlySeen) {
+		this.importantListPeopleFromOnlySeen = importantListPeopleFromOnlySeen;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListPeopleFromFlagged() {
+		return importantListPeopleFromFlagged;
+	}
+
+	public void setImportantListPeopleFromFlagged(
+			double[] importantListPeopleFromFlagged) {
+		this.importantListPeopleFromFlagged = importantListPeopleFromFlagged;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListPeopleToReplied() {
+		return importantListPeopleToReplied;
+	}
+
+	public void setImportantListPeopleToReplied(
+			double[] importantListPeopleToReplied) {
+		this.importantListPeopleToReplied = importantListPeopleToReplied;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListPeopleToOnlySeen() {
+		return importantListPeopleToOnlySeen;
+	}
+
+	public void setImportantListPeopleToOnlySeen(
+			double[] importantListPeopleToOnlySeen) {
+		this.importantListPeopleToOnlySeen = importantListPeopleToOnlySeen;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListPeopleToFlagged() {
+		return importantListPeopleToFlagged;
+	}
+
+	public void setImportantListPeopleToFlagged(
+			double[] importantListPeopleToFlagged) {
+		this.importantListPeopleToFlagged = importantListPeopleToFlagged;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListPeopleCCReplied() {
+		return importantListPeopleCCReplied;
+	}
+
+	public void setImportantListPeopleCCReplied(
+			double[] importantListPeopleCCReplied) {
+		this.importantListPeopleCCReplied = importantListPeopleCCReplied;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListPeopleCCOnlySeen() {
+		return importantListPeopleCCOnlySeen;
+	}
+
+	public void setImportantListPeopleCCOnlySeen(
+			double[] importantListPeopleCCOnlySeen) {
+		this.importantListPeopleCCOnlySeen = importantListPeopleCCOnlySeen;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double[] getImportantListPeopleCCFlagged() {
+		return importantListPeopleCCFlagged;
+	}
+
+	public void setImportantListPeopleCCFlagged(
+			double[] importantListPeopleCCFlagged) {
+		this.importantListPeopleCCFlagged = importantListPeopleCCFlagged;
 	}
 
 }

@@ -477,6 +477,11 @@ public final class EmailUtils {
 				if(token.length() > 1 || token.equalsIgnoreCase("i")){
 					//not adding tokens with length 1
 					String stemmedToken = stemmer.stem(token);
+					//trim the token to length 255 due to persistence restrictions
+					if(stemmedToken.length() >= 255){
+						stemmedToken = stemmedToken.substring(0, 254);
+					}
+					
 					processedText = processedText + " " + stemmedToken;
 					wordFrequenceMap = addTokenToMap(wordFrequenceMap, stemmedToken);
 					processedTokens++;	
@@ -913,6 +918,7 @@ public final class EmailUtils {
 				if (importanceHeader.equalsIgnoreCase("high")) {
 					logger.info(" Has importance header : " + importanceHeader);
 					newEmail.setImportanceLevelByHeader(1);
+					newEmail.setIsImportantByHeader(true);
 				}
 
 			}
@@ -941,6 +947,8 @@ public final class EmailUtils {
 				
 			} else if (precedenceHeader.equalsIgnoreCase("first-class")) {
 				newEmail.setImportanceLevelByHeader(1);
+				newEmail.setIsImportantByHeader(true);
+				
 			}
 		}
 
@@ -1764,6 +1772,500 @@ public final class EmailUtils {
 		double dunnIndex = minInterClusterDistance/maxIntraClusterDistance;
 		
 		return dunnIndex;
+	}
+	
+	/**
+	 * create the reputation model again for all the email data
+	 * @param mb
+	 */
+	public static UserMailBox calculateImportanceModel(UserMailBox mb){
+		List<Email> allEmails = mb.getAllEmails();
+		EmailReputationDataModel repModel = new EmailReputationDataModel();
+		//reset all numbers for emails
+		mb.setNofOfUnimportantEmails(0);
+		mb.setNumberOfDirectEmails(0);
+		mb.setNumberOfDirectEmailsFlagged(0);
+		mb.setNumberOfDirectEmailsReplied(0);
+		mb.setNumberOfDirectEmailsSeen(0);
+		mb.setNumberOfListEmails(0);
+		mb.setNumberOfListEmailsFlagged(0);
+		mb.setNumberOfListEmailsReplied(0);
+		mb.setNumberOfListEmailsSeen(0);
+				
+		for(Email email : allEmails){
+			email.setModel(true);
+			email.setPredicted(false);
+			//populate the profile vectors
+			
+			//unimportant models
+			if( email.isSpam() || email.isDeleted()){
+				logger.info("this is a spam email recognized by flag or header");
+				
+				double[] unimportanttopicsVector = VectorsMath.addArrays(repModel.getSpamVector(), email.getTextContextVector());
+				repModel.setSpamVector(unimportanttopicsVector);
+				//logger.info("emai text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "spam topic vector sum: " + EmailUtils.getVectorTotal(unimportanttopicsVector));
+				
+				
+				double[] unimportantPeopleVector = VectorsMath.addArrays(repModel.getSpamPeopleVector(), email.getRecipientContextVector());
+				repModel.setSpamPeopleVector(unimportantPeopleVector);
+				
+				double[] unimportantDirectKeywordVector = VectorsMath.addArrays(repModel.getSpamNLPKeywordVector(), email.getNlpKeywordsVector());
+				repModel.setSpamNLPKeywordVector(unimportantDirectKeywordVector);
+				//nofOfUnimportantEmails++;
+				//trying out the spam vector from reputation data model
+				mb.getReputationDataModel().getSpamEmails().add(email);
+			}else {
+				//important emails
+				if(email.isDirect() || email.isCCd() || email.isBCCd()){
+					//direct emails
+					//processing emails sent directly,ccd to user
+					//numberOfDirectEmails++;
+					if(email.isAnswered()){
+						logger.info("this is a direct email answered");
+						double[] importantTopicsReplied = VectorsMath.addArrays(repModel.getImportantTopicsReplied(), email.getTextContextVector());
+						repModel.setImportantTopicsReplied(importantTopicsReplied);
+						//logger.info("emai text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "direct replied important-topic vector sum: " + EmailUtils.getVectorTotal(importantTopicsReplied));
+						
+						double[] importantPeopleReplied = VectorsMath.addArrays(repModel.getImportantPeopleReplied(), email.getRecipientContextVector());
+						repModel.setImportantPeopleReplied(importantPeopleReplied);
+						
+						double[] importantNLPKeywordsReplied = VectorsMath.addArrays(repModel.getImportantNLPKeywordsReplied(), email.getNlpKeywordsVector());
+						repModel.setImportantNLPKeywordsReplied(importantNLPKeywordsReplied);
+						
+						//numberOfDirectEmailsReplied++;
+						mb.getReputationDataModel().getRepliedEmails().add(email);
+					}
+					else if(email.isSeen()){
+						logger.info("this is a direct email seen");
+						
+						double[] importantTopicsOnlySeen = VectorsMath.addArrays(repModel.getImportantTopicsOnlySeen(), email.getTextContextVector());
+						repModel.setImportantTopicsOnlySeen(importantTopicsOnlySeen);
+						//logger.info("emai text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "direct seen important-topic vector sum: " + EmailUtils.getVectorTotal(importantTopicsOnlySeen));
+						
+						double[] importantPeopleOnlySeen = VectorsMath.addArrays(repModel.getImportantPeopleOnlySeen(), email.getRecipientContextVector());
+						repModel.setImportantPeopleOnlySeen(importantPeopleOnlySeen);
+						
+						double[] importantNLPKeywordsOnlySeen = VectorsMath.addArrays(repModel.getImportantNLPKeywordsOnlySeen(), email.getNlpKeywordsVector());
+						repModel.setImportantNLPKeywordsOnlySeen(importantNLPKeywordsOnlySeen);
+						
+						//numberOfDirectEmailsSeen++;
+						mb.getReputationDataModel().getSeenEmails().add(email);
+					}
+					if(email.isFlagged() || email.getIsImportantByHeader() || email.isSensitiveByHeader()){
+						logger.info("this is a direct email user has flagged or set important by header");
+						
+						double[] importantTopicsFlagged = VectorsMath.addArrays(repModel.getImportantTopicsFlagged(), email.getTextContextVector());
+						repModel.setImportantTopicsFlagged(importantTopicsFlagged);
+						
+						double[] importantPeopleFlagged = VectorsMath.addArrays(repModel.getImportantPeopleFlagged(), email.getRecipientContextVector());
+						repModel.setImportantPeopleFlagged(importantPeopleFlagged);
+						
+						double[] importantNLPKeywordsFlagged = VectorsMath.addArrays(repModel.getImportantNLPKeywordsFlagged(), email.getNlpKeywordsVector());
+						repModel.setImportantNLPKeywordsFlagged(importantNLPKeywordsFlagged);
+						
+						//numberOfDirectEmailsFlagged++;
+						mb.getReputationDataModel().getFlaggedEmails().add(email);
+					}
+					
+				}else {
+					//list emails..
+					
+					//numberOfListEmails++;
+					if(email.isAnswered()){
+						logger.info("this is a list email answered");
+						double[] importantListTopicsReplied = VectorsMath.addArrays
+								(repModel.getImportantListTopicsReplied(), email.getTextContextVector());
+						repModel.setImportantListTopicsReplied(importantListTopicsReplied);		
+						//logger.info("emai text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "list-replied-topic vector sum: " + EmailUtils.getVectorTotal(importantListTopicsReplied));
+								
+						double[] importantListTopicsSubjectReplied = VectorsMath.addArrays(repModel.getImportantListTopicsSubjectsReplied(), email.getSubjectContextVector());
+						repModel.setImportantListTopicsSubjectsReplied(importantListTopicsSubjectReplied);
+						double[] importantListTopicsBodyReplied = VectorsMath.addArrays(repModel.getImportantListTopicsBodyReplied(), email.getBodyContextVector());
+						repModel.setImportantListTopicsBodyReplied(importantListTopicsBodyReplied);
+						
+						
+						double[] importantListPeopleReplied = VectorsMath.addArrays
+								(repModel.getImportantListPeopleReplied(), email.getRecipientContextVector());
+						repModel.setImportantListPeopleReplied(importantListPeopleReplied);
+						double[] importantListFromPeopleReplied = VectorsMath.addArrays
+								(repModel.getImportantListPeopleFromReplied(), email.getFromContextVector());
+						repModel.setImportantListPeopleFromReplied(importantListFromPeopleReplied);
+						double[] importantListToPeopleReplied = VectorsMath.addArrays
+								(repModel.getImportantListPeopleToReplied(), email.getToContextVector());
+						repModel.setImportantListPeopleToReplied(importantListToPeopleReplied);
+						double[] importantListCCPeopleReplied = VectorsMath.addArrays
+								(repModel.getImportantListPeopleCCReplied(), email.getCcContextVector());
+						repModel.setImportantListPeopleCCReplied(importantListCCPeopleReplied);
+						
+						
+						
+						double[] importantListNLPKeywordsReplied = VectorsMath.addArrays
+								(repModel.getImportantListNLPKeywordsReplied(), email.getNlpKeywordsVector());
+						repModel.setImportantListNLPKeywordsReplied(importantListNLPKeywordsReplied);
+						
+						//numberOfListEmailsReplied++;
+						mb.getReputationDataModel().getRepliedListEmails().add(email);
+										
+					}
+					else if(email.isSeen()){
+						logger.info("this is a list email seen");
+						double[] importantListTopicsOnlySeen = VectorsMath.addArrays
+								(repModel.getImportantListTopicsOnlySeen(), email.getTextContextVector());
+						repModel.setImportantListTopicsOnlySeen(importantListTopicsOnlySeen);
+						//logger.info("emai text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "list-seen-topic vector sum: " + EmailUtils.getVectorTotal(importantListTopicsOnlySeen));
+						double[] importantListTopicsSubjectSeen = VectorsMath.addArrays(repModel.getImportantListTopicsSubjectsOnlySeen(), email.getSubjectContextVector());
+						repModel.setImportantListTopicsSubjectsOnlySeen(importantListTopicsSubjectSeen);
+						double[] importantListTopicsBodySeen = VectorsMath.addArrays(repModel.getImportantListTopicsBodyOnlySeen(), email.getBodyContextVector());
+						repModel.setImportantListTopicsBodyOnlySeen(importantListTopicsBodySeen);
+						
+						
+						double[] importantListPeopleOnlySeen = VectorsMath.addArrays(repModel.getImportantListPeopleOnlySeen(), email.getRecipientContextVector());
+						repModel.setImportantListPeopleOnlySeen(importantListPeopleOnlySeen);
+						//logger.info("emai recipient vector sum : " + EmailUtils.getVectorTotal(email.getRecipientContextVector()) + "list-seen-people vector sum: " + EmailUtils.getVectorTotal(importantListPeopleOnlySeen));
+						double[] importantListFromPeopleOnlySeen = VectorsMath.addArrays
+								(repModel.getImportantListPeopleFromOnlySeen(), email.getFromContextVector());
+						repModel.setImportantListPeopleFromOnlySeen(importantListFromPeopleOnlySeen);
+						double[] importantListToPeopleOnlySeen = VectorsMath.addArrays
+								(repModel.getImportantListPeopleToOnlySeen(), email.getToContextVector());
+						repModel.setImportantListPeopleToOnlySeen(importantListToPeopleOnlySeen);
+						double[] importantListCCPeopleOnlySeen = VectorsMath.addArrays
+								(repModel.getImportantListPeopleCCOnlySeen(), email.getCcContextVector());
+						repModel.setImportantListPeopleCCOnlySeen(importantListCCPeopleOnlySeen);
+						
+						
+						double[] importantListNLPKeywordsOnlySeen = VectorsMath.addArrays(repModel.getImportantListNLPKeywordsOnlySeen(), email.getNlpKeywordsVector());
+						repModel.setImportantListNLPKeywordsOnlySeen(importantListNLPKeywordsOnlySeen);
+						//logger.info("emai nlp keyword vector sum : " + EmailUtils.getVectorTotal(email.getNlpKeywordsVector()) + "list-seen-keyword vector sum: " + EmailUtils.getVectorTotal(importantListNLPKeywordsOnlySeen));
+						
+						//numberOfListEmailsSeen++;
+						mb.getReputationDataModel().getSeenListEmails().add(email);
+					}
+					if(email.isFlagged() || email.getIsImportantByHeader() || email.isSensitiveByHeader()){
+						logger.info("this is a list email user has flagged or set important by header");
+						double[] importantListTopicsFlagged = VectorsMath.addArrays(repModel.getImportantListTopicsFlagged(), email.getTextContextVector());
+						repModel.setImportantListTopicsFlagged(importantListTopicsFlagged);
+						//logger.info("emai text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "flagged important-list-topic vector sum: " + EmailUtils.getVectorTotal(importantListTopicsFlagged));
+						double[] importantListTopicsSubjectFlagged = VectorsMath.addArrays(repModel.getImportantListTopicsSubjectsFlagged(), email.getSubjectContextVector());
+						repModel.setImportantListTopicsSubjectsFlagged(importantListTopicsSubjectFlagged);
+						double[] importantListTopicsBodyFlagged = VectorsMath.addArrays(repModel.getImportantListTopicsBodyFlagged(), email.getBodyContextVector());
+						repModel.setImportantListTopicsBodyFlagged(importantListTopicsBodyFlagged);
+						
+						
+						double[] importantListPeopleFlagged = VectorsMath.addArrays(repModel.getImportantListPeopleFlagged(), email.getRecipientContextVector());
+						repModel.setImportantListPeopleFlagged(importantListPeopleFlagged);
+						
+						double[] importantListFromPeopleFlagged = VectorsMath.addArrays
+								(repModel.getImportantListPeopleFromFlagged(), email.getFromContextVector());
+						repModel.setImportantListPeopleFromFlagged(importantListFromPeopleFlagged);
+						double[] importantListToPeopleFlagged = VectorsMath.addArrays
+								(repModel.getImportantListPeopleToFlagged(), email.getToContextVector());
+						repModel.setImportantListPeopleToFlagged(importantListToPeopleFlagged);
+						double[] importantListCCPeopleFlagged = VectorsMath.addArrays
+								(repModel.getImportantListPeopleCCFlagged(), email.getCcContextVector());
+						repModel.setImportantListPeopleCCFlagged(importantListCCPeopleFlagged);
+						
+						
+						double[] importantListNLPKeywordsFlagged = VectorsMath.addArrays(repModel.getImportantListNLPKeywordsFlagged(), email.getNlpKeywordsVector());
+						repModel.setImportantListNLPKeywordsFlagged(importantListNLPKeywordsFlagged);
+						
+						//numberOfListEmailsFlagged++;
+						mb.getReputationDataModel().getFlaggedListEmails().add(email);
+					}
+				}
+			}
+		}
+		
+		mb.setReputationDataModel(repModel);
+		mb = EmailUtils.updateAverageImportanceVectors(mb);
+		return mb;
+		
+	}
+	
+	public static UserMailBox updateAverageImportanceVectors(UserMailBox mailBox) {
+		EmailReputationDataModel model = mailBox.getReputationDataModel();
+		
+		double[] directTopicsFlagged = model.getImportantTopicsFlagged();
+		
+		if(model.getFlaggedEmails() != null && model.getFlaggedEmails().size() > 0){
+			directTopicsFlagged = VectorsMath.devideArray(directTopicsFlagged, model.getFlaggedEmails().size());
+			model.setImportantTopicsFlagged(directTopicsFlagged);
+		}
+		double[] directTopicsReplied = model.getImportantTopicsReplied();
+		if(model.getRepliedEmails() != null && model.getRepliedEmails().size() > 0){
+			directTopicsReplied = VectorsMath.devideArray(directTopicsReplied, model.getRepliedEmails().size());
+			model.setImportantTopicsReplied(directTopicsReplied);
+		}
+		double[] directTopicsSeen = model.getImportantTopicsOnlySeen();
+		if(model.getSeenEmails() != null && model.getSeenEmails().size() > 0){
+			directTopicsSeen = VectorsMath.devideArray(directTopicsSeen, model.getSeenEmails().size());
+			model.setImportantTopicsOnlySeen(directTopicsSeen);
+		}
+		//subject only
+		double[] directTopicSubjectsFlagged = model.getImportantTopicsSubjectsFlagged();
+		if(model.getFlaggedEmails() != null && model.getFlaggedEmails().size() > 0){
+			directTopicSubjectsFlagged = VectorsMath.devideArray(directTopicSubjectsFlagged, model.getFlaggedEmails().size());
+			model.setImportantTopicsSubjectsFlagged(directTopicSubjectsFlagged);
+		}
+		double[] directTopicsSubjectsReplied = model.getImportantTopicsSubjectsReplied();
+		if(model.getRepliedEmails() != null && model.getRepliedEmails().size() > 0){
+			directTopicsSubjectsReplied = VectorsMath.devideArray(directTopicsSubjectsReplied, model.getRepliedEmails().size());
+			model.setImportantTopicsSubjectsReplied(directTopicsSubjectsReplied);
+		}
+		double[] directTopicsSubjectsSeen = model.getImportantTopicsSubjectsOnlySeen();
+		if(model.getSeenEmails() != null && model.getSeenEmails().size() > 0){
+			directTopicsSubjectsSeen = VectorsMath.devideArray(directTopicsSubjectsSeen, model.getSeenEmails().size());
+			model.setImportantTopicsSubjectsOnlySeen(directTopicsSubjectsSeen);
+		}
+		
+		//body only
+		double[] directTopicBodyFlagged = model.getImportantTopicsBodyFlagged();
+		if(model.getFlaggedEmails() != null && model.getFlaggedEmails().size() > 0){
+			directTopicBodyFlagged = VectorsMath.devideArray(directTopicBodyFlagged, model.getFlaggedEmails().size());
+			model.setImportantTopicsBodyFlagged(directTopicBodyFlagged);
+		}
+		double[] directTopicsBodyReplied = model.getImportantTopicsBodyReplied();
+		if(model.getRepliedEmails() != null && model.getRepliedEmails().size() > 0){
+			directTopicsBodyReplied = VectorsMath.devideArray(directTopicsBodyReplied, model.getRepliedEmails().size());
+			model.setImportantTopicsBodyReplied(directTopicsBodyReplied);
+		}
+		double[] directTopicsBodySeen = model.getImportantTopicsBodyOnlySeen();
+		if(model.getSeenEmails() != null && model.getSeenEmails().size() > 0){
+			directTopicsBodySeen = VectorsMath.devideArray(directTopicsBodySeen, model.getSeenEmails().size());
+			model.setImportantTopicsBodyOnlySeen(directTopicsBodySeen);
+		}
+		
+		
+		double[] listTopicsFlagged = model.getImportantListTopicsFlagged();
+		if(model.getFlaggedListEmails() != null && model.getFlaggedListEmails().size() > 0){
+			listTopicsFlagged = VectorsMath.devideArray(listTopicsFlagged, model.getFlaggedListEmails().size());
+			model.setImportantListTopicsFlagged(listTopicsFlagged);
+		}
+		double[] listTopicsReplied = model.getImportantListTopicsReplied();
+		if(model.getRepliedListEmails() != null && model.getRepliedListEmails().size() > 0){
+			listTopicsReplied = VectorsMath.devideArray(listTopicsReplied, model.getRepliedListEmails().size());
+			model.setImportantListTopicsReplied(listTopicsReplied);
+		}
+		double[] listTopicsSeen = model.getImportantListTopicsOnlySeen();
+		if(model.getSeenListEmails() != null && model.getSeenListEmails().size() > 0){
+			listTopicsSeen = VectorsMath.devideArray(listTopicsSeen, model.getSeenListEmails().size());
+			model.setImportantListTopicsOnlySeen(listTopicsSeen);
+		}
+		
+		//subject only
+		double[] listSubjectsFlagged = model.getImportantListTopicsSubjectsFlagged();
+		if(model.getFlaggedListEmails() != null && model.getFlaggedListEmails().size() > 0){
+			listSubjectsFlagged = VectorsMath.devideArray(listSubjectsFlagged, model.getFlaggedListEmails().size());
+			model.setImportantListTopicsSubjectsFlagged(listSubjectsFlagged);
+		}
+		double[] listSubjectsReplied = model.getImportantListTopicsSubjectsReplied();
+		if(model.getRepliedListEmails() != null && model.getRepliedListEmails().size() > 0){
+			listSubjectsReplied = VectorsMath.devideArray(listSubjectsReplied, model.getRepliedListEmails().size());
+			model.setImportantListTopicsSubjectsReplied(listSubjectsReplied);
+		}
+		double[] listSubjectsSeen = model.getImportantListTopicsSubjectsOnlySeen();
+		if(model.getSeenListEmails() != null && model.getSeenListEmails().size() > 0){
+			listSubjectsSeen = VectorsMath.devideArray(listSubjectsSeen, model.getSeenListEmails().size());
+			model.setImportantListTopicsSubjectsOnlySeen(listSubjectsSeen);
+		}
+		//body only
+		double[] listBodyFlagged = model.getImportantListTopicsBodyFlagged();
+		if(model.getFlaggedListEmails() != null && model.getFlaggedListEmails().size() > 0){
+			listBodyFlagged = VectorsMath.devideArray(listBodyFlagged, model.getFlaggedListEmails().size());
+			model.setImportantListTopicsBodyFlagged(listBodyFlagged);
+		}
+		double[] listBodyReplied = model.getImportantListTopicsBodyReplied();
+		if(model.getRepliedListEmails() != null && model.getRepliedListEmails().size() > 0){
+			listBodyReplied = VectorsMath.devideArray(listBodyReplied, model.getRepliedListEmails().size());
+			model.setImportantListTopicsBodyReplied(listBodyReplied);
+		}
+		double[] listBodySeen = model.getImportantListTopicsBodyOnlySeen();
+		if(model.getSeenListEmails() != null && model.getSeenListEmails().size() > 0){
+			listBodySeen = VectorsMath.devideArray(listBodySeen, model.getSeenListEmails().size());
+			model.setImportantListTopicsBodyOnlySeen(listBodySeen);
+		}
+		
+		
+		//set all other vectors to the model
+		double[] directPeopleFlagged = model.getImportantPeopleFlagged();
+		if(model.getFlaggedEmails() != null && model.getFlaggedEmails().size() > 0){
+			directPeopleFlagged = VectorsMath.devideArray(directPeopleFlagged, model.getFlaggedEmails().size() );
+			model.setImportantPeopleFlagged(directPeopleFlagged);
+		}
+		double[] directPeopleReplied = model.getImportantPeopleReplied();
+		if(model.getRepliedEmails() != null && model.getRepliedEmails().size() > 0){
+			directPeopleReplied = VectorsMath.devideArray(directPeopleReplied, model.getRepliedEmails().size());
+			model.setImportantPeopleReplied(directPeopleReplied);
+		}
+		double[] directPeopleSeen = model.getImportantPeopleOnlySeen();
+		if(model.getSeenEmails() != null && model.getSeenEmails().size() > 0){
+			directPeopleSeen = VectorsMath.devideArray(directPeopleSeen, model.getSeenEmails().size());
+			model.setImportantPeopleOnlySeen(directPeopleSeen);
+		}
+		//to only
+		double[] directPeopleToFlagged = model.getImportantPeopleToFlagged();
+		if(model.getFlaggedEmails() != null && model.getFlaggedEmails().size() > 0){
+			directPeopleToFlagged = VectorsMath.devideArray(directPeopleToFlagged, model.getFlaggedEmails().size());
+			model.setImportantPeopleToFlagged(directPeopleToFlagged);
+		}
+		double[] directPeopleToReplied = model.getImportantPeopleToReplied();
+		if(model.getRepliedEmails() != null && model.getRepliedEmails().size() > 0){
+			directPeopleToReplied = VectorsMath.devideArray(directPeopleToReplied, model.getRepliedEmails().size());
+			model.setImportantPeopleToReplied(directPeopleToReplied);
+		}
+		double[] directPeopleToSeen = model.getImportantPeopleToOnlySeen();
+		if(model.getSeenEmails() != null && model.getSeenEmails().size() > 0){
+			directPeopleToSeen = VectorsMath.devideArray(directPeopleToSeen, model.getSeenEmails().size());
+			model.setImportantPeopleToOnlySeen(directPeopleToSeen);
+		}
+		//from only
+		double[] directPeopleFromFlagged = model.getImportantPeopleFromFlagged();
+		if(model.getFlaggedEmails() != null && model.getFlaggedEmails().size() > 0){
+			directPeopleFromFlagged = VectorsMath.devideArray(directPeopleFromFlagged, model.getFlaggedEmails().size());
+			model.setImportantPeopleFromFlagged(directPeopleFromFlagged);
+		}
+		double[] directPeopleFromReplied = model.getImportantPeopleFromReplied();
+		if(model.getRepliedEmails() != null && model.getRepliedEmails().size() > 0){
+			directPeopleFromReplied = VectorsMath.devideArray(directPeopleFromReplied, model.getRepliedEmails().size() );
+			model.setImportantPeopleFromReplied(directPeopleFromReplied);
+		}
+		double[] directPeopleFromSeen = model.getImportantPeopleFromOnlySeen();
+		if(model.getSeenEmails() != null && model.getSeenEmails().size() > 0){
+			directPeopleFromSeen = VectorsMath.devideArray(directPeopleFromSeen, model.getSeenEmails().size() );
+			model.setImportantPeopleFromOnlySeen(directPeopleFromSeen);
+		}
+		//cc only
+		double[] directPeopleCCFlagged = model.getImportantPeopleCCFlagged();
+		if(model.getFlaggedEmails() != null && model.getFlaggedEmails().size() > 0){
+			directPeopleCCFlagged = VectorsMath.devideArray(directPeopleCCFlagged, model.getFlaggedEmails().size());
+			model.setImportantPeopleCCFlagged(directPeopleCCFlagged);
+		}
+		double[] directPeopleCCReplied = model.getImportantPeopleCCReplied();
+		if(model.getRepliedEmails() != null && model.getRepliedEmails().size() > 0){
+			directPeopleCCReplied = VectorsMath.devideArray(directPeopleCCReplied, model.getRepliedEmails().size());
+			model.setImportantPeopleCCReplied(directPeopleCCReplied);
+		}
+		double[] directPeopleCCSeen = model.getImportantPeopleCCOnlySeen();
+		if(model.getSeenEmails() != null && model.getSeenEmails().size() > 0){
+			directPeopleCCSeen = VectorsMath.devideArray(directPeopleCCSeen, model.getSeenEmails().size());
+			model.setImportantPeopleCCOnlySeen(directPeopleCCSeen);
+		}
+		
+		
+		//list people
+		double[] listPeopleFlagged = model.getImportantListPeopleFlagged();
+		if(model.getFlaggedListEmails() != null && model.getFlaggedListEmails().size() > 0){
+			listPeopleFlagged = VectorsMath.devideArray(listPeopleFlagged, model.getFlaggedListEmails().size());
+			model.setImportantListPeopleFlagged(listPeopleFlagged);
+		}
+		double[] listPeopleReplied = model.getImportantListPeopleReplied();
+		if(model.getRepliedListEmails() != null && model.getRepliedListEmails().size() > 0){
+			listPeopleReplied = VectorsMath.devideArray(listPeopleReplied, model.getRepliedListEmails().size());
+			model.setImportantListPeopleReplied(listPeopleReplied);
+		}
+		double[] listPeopleSeen = model.getImportantListPeopleOnlySeen();
+		if(model.getSeenListEmails() != null && model.getSeenListEmails().size() > 0){
+			listPeopleSeen = VectorsMath.devideArray(listPeopleSeen, model.getSeenListEmails().size());
+			model.setImportantListPeopleOnlySeen(listPeopleSeen);
+		}
+		//to people
+		double[] listPeopleToFlagged = model.getImportantListPeopleToFlagged();
+		if(model.getFlaggedListEmails() != null && model.getFlaggedListEmails().size() > 0){
+			listPeopleToFlagged = VectorsMath.devideArray(listPeopleToFlagged,  model.getFlaggedListEmails().size());
+			model.setImportantListPeopleToFlagged(listPeopleToFlagged);
+		}
+		double[] listPeopleToReplied = model.getImportantListPeopleToReplied();
+		if(model.getRepliedListEmails() != null && model.getRepliedListEmails().size() > 0){
+			listPeopleToReplied = VectorsMath.devideArray(listPeopleToReplied, model.getRepliedListEmails().size());
+			model.setImportantListPeopleToReplied(listPeopleToReplied);
+		}
+		double[] listPeopleToSeen = model.getImportantListPeopleToOnlySeen();
+		if(model.getSeenListEmails() != null && model.getSeenListEmails().size() > 0){
+			listPeopleToSeen = VectorsMath.devideArray(listPeopleToSeen,  model.getSeenListEmails().size());
+			model.setImportantListPeopleToOnlySeen(listPeopleToSeen);
+		}
+		//from
+		double[] listPeopleFromFlagged = model.getImportantListPeopleFromFlagged();
+		if(model.getFlaggedListEmails() != null && model.getFlaggedListEmails().size() > 0){
+			listPeopleFromFlagged = VectorsMath.devideArray(listPeopleFromFlagged,  model.getFlaggedListEmails().size());
+			model.setImportantListPeopleFromFlagged(listPeopleFromFlagged);
+		}
+		double[] listPeopleFromReplied = model.getImportantListPeopleFromReplied();
+		if(model.getRepliedListEmails() != null && model.getRepliedListEmails().size() > 0){
+			listPeopleFromReplied = VectorsMath.devideArray(listPeopleFromReplied, model.getRepliedListEmails().size());
+			model.setImportantListPeopleFromReplied(listPeopleFromReplied);
+		}
+		double[] listPeopleFromSeen = model.getImportantListPeopleFromOnlySeen();
+		if(model.getSeenListEmails() != null && model.getSeenListEmails().size() > 0){
+			listPeopleFromSeen = VectorsMath.devideArray(listPeopleFromSeen, model.getSeenListEmails().size());
+			model.setImportantListPeopleFromOnlySeen(listPeopleFromSeen);
+		}
+		//cc
+		double[] listPeopleCCFlagged = model.getImportantListPeopleCCFlagged();
+		if(model.getFlaggedListEmails() != null && model.getFlaggedListEmails().size() > 0){
+			listPeopleCCFlagged = VectorsMath.devideArray(listPeopleCCFlagged, model.getFlaggedListEmails().size());
+			model.setImportantListPeopleCCFlagged(listPeopleCCFlagged);
+		}
+		double[] listPeopleCCReplied = model.getImportantListPeopleCCReplied();
+		if(model.getRepliedListEmails() != null && model.getRepliedListEmails().size() > 0){
+			listPeopleCCReplied = VectorsMath.devideArray(listPeopleCCReplied, model.getRepliedListEmails().size());
+			model.setImportantListPeopleCCReplied(listPeopleCCReplied);
+		}
+		double[] listPeopleCCSeen = model.getImportantListPeopleCCOnlySeen();
+		if(model.getSeenListEmails() != null && model.getSeenListEmails().size() > 0){
+			listPeopleCCSeen = VectorsMath.devideArray(listPeopleCCSeen, model.getSeenListEmails().size());
+			model.setImportantListPeopleCCOnlySeen(listPeopleCCSeen);
+		}
+		
+		//nlp keywords
+		double[] importantNLPKeywordsReplied = model.getImportantNLPKeywordsReplied();
+		if(model.getRepliedEmails() != null && model.getRepliedEmails().size() > 0){
+			importantNLPKeywordsReplied = VectorsMath.devideArray(importantNLPKeywordsReplied, model.getRepliedEmails().size());
+			model.setImportantNLPKeywordsReplied(importantNLPKeywordsReplied);
+		}
+		double[] importantNLPKeywordsFlagged = model.getImportantNLPKeywordsFlagged();
+		if(model.getFlaggedEmails() != null && model.getFlaggedEmails().size() > 0){
+			importantNLPKeywordsFlagged = VectorsMath.devideArray(importantNLPKeywordsFlagged, model.getFlaggedEmails().size());
+			model.setImportantNLPKeywordsFlagged(importantNLPKeywordsFlagged);
+		}
+		double[] importantNLPKeywordsSeen = model.getImportantNLPKeywordsOnlySeen();
+		if(model.getSeenEmails() != null && model.getSeenEmails().size() > 0){
+			importantNLPKeywordsSeen = VectorsMath.devideArray(importantNLPKeywordsSeen, model.getSeenEmails().size());
+			model.setImportantNLPKeywordsOnlySeen(importantNLPKeywordsSeen);
+		}
+		//list nlp keywords
+		double[] importantListNLPKeywordsReplied = model.getImportantListNLPKeywordsReplied();
+		if(model.getRepliedListEmails() != null && model.getRepliedListEmails().size() > 0){
+			importantListNLPKeywordsReplied = VectorsMath.devideArray(importantListNLPKeywordsReplied, model.getRepliedListEmails().size());
+			model.setImportantListNLPKeywordsReplied(importantListNLPKeywordsReplied);
+		}
+		double[] importantListNLPKeywordsFlagged = model.getImportantListNLPKeywordsFlagged();
+		if(model.getFlaggedListEmails() != null && model.getFlaggedListEmails().size() > 0){
+			importantListNLPKeywordsFlagged = VectorsMath.devideArray(importantListNLPKeywordsFlagged, model.getFlaggedListEmails().size());
+			model.setImportantListNLPKeywordsFlagged(importantListNLPKeywordsFlagged);
+		}
+		double[] importantListNLPKeywordsSeen = model.getImportantListNLPKeywordsOnlySeen();
+		if(model.getSeenListEmails() != null && model.getSeenListEmails().size() > 0){
+			importantListNLPKeywordsSeen = VectorsMath.devideArray(importantListNLPKeywordsSeen,  model.getSeenListEmails().size());
+			model.setImportantListNLPKeywordsOnlySeen(importantListNLPKeywordsSeen);
+		}
+								
+		//spam 
+		double[] spamContentVector = model.getSpamVector();
+		double[] spamPeopleVector = model.getSpamPeopleVector();
+		double[] spamNLPKeywordVector = model.getSpamNLPKeywordVector();
+		if(model.getSpamEmails() != null && model.getSpamEmails().size() > 0){
+			spamContentVector = VectorsMath.devideArray(spamContentVector, model.getSpamEmails().size());
+			model.setSpamVector(spamContentVector);
+			spamPeopleVector = VectorsMath.devideArray(spamPeopleVector, model.getSpamEmails().size());
+			model.setSpamPeopleVector(spamPeopleVector);
+			spamNLPKeywordVector = VectorsMath.devideArray(spamNLPKeywordVector, model.getSpamEmails().size());
+			model.setSpamNLPKeywordVector(spamNLPKeywordVector);
+		}
+		
+		mailBox.setReputationDataModel(model);
+		//need to clear all mailbox data of reputation email data for the next iteration
+		return mailBox;
+		
 	}
 	
 }

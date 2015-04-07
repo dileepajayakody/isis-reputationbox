@@ -68,7 +68,7 @@ public class JavaMailService {
 			.getLogger(JavaMailService.class);
 
 	@Programmatic
-	public UserMailBox createImportanceModel(UserMailBox mailbox){
+	public UserMailBox addMailsToModel(UserMailBox mailbox){
 		logger.info("creating email model for important emails..");
 		mailbox.setUpdatingModel(true);
 		Properties props = new Properties();
@@ -85,21 +85,21 @@ public class JavaMailService {
 		logger.info("loading recipientVectors with size : " + recipientVectors.size());
 		
 		Map<String,TernaryVector> contentIndexVectorMap = new HashMap<String, TernaryVector>();
-		Map<String, double[]> contentContextVectorMap = new HashMap<String, double[]>();
+		//Map<String, double[]> contentContextVectorMap = new HashMap<String, double[]>();
 		Map<String,TernaryVector> recipientIndexVectorMap = new HashMap<String, TernaryVector>();
-		Map<String, double[]> recipientContextVectorMap = new HashMap<String, double[]>();
+		//Map<String, double[]> recipientContextVectorMap = new HashMap<String, double[]>();
 		Map<String, Integer> wordDocFrequencies = new HashMap<String, Integer>();
 
 		
 		for(RandomIndexVector contentVector : contentVectors){
 			contentIndexVectorMap.put(contentVector.getWord(), contentVector.getIndexVector());
-			contentContextVectorMap.put(contentVector.getWord(), contentVector.getContextVector());
+			//contentContextVectorMap.put(contentVector.getWord(), contentVector.getContextVector());
 			wordDocFrequencies.put(contentVector.getWord(), contentVector.getWordDocFrequency());
 		}
 		
 		for(RandomIndexVector recipientVector : recipientVectors){
 			recipientIndexVectorMap.put(recipientVector.getWord(), recipientVector.getIndexVector());
-			recipientContextVectorMap.put(recipientVector.getWord(), recipientVector.getContextVector());
+			//recipientContextVectorMap.put(recipientVector.getWord(), recipientVector.getContextVector());
 		}
 		
 		
@@ -120,7 +120,7 @@ public class JavaMailService {
 					
 			textSemantics = new RandomIndexing(
 					contentIndexVectorMap,
-					contentContextVectorMap, RandomIndexing.textSemanticType);
+					null, RandomIndexing.textSemanticType);
 			
 			//to calculate incremental logIDF for words for weighting
 			textSemantics.setWordDocumentFrequencies(wordDocFrequencies);
@@ -128,8 +128,9 @@ public class JavaMailService {
 			
 			recipientSemantics = new RandomIndexing(
 					recipientIndexVectorMap,
-					recipientContextVectorMap, RandomIndexing.peopleSemanticType);
-			
+					null, RandomIndexing.peopleSemanticType);
+			//to avoid the null pointer
+			recipientSemantics.setWordDocumentFrequencies(new HashMap<String, Integer>());
 			
 			//there is a last-indexed message uid,hence retrieving emails from there
 			if(mailbox.getLastIndexedMsgUid() > 1){
@@ -176,7 +177,7 @@ public class JavaMailService {
 
 			//setting an empty email model for the mailbox
 			logger.info("Emails to retrieve :" + messages.length );
-			int messageLimit = 3;
+			int messageLimit = 50;
 			logger.info("Starting to retrieve emails with limit:" + messageLimit );
 			//messageLimit should be messages.length
 			
@@ -197,15 +198,29 @@ public class JavaMailService {
 						
 						textSemantics = emailAnalysisService.processTextSemantics(
 								newEmail, textSemantics);
+						//to calculate incremental logIDF for words for weighting
+						textSemantics.setWordDocumentFrequencies(wordDocFrequencies);
+						textSemantics.setNoOfDocumentsProcessed(mailbox.getAllEmails().size());
+						
 						recipientSemantics = emailAnalysisService
 								.processPeopleSemantics(newEmail, recipientSemantics);
-
+						//to avoid the null pointer
+						recipientSemantics.setWordDocumentFrequencies(new HashMap<String, Integer>());
+						
+						
+						//clear out the context words for the words assigned above
+						//because they are document dependent.
+						textSemantics.removeAllSemantics();
+						recipientSemantics.removeAllSemantics();
+						
 						// adding email to mailbox...
 						//don't add the reputation results email to the email lists
 						if(!newEmail.getFromAddress().equals("reputationbox1@gmail.com")){
 								//whether to use this email to update the model or classify the email and recommend scores
-							logger.info("updating the mailbox profile with the email : " + count);
-							mailbox.updateMailBoxProfiles(newEmail);
+							logger.info("adding the email to the mailbox with emails count : " + count);
+							//mailbox.updateMailBoxProfiles(newEmail);
+							mailbox.addEmail(newEmail);
+							
 							//container.flush();
 						}
 																	
@@ -267,21 +282,21 @@ public class JavaMailService {
 		List<RandomIndexVector> recipientVectors = mailbox.getRecipientVectors();
 		
 		Map<String,TernaryVector> contentIndexVectorMap = new HashMap<String, TernaryVector>();
-		Map<String, double[]> contentContextVectorMap = new HashMap<String, double[]>();
+		//Map<String, double[]> contentContextVectorMap = new HashMap<String, double[]>();
 		Map<String,TernaryVector> recipientIndexVectorMap = new HashMap<String, TernaryVector>();
-		Map<String, double[]> recipientContextVectorMap = new HashMap<String, double[]>();
+		//Map<String, double[]> recipientContextVectorMap = new HashMap<String, double[]>();
 		Map<String, Integer> wordDocFrequencies = new HashMap<String, Integer>();
 
 		
 		for(RandomIndexVector contentVector : contentVectors){
 			contentIndexVectorMap.put(contentVector.getWord(), contentVector.getIndexVector());
-			contentContextVectorMap.put(contentVector.getWord(), contentVector.getContextVector());
+			//contentContextVectorMap.put(contentVector.getWord(), contentVector.getContextVector());
 			wordDocFrequencies.put(contentVector.getWord(), contentVector.getWordDocFrequency());
 		}
 		
 		for(RandomIndexVector recipientVector : recipientVectors){
 			recipientIndexVectorMap.put(recipientVector.getWord(), recipientVector.getIndexVector());
-			recipientContextVectorMap.put(recipientVector.getWord(), recipientVector.getContextVector());
+			//recipientContextVectorMap.put(recipientVector.getWord(), recipientVector.getContextVector());
 		}
 		
 		
@@ -291,14 +306,14 @@ public class JavaMailService {
 		try {
 			textSemantics = new RandomIndexing(
 					contentIndexVectorMap,
-					contentContextVectorMap, RandomIndexing.textSemanticType);
+					null, RandomIndexing.textSemanticType);
 			//to calculate incremental logIDF for words for weighting
 			textSemantics.setWordDocumentFrequencies(wordDocFrequencies);
 			textSemantics.setNoOfDocumentsProcessed(mailbox.getAllEmails().size());
 			
 			recipientSemantics = new RandomIndexing(
 					recipientIndexVectorMap,
-					recipientContextVectorMap, RandomIndexing.peopleSemanticType);
+					null, RandomIndexing.peopleSemanticType);
 			
 			session = Session.getInstance(props, null);
 			store = session.getStore();
@@ -342,7 +357,10 @@ public class JavaMailService {
 								newEmail, textSemantics);
 						recipientSemantics = emailAnalysisService
 								.processPeopleSemantics(newEmail, recipientSemantics);
-
+						//clearing semantic vectors in the RIs for the above processed document
+						textSemantics.removeAllSemantics();
+						recipientSemantics.removeAllSemantics();
+						
 						logger.info("adding email to mailbox with size ["
 								+ mailbox.getAllEmails().size() + " ] subject: "
 								+ newEmail.getSubject() + " email sent timestamp : "
