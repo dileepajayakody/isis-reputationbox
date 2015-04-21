@@ -49,7 +49,7 @@ public class EmailWeightedSubjectBodyContentCluster {
 	public static final int FLAGGED_WEIGHT = 5, ANSWERERD_WEIGHT = 4, SEEN_WEIGHT = 2, DELETED_WEIGHT = 11;
 	
 	private final static Logger logger = LoggerFactory
-			.getLogger(EmailAllFeatureCluster.class);
+			.getLogger( EmailWeightedSubjectBodyContentCluster.class);
 	
 	public EmailWeightedSubjectBodyContentCluster(){
 		this.setClusterType(EmailCluster.WEIGHTED_SUBJECT_BODY_CLUSTER_TYPE);
@@ -83,7 +83,7 @@ public class EmailWeightedSubjectBodyContentCluster {
 			this.setSubjectBodyContentEmails(new ArrayList<Email>());
 		}
 		
-		logger.info(" Adding email " + email.getMessageId() + "to content cluster : " + this.id);
+		//logger.info(" Adding email " + email.getMessageId() + "to content cluster : " + this.id);
 		this.subjectBodyContentEmails.add(email);
 		this.emailIds.add(emailId);
 		
@@ -247,8 +247,8 @@ public class EmailWeightedSubjectBodyContentCluster {
 	@Programmatic
 	public double getSimilarity(double[] subjectVector, double[] bodyVector) {
 		
-		double subjectSimilarity = Similarity.cosineSimilarity(getAverageSubjectCentroid(), subjectVector);
-		double bodySimilarity = Similarity.cosineSimilarity(getAverageBodyCentroid(), bodyVector);
+		double subjectSimilarity = Similarity.cosineSimilarity(subjectCentroid, subjectVector);
+		double bodySimilarity = Similarity.cosineSimilarity(bodyCentroid, bodyVector);
 		
 		double avgSimilarity = (subjectSimilarity + bodySimilarity)/2;
 		return avgSimilarity;

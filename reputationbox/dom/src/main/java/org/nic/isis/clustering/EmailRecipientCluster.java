@@ -180,7 +180,8 @@ public class EmailRecipientCluster extends EmailCluster {
 
 	@Programmatic
 	public double getSimilarity(double[] vector) {
-		return Similarity.cosineSimilarity(getAverageCentroid(), vector);
+		//return Similarity.cosineSimilarity(getAverageCentroid(), vector);
+		return Similarity.cosineSimilarity(centroid, vector);
 	}
 	
 	public double[] getAverageCentroid() {

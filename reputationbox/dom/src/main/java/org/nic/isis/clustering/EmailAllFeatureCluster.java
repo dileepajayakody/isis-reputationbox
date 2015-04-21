@@ -255,7 +255,7 @@ public class EmailAllFeatureCluster {
 
 	public void merge(CentroidCluster other) {
         centroid = VectorsMath.addArrays(centroid, other.getCentroid());
-        centroid = VectorsMath.devideArray(centroid, 2);
+        //centroid = VectorsMath.devideArray(centroid, 2);
           
     }
 	

@@ -6,9 +6,15 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Properties;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
+import javax.mail.Folder;
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Session;
+import javax.mail.Store;
 
 import org.nic.isis.clustering.EmailContentCluster;
 import org.nic.isis.clustering.EmailRecipientCluster;
@@ -41,9 +47,15 @@ public class EmailService {
 	private final static Logger logger = LoggerFactory
 			.getLogger(EmailService.class);
 	
+	//current session's emailboxes
+	
+	private List<UserMailBox> mailBoxes;
+	
 	@Named("Update MailBox Model and Predict for new emails")
 	public synchronized List<UserMailBox> updateNew(){
-		List<UserMailBox> mailBoxes = listAllMailBoxes();
+		//List<UserMailBox> mailBoxes = listAllMailBoxes();
+		mailBoxes = listAllMailBoxes();
+		
 //		if (mailBoxes == null || mailBoxes.isEmpty()) {
 //			logger.info("No mail-box added to the application. Please add a new mailbox via the web console");
 //		
@@ -58,7 +70,38 @@ public class EmailService {
 			for (UserMailBox mailBox : mailBoxes) {
 
 				//set the modelSize by calculating the no.of emails to retrieve for the time-period
-				int modelSize = 500;
+				if(!mailBox.isUpdatingModel() && mailBox.isRequireNewModel() && mailBox.getCurrentModelSize() == 0){
+					Properties props = new Properties();
+					props.setProperty("mail.store.protocol", "imaps");
+					Message[] messages = null;		
+					Session session = null;
+					Store store = null;
+					try {
+						session = Session.getInstance(props, null);
+						store = session.getStore();
+						store.connect(mailBox.getImapHostId(), mailBox.getEmailId(),
+								mailBox.getPassword());
+						Folder inbox = store.getFolder("INBOX");
+						//Folder inbox = store.getFolder("[Gmail]/Important");
+						inbox.open(Folder.READ_ONLY);
+						messages = javaMailService.getModelEmailSetForPeriod(inbox, -21, -7);
+						logger.info("Setting model size for the current period : " + messages.length);
+						mailBox.setCurrentModelSize(messages.length);
+						logger.info("set mailbox model size : " + mailBox.getCurrentModelSize());
+						
+					}catch(Exception ex){
+						logger.error("Error occurred while connecting to IMAP store to get model size", ex);
+					}finally{
+						try {
+							store.close();
+						} catch (MessagingException e) {
+							logger.error("Error occurred while closing IMAP store", e);
+						}
+					}	
+				}
+				//int modelSize = 300;
+				int modelSize = mailBox.getCurrentModelSize();
+				
 				//if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() == 0)){
 				if(!mailBox.isUpdatingModel() && mailBox.isRequireNewModel() && (mailBox.getAllEmails().size() < modelSize)){
 					
@@ -69,18 +112,23 @@ public class EmailService {
 					//create the content and people clusters and average vectors for flagged,replied,seen emails
 					//at the end of the model email retrieval
 					if(mailBox.getAllEmails().size() >= modelSize){
+						
+						logger.info("Updating profile vector indexes ..");
+						mailBox = EmailUtils.calculateImportanceModel(mailBox);
+						
+						logger.info("Creating topic clusters for the mailbox emails ..");
 						EmailReputationDataModel model = mailBox.getReputationDataModel();
 						logger.info("Creating the content and people clusters from training dataset");	
 						List<Email> allEmails = mailBox.getAllEmails();
 						List<EmailContentCluster> contentClusters = emailAnalysisService.kMeansClusterText(allEmails);
 						List<EmailRecipientCluster> recipientClusters = emailAnalysisService.kMeansClusterRecipients(allEmails);
+						List<EmailWeightedSubjectBodyContentCluster> weightedSubjectBodyClusters = emailAnalysisService.kMeansClusterWeightedSubjectBodyContent(allEmails);
 						model.setContentClusters(contentClusters);
 						model.setRecipientClusters(recipientClusters);
-						logger.info("Dunn index for content clusters : " + model.getDunnIndexForContentClusters());
-						mailBox.setReputationDataModel(model);
+						model.setWeightedSubjectBodyClusters(weightedSubjectBodyClusters);
 						
-						logger.info("Updating profile vector indexes ..");
-						mailBox = EmailUtils.calculateImportanceModel(mailBox);
+						logger.info("Dunn index for content clusters : " + model.getDunnIndexForContentClusters());
+						mailBox.setReputationDataModel(model);			
 						//mailBox = EmailUtils.updateAverageImportanceVectors(mailBox);
 						//setting the average profiles for direct replied, flagged, seen and list replied, flagged, seen
 				
@@ -96,14 +144,18 @@ public class EmailService {
 					
 					logger.info("Updaing mailbox and predicting email importance for emails for mailbox : " + mailBox.getEmailId() + " since email count: " + mailBox.getAllEmails().size()
 							+ " last indexed email  UID : " + mailBox.getLastIndexedMsgUid());
-					mailBox = javaMailService.predictImportanceForNewEmails(mailBox);
-					
-					
+					mailBox = javaMailService.predictImportanceForNewEmails(mailBox);			
 				}
 				
+				else{
+					logger.info("something wrong with if condition :  isUpdatingModel: " + mailBox.isUpdatingModel() 
+							+ " require new model : " + mailBox.isRequireNewModel() + " mailBox.size(): " + mailBox.getAllEmails().size());
+					mailBox.setUpdatingModel(false);
+					
+				}	
 				//mailbox needs to be persisted.
 				//container.persist(mailBox);
-			}	
+			}
 	//	}
 		container.flush();
 		return mailBoxes;
@@ -198,8 +250,6 @@ public class EmailService {
 	}
 	
 	
-	@Deprecated
-	@Programmatic
 	public void updateEmailModels(){
 		List<UserMailBox> mailBoxes = listAllMailBoxes();
 		
@@ -208,22 +258,26 @@ public class EmailService {
 			
 			logger.info("Updating Email Model for mailBox : " + mailboxID + " with emails count : " + mb.getAllEmails().size());
 			
-			long dateMonthAgo = EmailUtils.getMonthsBeforeDateTimeStamp(2);
-			long todayTime = EmailUtils.getTodayTimestamp();
+//			long dateMonthAgo = EmailUtils.getMonthsBeforeDateTimeStamp(2);
+//			long todayTime = EmailUtils.getTodayTimestamp();
+//			
+//			List<Email> emailsForLastMonth = getEmailsForTimePeriod(dateMonthAgo, todayTime, mailboxID);
+//			
+			logger.info("Updating profile vector indexes ..");
+			mb = EmailUtils.calculateImportanceModel(mb);
 			
-			List<Email> emailsForLastMonth = getEmailsForTimePeriod(dateMonthAgo, todayTime, mailboxID);
 			logger.info("Emails clustered according to text cooccurence.");
-			List<EmailContentCluster> contentClusters = emailAnalysisService.kMeansClusterText(emailsForLastMonth);
-			
+			List<EmailContentCluster> contentClusters = emailAnalysisService.kMeansClusterText(mb.getAllEmails());	
 			logger.info("\n\nEmails clustered according to people cooccurence");
-			List<EmailRecipientCluster> recipientClusters = emailAnalysisService.kMeansClusterRecipients(emailsForLastMonth);
+			List<EmailRecipientCluster> recipientClusters = emailAnalysisService.kMeansClusterRecipients(mb.getAllEmails());
+
+			logger.info("Emails clustered according to subject and body weighted vectors.");
+			List<EmailWeightedSubjectBodyContentCluster> subjectBodyClusters = emailAnalysisService.kMeansClusterWeightedSubjectBodyContent(mb.getAllEmails());	
 			
 			//creating a new periodic reputationDataModel for the mailbox
-			EmailReputationDataModel newDataModel = new EmailReputationDataModel();
-			newDataModel.setContentClusters(contentClusters);
-			newDataModel.setRecipientClusters(recipientClusters);
-			mb.setReputationDataModel(newDataModel);
-		
+			mb.getReputationDataModel().setContentClusters(contentClusters);
+			mb.getReputationDataModel().setRecipientClusters(recipientClusters);
+			mb.getReputationDataModel().setWeightedSubjectBodyClusters(subjectBodyClusters);
 		}
 		container.flush();
 	}
@@ -238,9 +292,11 @@ public class EmailService {
 			List<Email> allEmails = mb.getAllEmails();
 			List<EmailContentCluster> contentClusters = emailAnalysisService.kMeansClusterText(allEmails);
 			List<EmailRecipientCluster> recipientClusters = emailAnalysisService.kMeansClusterRecipients(allEmails);
-		
+			List<EmailWeightedSubjectBodyContentCluster> weightedSubjectBodyClusters = emailAnalysisService.kMeansClusterWeightedSubjectBodyContent(allEmails);
 			model.setContentClusters(contentClusters);
 			model.setRecipientClusters(recipientClusters);
+			model.setWeightedSubjectBodyClusters(weightedSubjectBodyClusters);
+			
 			logger.info("Dunn index for content clusters : " + model.getDunnIndexForContentClusters());
 		}
 		container.flush();
@@ -714,9 +770,33 @@ public class EmailService {
 	}
 	
 	//sample rest object retrieval from backend using a param
-	public String returnParamString(String param)
+	public String returnParamString(final String param)
 	{
+		logger.info("GOT a param string : " + param);
 		return "got "+param ;
+	}
+	
+	public void markMailImportant(final long mailid){
+		//flagged by user
+		if(this.mailBoxes == null){
+			mailBoxes = listAllMailBoxes();	
+		}
+		for(UserMailBox mb : mailBoxes){
+			logger.info("got user flagged important email from client : " + mailid);
+			mb.getMarkedImportantEmailUids().add(mailid);
+		}
+	}
+	
+
+	public void markMailSpam(final long mailid){
+		//flagged by user
+		if(this.mailBoxes == null){
+			mailBoxes = listAllMailBoxes();	
+		}
+		for(UserMailBox mb : mailBoxes){
+			logger.info("got user flagged spam email from client : " + mailid);
+			mb.getMarkedSpamEmailUids().add(mailid);
+		}
 	}
 
 	// region > dependencies
@@ -732,6 +812,4 @@ public class EmailService {
 	@javax.inject.Inject
 	private IsisJdoSupport isisJdoSupport;
 	// endregion
-	
-	List<UserMailBox> mailBoxes;
 }

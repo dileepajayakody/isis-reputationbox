@@ -71,9 +71,7 @@ public class JavaMailService {
 	public UserMailBox addMailsToModel(UserMailBox mailbox){
 		logger.info("creating email model for important emails..");
 		mailbox.setUpdatingModel(true);
-		Properties props = new Properties();
-		props.setProperty("mail.store.protocol", "imaps");
-
+		
 		RandomIndexing textSemantics = null;
 		RandomIndexing recipientSemantics = null;
 
@@ -104,6 +102,8 @@ public class JavaMailService {
 		
 		
 
+		Properties props = new Properties();
+		props.setProperty("mail.store.protocol", "imaps");
 		Message[] messages = null;		
 		Session session = null;
 		Store store = null;
@@ -146,84 +146,68 @@ public class JavaMailService {
 				messages = (Message[])ArrayUtils.subarray(messages, 1, messages.length);
 				
 			}else{
-				//first time the emails are retrieved; retrieving the emails from,to period
-				
-				Calendar day = Calendar.getInstance();
-				//day.add(Calendar.MONTH, -1);
-				// temp changes for data retriaval
-				// day.set(Calendar.MONTH, 0);
-				//getting emails for last 2 weeks
-				day.add(Calendar.DAY_OF_MONTH, -14);
-
-				Date fromDate = day.getTime();
-
-				//emails till 3 days ago
-				Calendar toDay = Calendar.getInstance();
-				toDay.add(Calendar.DATE, -2);			
-				
-				Date toDate = toDay.getTime();
-				logger.info("Retrieving emails from date : " + fromDate);
-				logger.info("to date : " + toDate);
-
-				SearchTerm newerThan = new ReceivedDateTerm(ComparisonTerm.GT,
-						fromDate);
-				SearchTerm olderThan = new ReceivedDateTerm(ComparisonTerm.LT,
-						toDate);
-				SearchTerm st = new AndTerm(
-						   newerThan, 
-						   olderThan);
-				messages = inbox.search(st);
+				//first time the emails are retrieved; retrieving the emails from (-14),to(-2) period since current day
+				messages = getModelEmailSetForPeriod(inbox, -21, -7);
 			}
 
 			//setting an empty email model for the mailbox
 			logger.info("Emails to retrieve :" + messages.length );
-			int messageLimit = 50;
+			int messageLimit = 100;
 			logger.info("Starting to retrieve emails with limit:" + messageLimit );
 			//messageLimit should be messages.length
 			
 			for (int count = 0; count < messageLimit; count++) {
 				try{
-					
-					Message msg = messages[count];
-					// setting the address objects
-					Address[] from = msg.getFrom();
-					String fromAddress = EmailUtils.getEmailAddressString(from[0].toString());
-					long msgUID = uf.getUID(msg);
-					
-					//process emails which are not from reputationbox1
-					if(!fromAddress.equalsIgnoreCase("reputationbox1@gmail.com")){
+					//the email count shouldn't exceed the current model size
+					if(mailbox.getAllEmails().size() <= mailbox.getCurrentModelSize()){
 
-						//processing email
-						Email newEmail = EmailUtils.processEmail(msg, mailbox.getEmailId(), msgUID);
+						Message msg = messages[count];
+						// setting the address objects
+						Address[] from = msg.getFrom();
+						String fromAddress = EmailUtils.getEmailAddressString(from[0].toString());
+						long msgUID = uf.getUID(msg);
 						
-						textSemantics = emailAnalysisService.processTextSemantics(
-								newEmail, textSemantics);
-						//to calculate incremental logIDF for words for weighting
-						textSemantics.setWordDocumentFrequencies(wordDocFrequencies);
-						textSemantics.setNoOfDocumentsProcessed(mailbox.getAllEmails().size());
-						
-						recipientSemantics = emailAnalysisService
-								.processPeopleSemantics(newEmail, recipientSemantics);
-						//to avoid the null pointer
-						recipientSemantics.setWordDocumentFrequencies(new HashMap<String, Integer>());
-						
-						
-						//clear out the context words for the words assigned above
-						//because they are document dependent.
-						textSemantics.removeAllSemantics();
-						recipientSemantics.removeAllSemantics();
-						
-						// adding email to mailbox...
-						//don't add the reputation results email to the email lists
-						if(!newEmail.getFromAddress().equals("reputationbox1@gmail.com")){
-								//whether to use this email to update the model or classify the email and recommend scores
-							logger.info("adding the email to the mailbox with emails count : " + count);
-							//mailbox.updateMailBoxProfiles(newEmail);
-							mailbox.addEmail(newEmail);
+						//process emails which are not from reputationbox1
+						if(!fromAddress.equalsIgnoreCase("reputationbox1@gmail.com")){
+
+							//processing email
+							Email newEmail = EmailUtils.processEmail(msg, mailbox.getEmailId(), msgUID);
 							
-							//container.flush();
+							//setting the email as spam for test purpose
+							//newEmail.setSpam(true);
+							
+							textSemantics = emailAnalysisService.processTextSemantics(
+									newEmail, textSemantics);
+							//to calculate incremental logIDF for words for weighting
+							textSemantics.setWordDocumentFrequencies(wordDocFrequencies);
+							textSemantics.setNoOfDocumentsProcessed(mailbox.getAllEmails().size());
+							
+							recipientSemantics = emailAnalysisService
+									.processPeopleSemantics(newEmail, recipientSemantics);
+							//to avoid the null pointer
+							recipientSemantics.setWordDocumentFrequencies(new HashMap<String, Integer>());
+							
+							
+							//clear out the context words for the words assigned above
+							//because they are document dependent.
+							textSemantics.removeAllSemantics();
+							recipientSemantics.removeAllSemantics();
+							
+							// adding email to mailbox...
+							//don't add the reputation results email to the email lists
+							if(!newEmail.getFromAddress().equals("reputationbox1@gmail.com")){
+									//whether to use this email to update the model or classify the email and recommend scores
+								logger.info("adding the email to the mailbox with emails count : " + count);
+								//mailbox.updateMailBoxProfiles(newEmail);
+								mailbox.addEmail(newEmail);
+								
+								//container.flush();
+							}
+																		
 						}
-																	
+					} else {
+						logger.info("mailbox's email count exceeds the current model size. hence returning");
+						break;
 					}
 
 				}catch(Exception ex){
@@ -238,7 +222,7 @@ public class JavaMailService {
 			logger.info("the size of contentvectors from text semantics : " + cVectors.size());
 			int indx = 1;
 			for(RandomIndexVector riVec : cVectors){
-				logger.info("textSemantics index word [" + indx + "]" + riVec.getWord() );
+				logger.info("Persisting random index vector for word [" + indx + "]" + riVec.getWord() + " word frequency in all docs: " + riVec.getWordDocFrequency() );
 				indx++;
 			}
 			mailbox.setContentVectors(cVectors);
@@ -254,11 +238,12 @@ public class JavaMailService {
 			try {
 				store.close();
 			} catch (MessagingException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				logger.error("Error occurred while closing IMAP store", e);
 			}
+			//need to set this not updating finally	
+			mailbox.setUpdatingModel(false);
 		}
-		mailbox.setUpdatingModel(false);
+		
 		return mailbox;
 	}
 	
@@ -270,9 +255,7 @@ public class JavaMailService {
 	 */
 	@Programmatic
 	public UserMailBox predictImportanceForNewEmails(UserMailBox mailbox){
-		Properties props = new Properties();
-		props.setProperty("mail.store.protocol", "imaps");
-
+		
 		RandomIndexing textSemantics = null;
 		RandomIndexing recipientSemantics = null;
 
@@ -300,6 +283,8 @@ public class JavaMailService {
 		}
 		
 		
+		Properties props = new Properties();
+		props.setProperty("mail.store.protocol", "imaps");
 		Message[] messages = null;	
 		Session session = null;
 		Store store = null;
@@ -314,6 +299,7 @@ public class JavaMailService {
 			recipientSemantics = new RandomIndexing(
 					recipientIndexVectorMap,
 					null, RandomIndexing.peopleSemanticType);
+			recipientSemantics.setWordDocumentFrequencies(new HashMap<String, Integer>());
 			
 			session = Session.getInstance(props, null);
 			store = session.getStore();
@@ -329,7 +315,7 @@ public class JavaMailService {
 			// check if this is a new inbox,
 			// then need to traverse all mails to-date from defined beginning
 
-			logger.info("Continuing to retrieve emails since last indexed message UID : " + lastMessageUID );
+			logger.info("Continuing to retrieve emails since last indexed message UID : " + mailbox.getLastIndexedMsgUid() + " to : " + lastMessageUID );
 			messages = uf.getMessagesByUID(mailbox.getLastIndexedMsgUid(),
 						 lastMessageUID);
 			//since the last indexes message is also added here as the messages[0]..
@@ -611,6 +597,46 @@ public class JavaMailService {
 //		return mailbox;
 //	}
 
+	/**
+	 * getting the set of model messages for the training period
+	 * @param inbox
+	 * @param from
+	 * @param to
+	 * @return
+	 * @throws MessagingException
+	 */
+	@Programmatic
+	public Message[] getModelEmailSetForPeriod(Folder inbox, int from, int to) throws MessagingException{
+		if(!inbox.isOpen()){
+			inbox.open(Folder.READ_ONLY);
+		}
+
+		Calendar day = Calendar.getInstance();
+		//day.add(Calendar.MONTH, -1);
+		// temp changes for data retriaval
+		// day.set(Calendar.MONTH, 0);
+		//getting emails for last 2 weeks
+		day.add(Calendar.DAY_OF_MONTH, -14);
+
+		Date fromDate = day.getTime();
+
+		//emails till 3 days ago
+		Calendar toDay = Calendar.getInstance();
+		toDay.add(Calendar.DATE, -2);			
+		
+		Date toDate = toDay.getTime();
+		logger.info("Retrieving emails from date : " + fromDate);
+		logger.info("to date : " + toDate);
+
+		SearchTerm newerThan = new ReceivedDateTerm(ComparisonTerm.GT,
+				fromDate);
+		SearchTerm olderThan = new ReceivedDateTerm(ComparisonTerm.LT,
+				toDate);
+		SearchTerm st = new AndTerm(
+				   newerThan, 
+				   olderThan);
+		return inbox.search(st);
+	}
 	@javax.inject.Inject
 	DomainObjectContainer container;
 	@javax.inject.Inject

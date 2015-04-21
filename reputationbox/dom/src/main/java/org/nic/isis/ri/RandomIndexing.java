@@ -416,6 +416,10 @@ public class RandomIndexing implements SemanticSpace {
 
 		while (!nextWords.isEmpty()) {
 			focusWord = nextWords.remove();
+			//trim the word to 255 length due to storage requirements
+			if(focusWord.length() >= 255){
+				focusWord = focusWord.substring(0, 254);
+			}
 			
 			//since it seems some of the focusWords are not going into indexWords
 			TernaryVector focusIv = wordToIndexVector.get(focusWord);

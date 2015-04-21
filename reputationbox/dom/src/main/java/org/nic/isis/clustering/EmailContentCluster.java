@@ -149,7 +149,9 @@ public class EmailContentCluster extends EmailCluster {
 	
 	@Programmatic
 	public double getSimilarity(double[] vector) {
-		return Similarity.cosineSimilarity(getAverageCentroid(), vector);
+		//return Similarity.cosineSimilarity(getAverageCentroid(), vector);
+		//don't need to average the vector as it's size is not relavant when taking similarity
+		return Similarity.cosineSimilarity(centroid, vector);
 	}
 	
 	public double[] getAverageCentroid() {

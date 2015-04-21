@@ -1,10 +1,13 @@
 import jangada.ReplyToAnnotator;
 import jangada.SigFilePredictor;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -109,10 +112,11 @@ public class MailTest {
 		//mt.sendMessage();
 		
 		//mt.sendReputationResults();
-		mt.processEnronImportanceResults();
+		//mt.processEnronImportanceResults();
 		//mt.javaMailIteratorTest();
 		//mt.testStanfordNlp();
 		//testVectors();
+		splitMailFile();
 	}
 	
 	
@@ -147,6 +151,7 @@ public class MailTest {
 		     MimeMessage email = null;
 		     try {
 		        FileInputStream fis = new FileInputStream(tmpFile);
+		        
 		        email = new MimeMessage(session, fis);
 		        System.out.println("-------------------------------------");
 		        System.out.println("mailNo : " + x);
@@ -192,7 +197,7 @@ public class MailTest {
 		     }
 		  }
 		  //kmeans clustering
-		  clusterEnronEmails(emails);			
+		  //clusterEnronEmails(emails);			
 	}
 
 	public static void testStanfordNlp(){
@@ -373,11 +378,12 @@ public class MailTest {
 		System.out.println("centroid : " + centroid[0] + " , " + centroid[1] + " , " + centroid[2] );
 	}
 	
-	
-	public void processEnronImportanceResults(){
-		 File importantMailDir = new File("/home/dileepa/Desktop/research/DATA/reputationBasedSpamFilter/Enron_Sample_Data/enron_mail_20110402/maildir/stclair-c/important_e_mails");
-		 	
-		 File[] mailFiles = importantMailDir.listFiles();
+	public List<Email> processEmailsInDirectory(String directory){
+		File mailDir = new File(directory);
+	 	
+		 //File importantMailDir = new File("/home/dileepa/Desktop/research/DATA/reputationBasedSpamFilter/Enron_Sample_Data/enron_mail_20110402/maildir/stclair-c/important_e_mails");
+	 	
+		 File[] mailFiles = mailDir.listFiles();
 		 String host = "host.com";
 		 java.util.Properties properties = System.getProperties();
 		 properties.setProperty("mail.smtp.host", host);
@@ -423,10 +429,6 @@ public class MailTest {
 				recipientSemantics = emailAnalysisService
 						.processPeopleSemantics(newEmail, recipientSemantics);
 				
-				//setting these emails as important by flagging emails
-				newEmail.setFlagged(true);
-				newEmail.setSeen(true);
-				
 				emails.add(newEmail);
 					
 		        System.out.println("\n");
@@ -437,27 +439,55 @@ public class MailTest {
 		    	 e.printStackTrace();
 		     }
 		  }
-		 
+		  return emails;
+	}
+	
+	public void processEnronImportanceResults(){
+		  List<Email> emails = processEmailsInDirectory("/home/dileepa/Desktop"
+		  		+ "/research/DATA/reputationBasedSpamFilter/Enron_Sample_Data/enron_mail_20110402/maildir/stclair-c/important_e_mails");
+		  //for all emails set them as important
+		  for(Email email : emails){
+				//setting these emails as important by flagging emails
+				email.setFlagged(true);
+				email.setSeen(true);
+		  }
+		  
 		  UserMailBox mb = new UserMailBox();
 		  mb.setAllEmails(emails);
 		  //now create the importance model using it
 		  mb = EmailUtils.calculateImportanceModel(mb);
+		  //clusterEnronEmails(emails);
+	  
 		  
-		  clusterEnronEmails(emails);
-		  
-		  List<Email> allEmails = mb.getAllEmails();
-		  for(Email email : allEmails){
+		  List<Email> emailsToPredict = processEmailsInDirectory("/home/dileepa/Desktop"
+			  		+ "/research/DATA/reputationBasedSpamFilter/Enron_Sample_Data/enron_mail_20110402/maildir/stclair-c/notes_inbox");
+			  
+		  //List<Email> allEmails = mb.getAllEmails();
+		  for(Email email : emailsToPredict){
+				  
 			  mb.predictImportanceFormEmail(email);
-			  email.getContentReputationScore();
+			
 			  double flaggedKeywordScore = email.getFlaggedKeywordscore();
+			  double flaggedPeopleScore = email.getFlaggedPeoplescore();
 			  double flaggedFromScore = email.getFlaggedPeopleFromscore();
 			  double flaggedCCScore = email.getFlaggedPeopleCCscore();
 			  double flaggedToScore = email.getFlaggedPeopleToscore();
 			  double flaggedTopicScore = email.getFlaggedTopicscore();
 			  double flaggedSubjectScore = email.getFlaggedTopicSubjectscore();
 			  double flaggedBodyScore = email.getFlaggedTopicBodyscore();
-			
-			  System.out.println("email : uid : " + email.getMsgUid() + " subject : " + email.getSubject() );
+			  
+			  double spamTopicScore = email.getSpamTopicScore();
+			  double spamSubjectScore = email.getSpamTopicSubjectScore();
+			  double spamBodyScore = email.getSpamTopicBodyScore();
+			  
+			  double spamKeywordScore = email.getSpamKeywordscore();
+			  double spamPeopleScore = email.getSpamPeopleScore();
+			  double spamPeopleFromScore = email.getSpamPeopleFromScore();
+			  double spamPeopleToScore = email.getSpamPeopleToScore();
+			  double spamPeopleCCScore = email.getSpamPeopleCCScore();
+					
+			  
+			  String resultStr = "email : uid : " + email.getMsgUid() + " subject : " + email.getSubject();
 			  String toAddrs = "";
 	    		if(email.getToAddresses() != null && email.getToAddresses().size() > 0){
 	    			for(String toAdd : email.getToAddresses()){
@@ -471,12 +501,76 @@ public class MailTest {
 		    			ccAddr += ccAdd + ", ";
 		    		}	
 	    		}
-			  System.out.println(" from : " + email.getFromAddress() + " to : " + toAddrs + " cc :" + ccAddr);
-			  System.out.println("predicted scores for email; flaggedKeywordScore: " + flaggedKeywordScore + 
+	    		String keywords = "";
+	    		if(email.getKeywords() != null){
+	    			for(String kw : email.getKeywords()){
+		    			keywords += kw + ", ";
+		    		}	
+	    		}
+	    		
+	    		
+	    	  //System.out.println("keywords : " + keywords);	
+			  resultStr += " from : " + email.getFromAddress() + " to : " + toAddrs + " cc :" + ccAddr;
+			  resultStr += "\n predicted scores for email; flaggedKeywordScore: " + flaggedKeywordScore + 
+					  " flagged people score : " + flaggedPeopleScore + 
 					  " flaggedFromScore : " + flaggedFromScore + " flaggedToScore : " + flaggedToScore + " flagged cc score : " + flaggedCCScore + 
-					  " flaggedTopicScore : " + flaggedTopicScore + " flaggedSubject score : " + flaggedSubjectScore + " flagged bodyscore : " + flaggedBodyScore);
-			  System.out.println("\n\n");
+					  " flaggedTopicScore : " + flaggedTopicScore + " flaggedSubject score : " + flaggedSubjectScore + " flagged bodyscore : " + flaggedBodyScore +
+					  " spam TopicScore : " + spamTopicScore + " spam Subject score : " + spamSubjectScore + " spam bodyscore : " + spamBodyScore +	 "spam keyword score : " + spamKeywordScore +
+					  "spam people score : "+ spamPeopleScore +" spam people from Score : " + spamPeopleFromScore + " spam people cc score : " + spamPeopleCCScore + " spam people to score : " + spamPeopleToScore +	 
+					  " \n speech act : request : " + email.isRequest() + " meeting : " + email.isMeeting() + " commit : " + email.isCommit() + " delivery : " + email.isDelivery();
+			  System.out.println(resultStr);
+			  System.out.println("\n");
+			  
 		  }
+		  
+//		  //testing the similarity of personal emails for important emails
+//		 List<Email> personalEmails =  processEmailsInDirectory("/home/dileepa/Desktop/research/DATA/reputationBasedSpamFilter/Enron_Sample_Data/enron_mail_20110402/maildir/stclair-c/personal");
+//		 System.out.println("predicting importance for personal emails");
+//		 for(Email email : personalEmails){
+//			  
+//			  mb.predictImportanceFormEmail(email);
+//			  email.getContentReputationScore();
+//			  double flaggedKeywordScore = email.getFlaggedKeywordscore();
+//			  double flaggedPeopleScore = email.getFlaggedPeoplescore();
+//			  double flaggedFromScore = email.getFlaggedPeopleFromscore();
+//			  double flaggedCCScore = email.getFlaggedPeopleCCscore();
+//			  double flaggedToScore = email.getFlaggedPeopleToscore();
+//			  double flaggedTopicScore = email.getFlaggedTopicscore();
+//			  double flaggedSubjectScore = email.getFlaggedTopicSubjectscore();
+//			  double flaggedBodyScore = email.getFlaggedTopicBodyscore();
+//			
+//			  String resultStr = "email : uid : " + email.getMsgUid() + " subject : " + email.getSubject();
+//			  String toAddrs = "";
+//	    		if(email.getToAddresses() != null && email.getToAddresses().size() > 0){
+//	    			for(String toAdd : email.getToAddresses()){
+//		    			toAddrs += toAdd + ", ";
+//		    		}	
+//	    		}
+//	    		
+//	    		String ccAddr = "";
+//	    		if(email.getCcAddresses() != null && email.getCcAddresses().size() > 0){
+//	    			for(String ccAdd : email.getCcAddresses()){
+//		    			ccAddr += ccAdd + ", ";
+//		    		}	
+//	    		}
+//	    		String keywords = "";
+//	    		if(email.getKeywords() != null){
+//	    			for(String kw : email.getKeywords()){
+//		    			keywords += kw + ", ";
+//		    		}	
+//	    		}
+//	    	  //System.out.println("keywords : " + keywords);	
+//			  
+//	    	  resultStr += " from : " + email.getFromAddress() + " to : " + toAddrs + " cc :" + ccAddr;
+//			  resultStr += "\n predicted scores for email; flaggedKeywordScore: " + flaggedKeywordScore + 
+//					  " flagged people score : " + flaggedPeopleScore + 
+//					  " flaggedFromScore : " + flaggedFromScore + " flaggedToScore : " + flaggedToScore + " flagged cc score : " + flaggedCCScore + 
+//					  " flaggedTopicScore : " + flaggedTopicScore + " flaggedSubject score : " + flaggedSubjectScore + " flagged bodyscore : " + flaggedBodyScore;
+//			  System.out.println(resultStr);
+//			  System.out.println("\n");
+//			  
+//		  } 
+
 		  
 	}
 	
@@ -558,7 +652,66 @@ public class MailTest {
 		System.out.println("Dunn Index for body centroids : " + bodyCentroidDunnIndex);
 	}
 	
+	public static void testCosinesWithDifferentValues(){
+		
+		double[] v1 = {1,0,0,2,0,4,0,0,-4};
+		double[] v2 = {2,0,0,4,0,8,0,0,-8};
+			
+		double[] queryvec = {1,0,0,2,0,4,0,0,-4};
+		
+		System.out.println("sim with v1 : " + EmailUtils.calculateCosineSimilarity(v1, queryvec));
+
+		System.out.println("sim with v2 : " + EmailUtils.calculateCosineSimilarity(v2, queryvec));
+		
+		
+	}
 	
 	
+	public static void splitMailFile(){
+		
+		File readingParentMailDir = new File("/home/dileepa/.thunderbird/0nm254p6.default/ImapMail/imap.googlemail.com/[Gmail].sbd");
+		File inputMailFile = new File(readingParentMailDir,"All Mail");
+		File outputDir = new File("/home/dileepa/.thunderbird/0nm254p6.default/ImapMail/imap.googlemail.com/[Gmail].sbd/createdMails");
+		
+		System.out.println("size of the file : " + inputMailFile.length());
+		BufferedReader in = null;
+		try {
+			in  = new BufferedReader(new FileReader(inputMailFile));
+			String fileStr ="";
+			String line =  "";
+			int x = 1;
+			while((line = in.readLine()) != null)
+			{
+				if(line.startsWith("From -")){
+					//create the file for previous string and save it
+					File mailFile  = new File(outputDir, "mail"+x);
+					PrintWriter writer = new PrintWriter(mailFile, "UTF-8");
+					writer.println(fileStr);
+					writer.close();
+					x++;
+					fileStr = ""+line;
+				}else {
+				    //System.out.println(line);
+				    fileStr += "\n" + line;	
+				}
+			}
+			//sending last mailString to the file
+			File mailFile  = new File(outputDir, "mail"+x);
+			PrintWriter writer = new PrintWriter(mailFile, "UTF-8");
+			writer.println(fileStr);
+			writer.close();
+			x++;
+			fileStr = "";
+			
+//			System.out.println("printing the file data");
+//			for(String l : allStrings){
+//				System.out.println(l);
+//			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	 	
+	}
 
 }
