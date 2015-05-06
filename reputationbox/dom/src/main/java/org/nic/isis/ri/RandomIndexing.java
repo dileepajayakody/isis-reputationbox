@@ -685,7 +685,11 @@ public class RandomIndexing implements SemanticSpace {
 		for(String word : wordToIndexVector.keySet()){
 			RandomIndexVector riVector = new RandomIndexVector();
 			riVector.setWord(word);
-			riVector.setIndexVector(wordToIndexVector.get(word));
+			//riVector.setIndexVector(wordToIndexVector.get(word));
+			TernaryVector tv = wordToIndexVector.get(word);
+			riVector.setPositiveIndexes(tv.positiveDimensions());
+			riVector.setNegativeIndexes(tv.negativeDimensions());
+			
 			//riVector.setContextVector(wordToMeaning.get(word));
 			if(wordDocumentFrequencies!= null ){
 				if(wordDocumentFrequencies.get(word) != null){

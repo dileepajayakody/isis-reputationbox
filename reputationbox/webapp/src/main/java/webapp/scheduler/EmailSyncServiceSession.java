@@ -31,7 +31,7 @@ public class EmailSyncServiceSession extends AbstractIsisSessionTemplate {
 	}
 
 	public void syncEmails() {
-		logger.info("Retrieving emails periodically...");
+		logger.info("Updating mailbox periodically...");
 		//emailService.syncMailBoxes(100);
 		emailService.updateNew();
 	}

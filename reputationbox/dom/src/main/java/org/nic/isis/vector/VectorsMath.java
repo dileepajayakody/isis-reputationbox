@@ -38,6 +38,10 @@ public class VectorsMath {
 		int length = vector2.length;
 		for (int i = 0; i < length; i++) {
 			double value = vector2[i] + vector1[i];
+			//see if the value is a NaN if so set it to 0
+			if(Double.isNaN(value)){
+				value = 0;
+			}
 			vector1[i] = value;
 		}
 		return vector1;

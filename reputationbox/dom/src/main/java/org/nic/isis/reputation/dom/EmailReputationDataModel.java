@@ -130,7 +130,12 @@ public class EmailReputationDataModel {
 	Set<Email> repliedListEmails;
 	Set<Email> seenListEmails;
 	
-	
+	private double dunnIndexForRecipientClusters;
+	private double dunnIndexForContentClusters;
+	private double dunnIndexForSubjectBodyClusters;
+	private double sseContentClusters;
+	private double sseRecipientClusters;
+	private double sseSubjectBodyClusters;
 	
 	//spam emails which have some how managed to get into inbox
 	//identified by spam,precedence headers
@@ -251,7 +256,7 @@ public class EmailReputationDataModel {
 	 * if min Distance(Ci,Cj) / max Diam(Cx) >1 ; then clusters are compact and well clustered
 	 * @return dunnIndex to validate cluster quality
 	 */
-	public double getDunnIndexForContentClusters(){
+	public double calculateDunnIndexForContentClusters(){
 		//min Distance(Ci,Cj) / max Diam(Cx) >1 ; then clusters are CWS
 		double di = 0;
 		double minInterClusterDistance = 0;
@@ -298,7 +303,7 @@ public class EmailReputationDataModel {
 		
 		logger.info("min inter-cluster distance : " + minInterClusterDistance + " max. intracluster distance : " + maxIntraClusterDistance );
 		double dunnIndex = minInterClusterDistance/maxIntraClusterDistance;
-		
+		this.setDunnIndexForContentClusters(dunnIndex);
 		return dunnIndex;
 	}
 
@@ -306,7 +311,7 @@ public class EmailReputationDataModel {
 	 * if min Distance(Ci,Cj) / max Diam(Cx) >1 ; then clusters are compact and well clustered
 	 * @return dunnIndex to validate cluster quality
 	 */
-	public double getDunnIndexForRecipientClusters(){
+	public double calculateDunnIndexForRecipientClusters(){
 		//min Distance(Ci,Cj) / max Diam(Cx) >1 ; then clusters are CWS
 		double di = 0;
 		double minInterClusterDistance = 0;
@@ -352,11 +357,103 @@ public class EmailReputationDataModel {
 				maxIntraClusterDistance = intraClusterDistance;
 			}
 		}
-		logger.info("min inter-cluster distance : " + minInterClusterDistance + " max. intracluster distance : " + maxIntraClusterDistance );
 		double dunnIndex = minInterClusterDistance/maxIntraClusterDistance;
+		this.setDunnIndexForRecipientClusters(dunnIndex);
+		logger.info("min inter-cluster distance : " + minInterClusterDistance + " max. intracluster distance : " + maxIntraClusterDistance + " recipient cluster dunn index :" + dunnIndex);
 		
 		return dunnIndex;
 	}
+	
+	/**
+	 * for subject, body clusters
+	 * if min Distance(Ci,Cj) / max Diam(Cx) >1 ; then clusters are compact and well clustered
+	 * @return dunnIndex to validate cluster quality
+	 */
+	public double calculateDunnIndexForSubjectBodyClusters(){
+		//min Distance(Ci,Cj) / max Diam(Cx) >1 ; then clusters are CWS
+		double minInterClusterSubjectDistance = 0;
+		double maxIntraClusterSubjectDistance = 0;
+		
+		double minInterClusterBodyDistance = 0;
+		double maxIntraClusterBodyDistance = 0;
+		
+		for(EmailWeightedSubjectBodyContentCluster c1: this.getWeightedSubjectBodyClusters()){
+			for(EmailWeightedSubjectBodyContentCluster c2 : this.getWeightedSubjectBodyClusters()){
+				
+				if(c1.getId() != c2.getId()){
+					double[] v1 = c1.getSubjectCentroid();
+					double[] v2 = c2.getSubjectCentroid();
+					double subjectDis = VectorsMath.getDistance(v1, v2);
+					
+					double[] v3 = c1.getBodyCentroid();
+					double[] v4 = c2.getBodyCentroid();
+					double bodyDis = VectorsMath.getDistance(v3, v4);
+					
+//					logger.info("inter-cluster distance between : " + c1.getId() + " and " + c2.getId() 
+//								+ " distance: "+ dis);
+//					
+					if(minInterClusterSubjectDistance == 0) {
+						minInterClusterSubjectDistance = subjectDis;
+					} else {
+						if(subjectDis < minInterClusterSubjectDistance) {
+							minInterClusterSubjectDistance = subjectDis;
+						}
+					}
+					
+					if(minInterClusterBodyDistance == 0) {
+						minInterClusterBodyDistance = bodyDis;
+					} else {
+						if(bodyDis < minInterClusterBodyDistance) {
+							minInterClusterBodyDistance = bodyDis;
+						}
+					}
+				}
+			}
+		}
+		
+		for(EmailWeightedSubjectBodyContentCluster c: this.getWeightedSubjectBodyClusters()){
+			double sumOfIntraClusterSubjectDistance = 0;
+			double intraClusterSubjectDistance = 0;
+			
+			double sumOfIntraClusterBodyDistance = 0;
+			double intraClusterBodyDistance = 0;
+			
+			for(Email mail : c.getSubjectBodyContentEmails()){
+				//distance from the centroid
+				double[] v1 = mail.getSubjectContextVector();
+				double subjectDis = VectorsMath.getDistance(v1, c.getSubjectCentroid());
+				
+				double[] v2 = mail.getBodyContextVector();
+				double bodyDis = VectorsMath.getDistance(v1, c.getBodyCentroid());
+				
+				
+				sumOfIntraClusterSubjectDistance += subjectDis;
+				sumOfIntraClusterBodyDistance += bodyDis;
+			}
+			
+			intraClusterSubjectDistance = sumOfIntraClusterSubjectDistance / c.getSubjectBodyContentEmails().size();
+			intraClusterBodyDistance = sumOfIntraClusterBodyDistance / c.getSubjectBodyContentEmails().size();
+			
+			//logger.info("intracluster distance : " + intraClusterDistance);
+			if(maxIntraClusterSubjectDistance < intraClusterSubjectDistance){
+				maxIntraClusterSubjectDistance = intraClusterSubjectDistance;
+			}
+			if(maxIntraClusterBodyDistance < intraClusterBodyDistance){
+				maxIntraClusterBodyDistance = intraClusterBodyDistance;
+			}
+		}
+		
+		double subjectDunnIndex = minInterClusterSubjectDistance/maxIntraClusterSubjectDistance;
+		double bodyDunnIndex = minInterClusterBodyDistance/maxIntraClusterBodyDistance;
+		double avgDunnIndex = (subjectDunnIndex + bodyDunnIndex)/2;
+		this.setDunnIndexForSubjectBodyClusters(avgDunnIndex);
+		logger.info("min inter-cluster subject distance : " + minInterClusterSubjectDistance + " max. intracluster subject distance : " + maxIntraClusterSubjectDistance );
+		logger.info("min inter-cluster body distance : " + minInterClusterBodyDistance + " max. intracluster body distance : " + maxIntraClusterBodyDistance );
+		logger.info("avg. dunn index for subject-body clusters : " + avgDunnIndex );
+		
+		return avgDunnIndex;
+	}
+	
 	@javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull = "true")
 	public List<EmailContentCluster> getContentClusters() {
@@ -988,6 +1085,69 @@ public class EmailReputationDataModel {
 	public void setImportantListPeopleCCFlagged(
 			double[] importantListPeopleCCFlagged) {
 		this.importantListPeopleCCFlagged = importantListPeopleCCFlagged;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getDunnIndexForSubjectBodyClusters() {
+		return dunnIndexForSubjectBodyClusters;
+	}
+
+	public void setDunnIndexForSubjectBodyClusters(
+			double dunnIndexForSubjectBodyClusters) {
+		this.dunnIndexForSubjectBodyClusters = dunnIndexForSubjectBodyClusters;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSseContentClusters() {
+		return sseContentClusters;
+	}
+
+	public void setSseContentClusters(double sseContentClusters) {
+		this.sseContentClusters = sseContentClusters;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSseRecipientClusters() {
+		return sseRecipientClusters;
+	}
+
+	public void setSseRecipientClusters(double sseRecipientClusters) {
+		this.sseRecipientClusters = sseRecipientClusters;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getSseSubjectBodyClusters() {
+		return sseSubjectBodyClusters;
+	}
+
+	public void setSseSubjectBodyClusters(double sseSubjectBodyClusters) {
+		this.sseSubjectBodyClusters = sseSubjectBodyClusters;
+	}
+
+	
+	public void setDunnIndexForRecipientClusters(
+			double dunnIndexForRecipientClusters) {
+		this.dunnIndexForRecipientClusters = dunnIndexForRecipientClusters;
+	}
+
+	public void setDunnIndexForContentClusters(double dunnIndexForContentClusters) {
+		this.dunnIndexForContentClusters = dunnIndexForContentClusters;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getDunnIndexForRecipientClusters() {
+		return dunnIndexForRecipientClusters;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getDunnIndexForContentClusters() {
+		return dunnIndexForContentClusters;
 	}
 
 }

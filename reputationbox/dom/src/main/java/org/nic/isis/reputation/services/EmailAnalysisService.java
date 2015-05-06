@@ -332,10 +332,10 @@ public class EmailAnalysisService {
 				//logger.info("Email text stream : " + email.getBodyContent().getTokenStream());
 			}
 			
-			sumOfSquaredError += cluster.getSumOfSquaresError();
+			//sumOfSquaredError += cluster.getSumOfSquaresError();
 		}
 		logger.info("TOTAL EMAILS in all Clusters : " + totalEMailsInClusters + " No. of clusters : " + clusters.size());
-		logger.info("Sum of Squared values for all clusters : " + sumOfSquaredError);
+		//logger.info("Sum of Squared values for all content clusters : " + sumOfSquaredError);
 		
 		return clusters;
 	}
@@ -370,12 +370,12 @@ public class EmailAnalysisService {
 				//logger.info("Email text stream : " + email.getBodyContent().getTokenStream());
 			}
 			
-			subjectSumOfSquaredError += cluster.getSumOfSquaresErrorForSubject();
-			bodySumOfSquaredError += cluster.getSumOfSquaresErrorForBody();
+			//subjectSumOfSquaredError += cluster.getSumOfSquaresErrorForSubject();
+			//bodySumOfSquaredError += cluster.getSumOfSquaresErrorForBody();
 		}
 		logger.info("TOTAL EMAILS in all Clusters : " + totalEMailsInClusters + " No. of clusters : " + clusters.size());
-		logger.info("Subject sum of Squared values for all clusters : " + subjectSumOfSquaredError);
-		logger.info("Body sum of Squared values for all clusters : " + bodySumOfSquaredError);
+		//logger.info("Subject sum of Squared values for all clusters : " + subjectSumOfSquaredError);
+		//logger.info("Body sum of Squared values for all clusters : " + bodySumOfSquaredError);
 		
 		return clusters;
 	}
@@ -429,11 +429,11 @@ public class EmailAnalysisService {
 						+ " \ncc Addresses : " + ccAddrStr);
 			}
 			
-			sumOfSquaredError += cluster.getSumOfSquaresError();
+			//sumOfSquaredError += cluster.getSumOfSquaresError();
 		}
 		
 		logger.info("TOTAL EMAILS in all Clusters : " + totalEMailsInClusters + " No. of clusters : " + clusters.size());
-		logger.info("Sum of Squared values for all clusters : " + sumOfSquaredError);
+		//logger.info("Sum of Squared values for all recipient clusters : " + sumOfSquaredError);
 		return clusters;
 	}
 

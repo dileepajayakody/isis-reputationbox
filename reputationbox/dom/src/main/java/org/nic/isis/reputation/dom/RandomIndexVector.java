@@ -19,8 +19,11 @@ import edu.ucla.sspace.vector.TernaryVector;
 public class RandomIndexVector {
 
 	private String word;
-	private TernaryVector indexVector;
-	private double[] contextVector;
+	//private TernaryVector indexVector;
+	private int[] positiveIndexes;
+	private int[] negativeIndexes;
+	
+	//private double[] contextVector;
 	private int wordDocFrequency;
 	
 	@javax.jdo.annotations.Persistent
@@ -31,14 +34,14 @@ public class RandomIndexVector {
 	public void setWord(String word) {
 		this.word = word;
 	}
-	@javax.jdo.annotations.Persistent
-	@javax.jdo.annotations.Column(allowsNull = "true") 
-	public TernaryVector getIndexVector() {
-		return indexVector;
-	}
-	public void setIndexVector(TernaryVector indexVector) {
-		this.indexVector = indexVector;
-	}
+//	@javax.jdo.annotations.Persistent
+//	@javax.jdo.annotations.Column(allowsNull = "true") 
+//	public TernaryVector getIndexVector() {
+//		return indexVector;
+//	}
+//	public void setIndexVector(TernaryVector indexVector) {
+//		this.indexVector = indexVector;
+//	}
 	@javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull = "true") 
 	public int getWordDocFrequency() {
@@ -46,14 +49,34 @@ public class RandomIndexVector {
 	}
 	public void setWordDocFrequency(int wordDocFrequency) {
 		this.wordDocFrequency = wordDocFrequency;
+	
 	}
+	
 	@javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull = "true") 
-	public double[] getContextVector() {
-		return contextVector;
+	public int[] getPositiveIndexes() {
+		return positiveIndexes;
 	}
-	public void setContextVector(double[] contextVector) {
-		this.contextVector = contextVector;
+	public void setPositiveIndexes(int[] positiveIndexes) {
+		this.positiveIndexes = positiveIndexes;
 	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true") 
+	public int[] getNegativeIndexes() {
+		return negativeIndexes;
+	}
+	public void setNegativeIndexes(int[] negativeIndexes) {
+		this.negativeIndexes = negativeIndexes;
+	}
+	
+//	@javax.jdo.annotations.Persistent
+//	@javax.jdo.annotations.Column(allowsNull = "true") 
+//	public double[] getContextVector() {
+//		return contextVector;
+//	}
+//	public void setContextVector(double[] contextVector) {
+//		this.contextVector = contextVector;
+//	}
 	
 }

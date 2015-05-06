@@ -28,7 +28,7 @@ public class EmailWeightedSubjectBodyContentCluster {
 	//cannot persist maps in Isis
 	protected List<Email> subjectBodyContentEmails;
 	protected List<String> emailIds;
-	
+	//weight subject:body 1:1
 	private double[] subjectCentroid  = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 	private double[]  bodyCentroid  = new double[RandomIndexing.DEFAULT_VECTOR_LENGTH];
 
@@ -249,7 +249,7 @@ public class EmailWeightedSubjectBodyContentCluster {
 		
 		double subjectSimilarity = Similarity.cosineSimilarity(subjectCentroid, subjectVector);
 		double bodySimilarity = Similarity.cosineSimilarity(bodyCentroid, bodyVector);
-		
+		//subject:body weight is 1:1
 		double avgSimilarity = (subjectSimilarity + bodySimilarity)/2;
 		return avgSimilarity;
 	}

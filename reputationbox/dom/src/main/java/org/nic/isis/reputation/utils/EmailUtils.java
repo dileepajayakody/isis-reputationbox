@@ -14,7 +14,11 @@ import edu.ucla.sspace.text.EnglishStemmer;
 import jangada.ReplyToAnnotator;
 import jangada.SigFilePredictor;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -52,6 +56,7 @@ import org.nic.isis.clustering.EmailWeightedSubjectBodyContentCluster;
 import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.EmailBody;
 import org.nic.isis.reputation.dom.EmailReputationDataModel;
+import org.nic.isis.reputation.dom.RandomIndexVector;
 import org.nic.isis.reputation.dom.TextContent;
 import org.nic.isis.reputation.dom.TextTokenMap;
 import org.nic.isis.reputation.dom.UserMailBox;
@@ -613,87 +618,101 @@ public final class EmailUtils {
 		return todayTime;
 	}
 
+	/**
+	 * Gets the reputation results object for the email
+	 * @param email
+	 * @return
+	 */
+	public static JSONObject getReputationObjectJSON(Email email){
+		JSONObject reputationObj = new JSONObject();
+		reputationObj.put("id", email.getMessageId());
+		reputationObj.put("uid", email.getMsgUid());
+		reputationObj.put("is_predicted", email.isPredicted());
+		//total topic score : combined topic scores for reply, see, flag email similarity
+		reputationObj
+				.put("contentscore", email.getTotalTopicScore());
+		//total people score : combined people scores for from,cc,to email similarity
+		reputationObj.put("peoplescore",
+				email.getTotalPeopleScore());
+		reputationObj.put("contentclusterid", email.getTextClusterId());
+		reputationObj.put("peopleclusterid", email.getPeopleClusterId());
+		
+		//adding new fields for speech acts and nlp fields/keywords
+		String intentString = getMessageIntentString(email);
+		reputationObj.put("emailintent",intentString);
+		reputationObj.put("nlpkeywords", getNLPKeywordsFromEmail(email));
+		
+		
+		//score calculations
+		//reply scores
+//		double totalReplyScore = email.getRepliedPeoplescore() + email.getRepliedTopicscore()
+//								+ email.getRepliedKeywordscore();
+		
+		//separate calculations for separate vectors (to,from.cc & subject,body vectors)
+		double peopleScoreSeparateVectors = (email.getRepliedPeopleFromscore() + email.getRepliedPeopleToscore() + email.getRepliedPeopleCCscore())/3;
+		double topicScoreSeparateVectors = (email.getRepliedTopicSubjectscore() + email.getRepliedTopicBodyscore())/2;
+		double totalReplySeparateScore = peopleScoreSeparateVectors + topicScoreSeparateVectors;
+		
+		//
+		double replyScoreToSend = email.getRepliedPeoplescore() + topicScoreSeparateVectors;
+		reputationObj.put("replyscore", replyScoreToSend);
+		logger.info(email.getMsgUid()+ " : sending reply score (people, (subject+body)/2):" + replyScoreToSend + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2 : " + totalReplySeparateScore);
+		
+		
+		//flag scores
+//		double totalFlaggedScore = email.getFlaggedPeoplescore() + email.getFlaggedTopicscore()
+//				+ email.getFlaggedKeywordscore();
+//	
+		double peopleScoreSeparateFlaggedVectors = (email.getFlaggedPeopleFromscore() + email.getFlaggedPeopleToscore() + email.getFlaggedPeopleCCscore())/3;
+		double topicScoreSeparateFlaggedVectors = (email.getFlaggedTopicSubjectscore() + email.getFlaggedTopicBodyscore())/2;
+		double totalFlaggedSeparateScore = peopleScoreSeparateFlaggedVectors + topicScoreSeparateFlaggedVectors;
+		
+		double flagScoreToSend = email.getFlaggedPeoplescore() + topicScoreSeparateFlaggedVectors;
+		reputationObj.put("flagscore", flagScoreToSend);
+		logger.info(email.getMsgUid()+ " : sending flagged score  (people,(subject+body)/2):" + flagScoreToSend + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2 : " + totalFlaggedSeparateScore);		
+			
+		
+		//seen scores
+//		double totalSeenScore = email.getSeenPeoplescore() + email.getSeenTopicscore()
+//				+ email.getSeenKeywordscore();
+		
+		double peopleScoreSeparateSeenVectors = (email.getSeenPeopleFromscore() + email.getSeenPeopleToscore() + email.getSeenPeopleCCscore())/3;
+		double topicScoreSeparateSeenVectors = (email.getSeenTopicSubjectscore() + email.getSeenTopicBodyscore())/2;
+		double totalSeenSeparateScore = peopleScoreSeparateSeenVectors + topicScoreSeparateSeenVectors;
+		
+		double seenScoreToSend = email.getSeenPeoplescore() + topicScoreSeparateSeenVectors;
+		reputationObj.put("seescore", seenScoreToSend);
+		logger.info(email.getMsgUid()+ " : sending seen score :" + seenScoreToSend + " combined score ((from,to,cc)/3, (body.subject)/2 : " + totalSeenSeparateScore);		
+		
+		//send spam results also
+		reputationObj.put("spamcontentscore", email.getSpamTopicScore());
+		reputationObj.put("spampeoplescore", email.getSpamPeopleScore());
+		reputationObj.put("spamkeywordscore", email.getSpamKeywordscore());
+		
+		
+		logger.info("the scores in results email to be sent :  uid : " + email.getMsgUid() + " contentscore : " + email.getTotalTopicScore()
+				+ " people score : " + email.getTotalPeopleScore() + " content cluster : " + email.getTextClusterId() + " content cluster rep score : " + email.getContentReputationScore() 
+				+ " people cluster : " + email.getPeopleClusterId() + " people cluster rep score : " + email.getRecipientReputationScore()
+				+  " email intent : " + intentString + " reply-score : " + replyScoreToSend + " flag score : " + flagScoreToSend + " see score: " + seenScoreToSend);
+		return reputationObj;
+	}
+	
 	public static void sendReputationResults(String emailId, List<Email> emails) {
 		JSONObject root = new JSONObject();
-
 		JSONArray resultsArray = new JSONArray();
 
 		for (Email email : emails) {
-			JSONObject reputationObj = new JSONObject();
-			reputationObj.put("id", email.getMessageId());
-			reputationObj.put("uid", email.getMsgUid());
-			//total topic score : combined topic scores for reply, see, flag email similarity
-			reputationObj
-					.put("contentscore", email.getTotalTopicScore());
-			//total people score : combined people scores for from,cc,to email similarity
-			reputationObj.put("peoplescore",
-					email.getTotalPeopleScore());
-			reputationObj.put("contentclusterid", email.getTextClusterId());
-			reputationObj.put("peopleclusterid", email.getPeopleClusterId());
-			
-			//adding new fields for speech acts and nlp fields/keywords
-			String intentString = getMessageIntentString(email);
-			reputationObj.put("emailintent",intentString);
-			reputationObj.put("nlpkeywords", getNLPKeywordsFromEmail(email));
-			
-			
-			//score calculations
-			//reply scores
-			double totalReplyScore = email.getRepliedPeoplescore() + email.getRepliedTopicscore()
-									+ email.getRepliedKeywordscore();
-			
-			//separate calculations for separate vectors (to,from.cc & subject,body vectors)
-			double peopleScoreSeparateVectors = (email.getRepliedPeopleFromscore() + email.getRepliedPeopleToscore() + email.getRepliedPeopleCCscore())/3;
-			double topicScoreSeparateVectors = (email.getRepliedTopicSubjectscore() + email.getRepliedTopicBodyscore())/2;
-			double totalReplySeparateScore = peopleScoreSeparateVectors + topicScoreSeparateVectors;
-			
-			logger.info(email.getMsgUid()+ " : total reply score (people,topic,keyword):" + totalReplyScore + " combined score ((from,to,cc)/3, (body.subject)/2 : " + totalReplySeparateScore);
-			
-			double replyScoreToSend = email.getRepliedPeoplescore() + topicScoreSeparateVectors;
-			reputationObj.put("replyscore", replyScoreToSend);
-			
-			
-			//flag scores
-			double totalFlaggedScore = email.getFlaggedPeoplescore() + email.getFlaggedTopicscore()
-					+ email.getFlaggedKeywordscore();
-		
-			double peopleScoreSeparateFlaggedVectors = (email.getFlaggedPeopleFromscore() + email.getFlaggedPeopleToscore() + email.getFlaggedPeopleCCscore())/3;
-			double topicScoreSeparateFlaggedVectors = (email.getFlaggedTopicSubjectscore() + email.getFlaggedTopicBodyscore())/2;
-			double totalFlaggedSeparateScore = peopleScoreSeparateFlaggedVectors + topicScoreSeparateFlaggedVectors;
-			
-			logger.info(email.getMsgUid()+ " : total flagged score  (people,topic,keyword):" + totalFlaggedScore + " combined score ((from,to,cc)/3, (body.subject)/2 : " + totalFlaggedSeparateScore);		
-			double flagScoreToSend = email.getFlaggedPeoplescore() + topicScoreSeparateFlaggedVectors;
-			reputationObj.put("flagscore", flagScoreToSend);
-			
-			double totalSeenScore = email.getSeenPeoplescore() + email.getSeenTopicscore()
-					+ email.getSeenKeywordscore();
-			
-			double peopleScoreSeparateSeenVectors = (email.getSeenPeopleFromscore() + email.getSeenPeopleToscore() + email.getSeenPeopleCCscore())/3;
-			double topicScoreSeparateSeenVectors = (email.getSeenTopicSubjectscore() + email.getSeenTopicBodyscore())/2;
-			double totalSeenSeparateScore = peopleScoreSeparateSeenVectors + topicScoreSeparateSeenVectors;
-			
-			logger.info(email.getMsgUid()+ " : total seen score :" + totalSeenScore + " combined score ((from,to,cc)/3, (body.subject)/2 : " + totalSeenSeparateScore);		
-			double seenScoreToSend = email.getSeenPeoplescore() + topicScoreSeparateSeenVectors;
-			reputationObj.put("seescore", seenScoreToSend);
-			
-			//send spam results also
-    		reputationObj.put("spamcontentscore", email.getSpamTopicScore());
-    		reputationObj.put("spampeoplescore", email.getSpamPeopleScore());
-    		reputationObj.put("spamkeywordscore", email.getSpamKeywordscore());
-			
-			
-			logger.info("the scores in results email to be sent :  uid : " + email.getMsgUid() + " contentscore : " + email.getTotalTopicScore()
-					+ " people score : " + email.getTotalPeopleScore() + " content cluster : " + email.getTextClusterId() + " people cluster : " + email.getPeopleClusterId()
-					+  " email intent : " + intentString + " reply-score : " + replyScoreToSend + " flag score : " + flagScoreToSend + " see score: " + seenScoreToSend);
-			
-			resultsArray.put(reputationObj);
+			try{
+			    JSONObject reputationObj = getReputationObjectJSON(email);
+				resultsArray.put(reputationObj);
+				
+			}catch(Exception ex){
+				logger.error("Error occured while processing reputation result JSON ", ex);
+			}
 		}
 		root.put("reputation", resultsArray);
-
 		String jsonString = root.toString();
-
 		// needs to print the results for analysis
-
 		sendMessage(emailId, jsonString);
 
 	}
@@ -1027,6 +1046,7 @@ public final class EmailUtils {
 
 		// processing email subject
 		String subject = msg.getSubject();
+		subject = subject.toLowerCase();
 		if (subject.length() > 255) {
 			subject = subject.substring(0, 254);
 		}
@@ -1666,7 +1686,7 @@ public final class EmailUtils {
 		double spamNLPProfileScore = EmailUtils.getVectorTotal(spamKeywordsVector);
 		
 		logger.info("\n\nSpam replied keywords profile vector sum :" + spamNLPProfileScore);
-		logger.info("Dunn index for content clusters : " + model.getDunnIndexForContentClusters());
+		logger.info("Dunn index for content clusters : " + model.calculateDunnIndexForContentClusters());
 	}
 
 
@@ -1881,11 +1901,13 @@ public final class EmailUtils {
 			//unimportant models
 			if( email.isSpam() || email.isDeleted()){
 				logger.info("this is a spam email recognized by flag or header : " + email.getMsgUid());
+				double vectorTotal = EmailUtils.getVectorTotal(email.getTextContextVector());
+				//if(!Double.isNaN(vectorTotal)){
+					double[] unimportanttopicsVector = VectorsMath.addArrays(repModel.getSpamVector(), email.getTextContextVector());
+					repModel.setSpamVector(unimportanttopicsVector);
+					logger.info("Adding a Spam Email. Email text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "spam topic vector sum: " + EmailUtils.getVectorTotal(unimportanttopicsVector));						
+				//}
 				
-				double[] unimportanttopicsVector = VectorsMath.addArrays(repModel.getSpamVector(), email.getTextContextVector());
-				repModel.setSpamVector(unimportanttopicsVector);
-				logger.info("Adding a Spam Email. Email text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "spam topic vector sum: " + EmailUtils.getVectorTotal(unimportanttopicsVector));
-					
 				double[] unimportantPeopleVector = VectorsMath.addArrays(repModel.getSpamPeopleVector(), email.getRecipientContextVector());
 				repModel.setSpamPeopleVector(unimportantPeopleVector);
 				
@@ -2397,4 +2419,135 @@ public final class EmailUtils {
 		return mailBox;
 		
 	}	
+
+	public static void persistIndexVectors(String fileName,
+			List<RandomIndexVector> indexVectors) {
+		File indexVectorFile = new File(fileName);
+		PrintWriter writer = null;
+		try {
+			writer = new PrintWriter(indexVectorFile);
+			String headerRow = "word,frequency,positiveIndexes,negativeIndexes";
+			// writer.println(headerRow);
+
+			for (RandomIndexVector vector : indexVectors) {
+				int[] positiveIndexes = vector.getPositiveIndexes();
+				int[] negativeIndexes = vector.getNegativeIndexes();
+				String posIndString = "";
+				String negIndString = "";
+				for (int posInd : positiveIndexes) {
+					if(posIndString.length() == 0){
+						posIndString += posInd;	
+					} else {
+						posIndString += ":" + posInd ;
+					}
+					
+				}
+				// removing the last trailing |;
+//				posIndString = posIndString.substring(0,
+//						posIndString.length() - 2);
+				for (int negInd : negativeIndexes) {
+					if(negIndString.length() == 0){
+						negIndString += negInd;	
+					} else{
+						negIndString += ":" + negInd;
+					}
+				}
+//				negIndString = negIndString.substring(0,
+//						negIndString.length() - 2);
+
+				String row = vector.getWord() + ","
+						+ vector.getWordDocFrequency() + "," + posIndString
+						+ "," + negIndString;
+				System.out.println("writing indexvector to file : " + row);
+				writer.println(row);
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			logger.error("Error occured while writing the indexvector file", e);
+		}finally{
+			writer.close();
+		}
+	}
+
+	public static List<RandomIndexVector> getVectorsFromFile(File vectorFile) {
+		logger.info("retrieving random index vectors from : " + vectorFile.getAbsolutePath());
+		List<RandomIndexVector> indexVectors = new ArrayList<RandomIndexVector>();
+		try {
+			BufferedReader bf = new BufferedReader(new FileReader(vectorFile));
+			String line = null;
+			while ((line = bf.readLine()) != null) {
+				logger.info("parsing the line: " + line);
+				String[] resultRow = line.split(",");
+				String word = resultRow[0];
+				int frequency = Integer.parseInt(resultRow[1]);
+				// process positive indexes
+				String posString = resultRow[2];
+//				if(posString.endsWith("|")){
+//					posString = posString.substring(0, posString.lastIndexOf("|"));
+//				}
+				int[] posIndexes = new int[4];
+				String posIndexesString = "";				
+				if(posString.length() > 0){
+					String[] pos = posString.split(":");
+					posIndexes = new int[pos.length];
+					//logger.info("parsing pos string : " + posString + " :split for :" + pos.length );
+					
+					for (int x = 0; x < pos.length; x++) {
+							//logger.info("parsing the posindex val : " + pos[x]);
+							try{
+								int indexVal = Integer.parseInt(pos[x]);
+								posIndexes[x] = indexVal;	
+								posIndexesString = indexVal + ","; 	
+							}catch(NumberFormatException nex){
+								logger.error("error parsing as number", nex);
+							}
+					}	
+				}
+				
+				// process negative indexes
+				//process only if there are negative indexes
+				String negIndexesString = "";
+				int[] negIndexes = new int[4];
+				if(resultRow.length > 3){
+					String negString = resultRow[3];
+//					if(negString.endsWith("|")){
+//						negString = negString.substring(0, negString.lastIndexOf("|"));
+//					}
+					if(negString.length() > 0){
+						String[] neg = negString.split(":");
+						negIndexes = new int[neg.length];
+						logger.info("parsing negative string : " + negString);
+						for (int x = 0; x < neg.length; x++) {
+							try{
+								int indexVal = Integer.parseInt(neg[x]);
+								negIndexes[x] = indexVal;	
+								negIndexesString = indexVal + ",";
+							}catch(NumberFormatException nex){
+								logger.error("error parsing as number", nex);
+							}
+								
+							
+						}	
+					}
+				}
+
+				
+				logger.info("loaded index vector for word : "+ word 
+						+ " frequency : " + frequency + " positive indexes : " + posIndexesString 
+						+ " negative indexes : " + negIndexesString);
+				// creating the RIVector object
+				RandomIndexVector riVector = new RandomIndexVector();
+				riVector.setWord(word);
+				riVector.setWordDocFrequency(frequency);
+				riVector.setPositiveIndexes(posIndexes);
+				riVector.setNegativeIndexes(negIndexes);
+				indexVectors.add(riVector);
+
+			}
+		} catch (Exception e) {
+			logger.error("error occured while retrieving random index vectors from file", e);
+		}
+	
+		return indexVectors;
+	}
 }

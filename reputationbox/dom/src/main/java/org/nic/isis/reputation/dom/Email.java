@@ -633,6 +633,8 @@ public class Email {
 		this.noOfImages = noOfImages;
 	}
 	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
 	public boolean isSpam() {
 		return isSpam;
 	}
@@ -641,6 +643,8 @@ public class Email {
 		this.isSpam = isSpam;
 	}
 
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
 	public boolean isListMail() {
 		return isListMail;
 	}
@@ -650,7 +654,8 @@ public class Email {
 		this.isListMail = isListMail;
 	}
 
-
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
 	public int getImportanceLevelByHeader() {
 		return importanceLevelByHeader;
 	}

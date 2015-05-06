@@ -2,11 +2,15 @@ package org.nic.isis.reputation.services;
 
 import jangada.*;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -41,6 +45,7 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.isis.applib.DomainObjectContainer;
 import org.apache.isis.applib.annotation.Hidden;
 import org.apache.isis.applib.annotation.Programmatic;
+import org.jfree.util.Log;
 import org.nic.isis.reputation.dom.ContextVectorMap;
 import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.EmailAttachment;
@@ -82,6 +87,8 @@ public class JavaMailService {
 		logger.info("loading contentVectors with size : " + contentVectors.size());
 		logger.info("loading recipientVectors with size : " + recipientVectors.size());
 		
+		//load the RIvectors from file
+		
 		Map<String,TernaryVector> contentIndexVectorMap = new HashMap<String, TernaryVector>();
 		//Map<String, double[]> contentContextVectorMap = new HashMap<String, double[]>();
 		Map<String,TernaryVector> recipientIndexVectorMap = new HashMap<String, TernaryVector>();
@@ -90,13 +97,16 @@ public class JavaMailService {
 
 		
 		for(RandomIndexVector contentVector : contentVectors){
-			contentIndexVectorMap.put(contentVector.getWord(), contentVector.getIndexVector());
+			TernaryVector tv = new TernaryVector(RandomIndexing.DEFAULT_VECTOR_LENGTH, contentVector.getPositiveIndexes(), contentVector.getNegativeIndexes());
+			contentIndexVectorMap.put(contentVector.getWord(), tv);
 			//contentContextVectorMap.put(contentVector.getWord(), contentVector.getContextVector());
 			wordDocFrequencies.put(contentVector.getWord(), contentVector.getWordDocFrequency());
+			
 		}
 		
 		for(RandomIndexVector recipientVector : recipientVectors){
-			recipientIndexVectorMap.put(recipientVector.getWord(), recipientVector.getIndexVector());
+			TernaryVector tv = new TernaryVector(RandomIndexing.DEFAULT_VECTOR_LENGTH, recipientVector.getPositiveIndexes(), recipientVector.getNegativeIndexes());
+			recipientIndexVectorMap.put(recipientVector.getWord(), tv);
 			//recipientContextVectorMap.put(recipientVector.getWord(), recipientVector.getContextVector());
 		}
 		
@@ -147,12 +157,13 @@ public class JavaMailService {
 				
 			}else{
 				//first time the emails are retrieved; retrieving the emails from (-14),to(-2) period since current day
-				messages = getModelEmailSetForPeriod(inbox, -21, -7);
+				//messages = getModelEmailSetForPeriod(inbox, -28, -14);
+				messages = getModelEmailSetForPeriod(inbox, -28, -7);
 			}
 
 			//setting an empty email model for the mailbox
 			logger.info("Emails to retrieve :" + messages.length );
-			int messageLimit = 100;
+			int messageLimit = 50;
 			logger.info("Starting to retrieve emails with limit:" + messageLimit );
 			//messageLimit should be messages.length
 			
@@ -220,11 +231,11 @@ public class JavaMailService {
 			List<RandomIndexVector> cVectors = textSemantics.getRandomIndexingVectors();
 			List<RandomIndexVector> rVectors = recipientSemantics.getRandomIndexingVectors();
 			logger.info("the size of contentvectors from text semantics : " + cVectors.size());
-			int indx = 1;
-			for(RandomIndexVector riVec : cVectors){
-				logger.info("Persisting random index vector for word [" + indx + "]" + riVec.getWord() + " word frequency in all docs: " + riVec.getWordDocFrequency() );
-				indx++;
-			}
+//			int indx = 1;
+//			for(RandomIndexVector riVec : cVectors){
+//				logger.info("Persisting random index vector for word [" + indx + "]" + riVec.getWord() + " word frequency in all docs: " + riVec.getWordDocFrequency() );
+//				indx++;
+//			}
 			mailbox.setContentVectors(cVectors);
 			mailbox.setRecipientVectors(rVectors);
 			
@@ -272,13 +283,17 @@ public class JavaMailService {
 
 		
 		for(RandomIndexVector contentVector : contentVectors){
-			contentIndexVectorMap.put(contentVector.getWord(), contentVector.getIndexVector());
+			//contentIndexVectorMap.put(contentVector.getWord(), contentVector.getIndexVector());
+			TernaryVector tv = new TernaryVector(RandomIndexing.DEFAULT_VECTOR_LENGTH, contentVector.getPositiveIndexes(), contentVector.getNegativeIndexes());
+			contentIndexVectorMap.put(contentVector.getWord(), tv);
 			//contentContextVectorMap.put(contentVector.getWord(), contentVector.getContextVector());
 			wordDocFrequencies.put(contentVector.getWord(), contentVector.getWordDocFrequency());
 		}
 		
 		for(RandomIndexVector recipientVector : recipientVectors){
-			recipientIndexVectorMap.put(recipientVector.getWord(), recipientVector.getIndexVector());
+			//recipientIndexVectorMap.put(recipientVector.getWord(), recipientVector.getIndexVector());
+			TernaryVector tv = new TernaryVector(RandomIndexing.DEFAULT_VECTOR_LENGTH, recipientVector.getPositiveIndexes(), recipientVector.getNegativeIndexes());
+			recipientIndexVectorMap.put(recipientVector.getWord(), tv);
 			//recipientContextVectorMap.put(recipientVector.getWord(), recipientVector.getContextVector());
 		}
 		
@@ -323,7 +338,7 @@ public class JavaMailService {
 			messages = (Message[])ArrayUtils.subarray(messages, 1, messages.length);
 			
 			List<Email> newEmails = new ArrayList<Email>();			
-			int messagesLimit = 40;
+			int messagesLimit = 50;
 				
 			for (int count = 0; count < messagesLimit; count++) {
 				try{					
@@ -367,21 +382,21 @@ public class JavaMailService {
 						
 						// sending the email reputation results email per every 20
 						// emails
-						if (newEmails.size() == 20) {
-							logger.info("Sending reputation results email to : " + mailbox.getEmailId());
-							EmailUtils.sendReputationResults(mailbox.getEmailId(),
-									newEmails);
-							newEmails.clear();
-							
-						} 
-						//last message is encountered so send the last set of results..
-						else if((messagesLimit - count) == 1 ) {
-							EmailUtils.sendReputationResults(mailbox.getEmailId(),
-									newEmails);
-							logger.info("Sending reputation results email with results : " + newEmails.size());
-							newEmails.clear();
-							
-						}
+//						if (newEmails.size() == 50) {
+//							logger.info("Sending reputation results email to : " + mailbox.getEmailId());
+//							EmailUtils.sendReputationResults(mailbox.getEmailId(),
+//									newEmails);
+//							newEmails.clear();
+//							
+//						} 
+//						//last message is encountered so send the last set of results..
+//						else if((messagesLimit - count) == 1 ) {
+//							EmailUtils.sendReputationResults(mailbox.getEmailId(),
+//									newEmails);
+//							logger.info("Sending reputation results email with results : " + newEmails.size());
+//							newEmails.clear();
+//							
+//						}
 						
 					}
 
@@ -391,7 +406,9 @@ public class JavaMailService {
 				}
 				
 			}
-
+			
+			//print the results here coz below takes persistence time
+			//printResultsToFile(mailbox);
 			mailbox.setContentVectors(textSemantics.getRandomIndexingVectors());
 			mailbox.setRecipientVectors(recipientSemantics.getRandomIndexingVectors());
 			
@@ -408,6 +425,164 @@ public class JavaMailService {
 		}
 
 		return mailbox;
+	}
+	
+	
+	/**
+	 * newly added method to avoid persistence delay....
+	 * @param mb
+	 */
+	private void printResultsToFile(UserMailBox mb){
+
+		List<Email> allEmails = mb.getAllEmails();
+		logger.info("Starting to print a results Email.....the number of emails for the csv : " + allEmails.size());
+		String headerRecord = "msgUID,is_model,is_predicted,isDirect,isCCd,isList,"
+				+ "isAnswered,isFlagged,isSeen,isSpam,isImportantByHeader,importanceLevel,isSensitiveByHeader,"
+				+ "isDelivery,isMeeting,isRequest,isProposal,"	
+				+ "contentClusterScore,contentCID,recipientScore,recipientCID,"
+				+ "flagTopicScore,flagKwScore,flagSubjectScore,flagBodyScore,flagPplScore,flagFromScore,flagCCScore,flagToScore,"
+				+ "replyTopicScore,replyKwScore,replySubjectScore,replyBodyScore,replyPplScore,replyFromScore,replyCCScore,replyToScore,"
+				+ "seenTopicScore,seenKwScore,seenSubjectScore,seenBodyScore,seenPplScore,seenFromScore,seenCCScore,seenToScore,"
+				+ "spamTopicScore,spamSubjectScore,spamBodyScore,spamKwScore,spamPplScore,spamFromScore,spamCCScore,spamToScore,"
+				+ "to,from,cc,keywords,subject";
+		
+    	
+		PrintWriter writer = null;		
+		try {
+			writer = new PrintWriter("EmailResults_23_4.csv", "UTF-8");
+		
+			writer.println(headerRecord);
+		
+			int count = 0;
+			for(Email mail : allEmails){
+				//String messageId = mail.getMessageId();
+				long uid = mail.getMsgUid();
+				boolean model = mail.isModel();
+				boolean predicted = mail.isPredicted();
+				boolean isDirect = mail.isDirect();
+				boolean isCCd = mail.isCCd();
+				boolean isList = mail.isListMail();
+				boolean isAnswered = mail.isAnswered();
+				boolean isFlagged = mail.isFlagged();
+				boolean isSeen = mail.isSeen();
+				boolean isSpam = mail.isSpam();
+			
+				boolean isImportantByHeader = mail.getIsImportantByHeader();
+				int importanceLevel = mail.getImportanceLevelByHeader();
+				boolean isSensitiveByHeader = mail.isSensitiveByHeader();
+				
+				boolean isDelivery = mail.isDelivery();
+				boolean isMeeting = mail.isMeeting();
+				boolean isRequest = mail.isRequest();
+				boolean isProposal = mail.isPropose();
+			
+				//from clustering /clasificaion results
+				double contentScore = mail.getContentReputationScore();
+				String contentClusterId = mail.getTextClusterId();
+				
+				double recipientScore = mail.getRecipientReputationScore();
+				String peopleClusterId = mail.getPeopleClusterId();
+				
+				double flaggedTopicScore = mail.getFlaggedTopicscore();			
+				double flaggedKeywordScore = mail.getFlaggedKeywordscore();
+				double flaggedSubjectScore = mail.getFlaggedTopicSubjectscore();
+				double flaggedBodyScore = mail.getFlaggedTopicBodyscore();
+				double flaggedPeopleScore = mail.getFlaggedPeoplescore();
+				double flaggedFromScore = mail.getFlaggedPeopleFromscore();
+				double flaggedCCScore = mail.getFlaggedPeopleCCscore();
+				double flaggedToScore = mail.getFlaggedPeopleToscore();
+				  
+				double repliedTopicScore = mail.getRepliedTopicscore();
+				double repliedKeywordScore = mail.getRepliedKeywordscore();
+				double repliedTopicSubjectScore = mail.getRepliedTopicSubjectscore();
+				double repliedTopicBodyScore = mail.getRepliedTopicBodyscore();
+				double repliedPeopleScore = mail.getRepliedPeoplescore();
+				double repliedFromScore = mail.getRepliedPeopleFromscore();
+				double repliedCCScore = mail.getRepliedPeopleCCscore();
+				double repliedToScore = mail.getRepliedPeopleToscore();
+				 
+				double seenTopicScore = mail.getSeenTopicscore();
+				double seenKeywordScore = mail.getSeenKeywordscore();
+				double seenTopicSubjectScore = mail.getSeenTopicSubjectscore();
+				double seenTopicBodyScore = mail.getSeenTopicBodyscore();
+				double seenPeopleScore = mail.getSeenPeoplescore();
+				double seenFromScore = mail.getSeenPeopleFromscore();
+				double seenCCScore = mail.getSeenPeopleCCscore();
+				double seenToScore = mail.getSeenPeopleToscore();
+				 
+				double spamTopicScore = mail.getSpamTopicScore();
+				double spamSubjectScore = mail.getSpamTopicSubjectScore();
+				double spamBodyScore = mail.getSpamTopicBodyScore();  
+				double spamKeywordScore = mail.getSpamKeywordscore();
+				double spamPeopleScore = mail.getSpamPeopleScore();
+				double spamPeopleFromScore = mail.getSpamPeopleFromScore();
+				double spamPeopleCCScore = mail.getSpamPeopleCCScore();
+				double spamPeopleToScore = mail.getSpamPeopleToScore();
+						
+				
+				 String toAddrs = "";
+		    		if(mail.getToAddresses() != null && mail.getToAddresses().size() > 0){
+		    			for(String toAdd : mail.getToAddresses()){
+			    			toAddrs += toAdd + " | ";
+			    		}	
+		    		}
+		    		
+		    	String fromAddrs = mail.getFromAddress();
+		    	
+		    		String ccAddr = "";
+		    		if(mail.getCcAddresses() != null && mail.getCcAddresses().size() > 0){
+		    			for(String ccAdd : mail.getCcAddresses()){
+			    			ccAddr += ccAdd + " | ";
+			    		}	
+		    		}
+		    	String keywords = "";
+		    		if(mail.getKeywords() != null){
+		    			for(String kw : mail.getKeywords()){
+			    			keywords += kw + " | ";
+			    		}	
+		    		}
+		    	String sub = mail.getSubject();
+					
+				//sub.replace("'", " ");
+				
+		    	
+				String record = uid + "," + model + "," + predicted + "," + isDirect + "," + isCCd + "," + isList
+				+ "," + isAnswered  + "," + isFlagged  + "," + isSeen + "," + isSpam
+				+ "," + isImportantByHeader + "," + importanceLevel + "," + isSensitiveByHeader
+			    + "," + isDelivery + "," + isMeeting + "," + isRequest + "," + isProposal
+				+ "," + contentScore + "," + contentClusterId + "," + recipientScore + "," +peopleClusterId 
+				+ "," + flaggedTopicScore + "," + flaggedKeywordScore + "," + flaggedSubjectScore + "," +flaggedBodyScore
+				+ "," + flaggedPeopleScore + "," + flaggedFromScore + "," + flaggedCCScore + "," + flaggedToScore  
+				+ "," + repliedTopicScore + "," + repliedKeywordScore + "," + repliedTopicSubjectScore + "," +repliedTopicBodyScore+ "," + repliedPeopleScore 
+				+ "," + repliedFromScore + "," + repliedCCScore + "," + repliedToScore
+				+ "," + seenTopicScore + "," + seenKeywordScore + "," + seenTopicSubjectScore + "," + seenTopicBodyScore+ "," + seenPeopleScore
+				+ "," + seenFromScore + "," + seenCCScore + "," + seenToScore
+				+ "," + spamTopicScore + "," + spamSubjectScore + "," + spamBodyScore + "," + spamKeywordScore + "," + spamPeopleScore 
+				+ "," + spamPeopleFromScore + "," + spamPeopleCCScore + "," + spamPeopleToScore
+				+ "," + toAddrs + "," + fromAddrs + "," + ccAddr + "," + keywords + "," +"'" + sub + "'";
+				
+				
+				//String simpleRecord = mail.getMessageId()+ "," + "'" + sub + "'"+ "," + model + "," + predicted;
+				//record = record.substring(0, (record.length()-1));
+				writer.println(record);
+				count++;
+//				if(count > 5){
+//					break;
+//				}
+					
+			}			
+			writer.close();	
+			logger.info("Results file has been created successfully!!");
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally{
+			writer.close();
+		}	
+	
 	}
 	
 //	@Programmatic

@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.jdo.annotations.IdentityType;
+import javax.jdo.annotations.NotPersistent;
 import javax.jdo.annotations.PrimaryKey;
 import javax.jdo.annotations.VersionStrategy;
 
@@ -64,8 +65,13 @@ public class UserMailBox {
 //
 //	private IndexVectorMap recipientIndexVectorMap;
 //	private ContextVectorMap recipientContextVectorMap;
-	
+	private List<Email> allEmails;
+	//map of allemails msgkey:mail
+	@NotPersistent
+	private Map<Long,Email> emailMap;
+	@NotPersistent
 	private List<RandomIndexVector> contentVectors;
+	@NotPersistent
 	private List<RandomIndexVector> recipientVectors;
 	
 	
@@ -316,11 +322,6 @@ public class UserMailBox {
 		this.lastIndexTimestamp = lastIndexTimestamp;
 	}
 
-	// endregion
-
-	// region > allEmails (programmatic), addEmail (action)
-	private List<Email> allEmails;
-
 	@javax.jdo.annotations.Persistent
 	@javax.jdo.annotations.Column(allowsNull = "false")
 	@Programmatic
@@ -346,6 +347,14 @@ public class UserMailBox {
 		//email = classifyEmailBasedOnContentAndRecipients(email);
 			
 		this.getAllEmails().add(email);
+		//adding the email to the emailMap for reference purposes
+		if(this.emailMap == null){
+			this.getEmailMap().put(email.getMsgUid(), email);
+				
+		}else{
+			emailMap.put(email.getMsgUid(), email);
+		}
+		
 		this.lastIndexTimestamp = email.getSentTimestamp();
 		logger.info("Adding the email to mailbox and setting the last indexed message id "
 				+ "of mailbox to : " + email.getMsgUid());
@@ -1334,7 +1343,7 @@ public class UserMailBox {
 		logger.info("spam replied keywords profile vector sum :" + spamNLPProfileScore);
 		
 		
-		logger.info("Dunn index for content clusters : " + model.getDunnIndexForContentClusters());
+		logger.info("Dunn index for content clusters : " + model.calculateDunnIndexForContentClusters());
 	}
 
 	@Hidden
@@ -1385,8 +1394,8 @@ public class UserMailBox {
 		this.isUpdatingModel = isUpdatingModel;
 	}
 
-	@javax.jdo.annotations.Persistent
-	@javax.jdo.annotations.Column(allowsNull = "true") 
+	//@javax.jdo.annotations.Persistent
+	//@javax.jdo.annotations.Column(allowsNull = "true") 
 	public List<RandomIndexVector> getContentVectors() {
 		return contentVectors;
 	}
@@ -1395,8 +1404,8 @@ public class UserMailBox {
 		this.contentVectors = contentVectors;
 	}
 	
-	@javax.jdo.annotations.Persistent
-	@javax.jdo.annotations.Column(allowsNull = "true") 
+	//@javax.jdo.annotations.Persistent
+	//@javax.jdo.annotations.Column(allowsNull = "true") 
 	public List<RandomIndexVector> getRecipientVectors() {
 		return recipientVectors;
 	}
@@ -1445,5 +1454,23 @@ public class UserMailBox {
 		this.markedSpamEmailUids = markedSpamEmailUids;
 	}
 
+	@Hidden
+	@Programmatic
+	public Map<Long,Email> getEmailMap(){
+//		if(this.emailMap != null){
+//			logger.info("the emailMap of this mailbox is already initialized. hence retuning it");
+//			return this.emailMap;
+//		}else{
+			Map<Long, Email> emails = new HashMap<Long, Email>();
+			for(Email mail: this.getAllEmails()){
+				Long uid = mail.getMsgUid();
+				emails.put(uid, mail);
+			}
+			logger.info("initializing the emailMap and returning..");
+			this.emailMap = emails;
+			logger.info("returning mailbox's emailmap with size : " + emailMap.size());
+			return this.emailMap;
+//		}
+	}
 	
 }
