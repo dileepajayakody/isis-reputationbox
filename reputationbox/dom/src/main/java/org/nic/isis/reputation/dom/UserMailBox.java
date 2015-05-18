@@ -24,6 +24,7 @@ import org.apache.isis.applib.annotation.Programmatic;
 import org.apache.isis.applib.annotation.Title;
 import org.nic.isis.clustering.EmailContentCluster;
 import org.nic.isis.clustering.EmailRecipientCluster;
+import org.nic.isis.clustering.EmailWeightedSubjectBodyContentCluster;
 import org.nic.isis.clustering.KMeansClustering;
 import org.nic.isis.reputation.services.EmailAnalysisService;
 import org.nic.isis.reputation.utils.EmailUtils;
@@ -145,6 +146,18 @@ public class UserMailBox {
 	private List<Long> markedImportantEmailUids;
 	//the list of marked important email uids from client for current session
 	private List<Long> markedSpamEmailUids;
+	
+	
+	//score thresholds
+	private final static double replyTopicScoreThreshold = 0.4;
+	private final static double seeTopicScoreThreshold = 0.4;
+	private final static double replyPeopleScoreThreshold = 0.4;
+	private final static double seePeopleScoreThreshold = 0.4;
+	
+	private final static double replyListTopicScoreThreshold = 0.4;
+	private final static double seeListTopicScoreThreshold = 0.4;
+	private final static double replyListPeopleScoreThreshold = 0.4;
+	private final static double seeListPeopleScoreThreshold = 0.4;
 	
 	public UserMailBox() {
 		this.allEmailContacts = new ArrayList<EmailContact>();
@@ -357,7 +370,7 @@ public class UserMailBox {
 		
 		this.lastIndexTimestamp = email.getSentTimestamp();
 		logger.info("Adding the email to mailbox and setting the last indexed message id "
-				+ "of mailbox to : " + email.getMsgUid());
+				+ "of mailbox to : " + email.getMsgUid()  + " mbox size : " + this.getAllEmails().size());
 		this.setLastIndexedMsgUid(email.getMsgUid());
 		
 		
@@ -444,7 +457,7 @@ public class UserMailBox {
 					//numberOfDirectEmailsReplied++;
 					this.getReputationDataModel().getRepliedEmails().add(email);
 				}
-				else if(email.isSeen()){
+				else if(email.isAnswered() || email.isSeen()){
 					logger.info("this is a direct email seen");
 					
 					double[] importantTopicsOnlySeen = VectorsMath.addArrays(repModel.getImportantTopicsOnlySeen(), email.getTextContextVector());
@@ -535,7 +548,7 @@ public class UserMailBox {
 					this.getReputationDataModel().getRepliedListEmails().add(email);
 									
 				}
-				else if(email.isSeen()){
+				else if(email.isAnswered() || email.isSeen()){
 					logger.info("this is a list email seen");
 					double[] importantListTopicsOnlySeen = VectorsMath.addArrays
 							(repModel.getImportantListTopicsOnlySeen(), email.getTextContextVector());
@@ -611,7 +624,195 @@ public class UserMailBox {
 			this.setReputationDataModel(repModel);
 	}
 	
-	public Email predictImportanceFormEmail(Email newEmail){
+	//predict email importance by the profile content and recipient clusters
+	public Email predictImportanceBasedOnClusterSimilarity(Email newEmail){
+		newEmail.setModel(false);
+		newEmail.setPredicted(true);
+		
+		EmailReputationDataModel repModel = this.getReputationDataModel();
+		List<EmailWeightedSubjectBodyContentCluster> repliedContentClusters = repModel.getRepliedProfileContentClusters();
+		List<EmailWeightedSubjectBodyContentCluster> seenContentClusters = repModel.getSeenProfileContentClusters();
+		List<EmailWeightedSubjectBodyContentCluster> repliedListContentClusters = repModel.getRepliedListProfileContentClusters();
+		List<EmailWeightedSubjectBodyContentCluster> seenListContentClusters = repModel.getSeenListProfileContentClusters();
+		
+		List<EmailRecipientCluster> repliedPeopleClusters = repModel.getRepliedProfilePeopleClusters();
+		List<EmailRecipientCluster> repliedListPeopleClusters = repModel.getRepliedListProfilePeopleClusters();
+		List<EmailRecipientCluster> seenPeopleClusters = repModel.getSeenProfilePeopleClusters();
+		List<EmailRecipientCluster> seenListPeopleClusters = repModel.getSeenListProfilePeopleClusters();
+		
+		
+		double[] spamVector = repModel.getSpamVector();
+		double[] spamPeopleVector = repModel.getSpamPeopleVector();
+		double[] spamKeywordVector = repModel.getSpamNLPKeywordVector();
+		
+		if(newEmail.isSpam()){
+			logger.info("The email to recommend reputation is pre-labeled as SPAM. hence adding to the spam list.");
+			double[] unimportanttopicsVector = VectorsMath.addArrays(spamVector, newEmail.getTextContextVector());
+			repModel.setSpamVector(unimportanttopicsVector);
+			
+			//logger.info("rep model's spam vector total :  " + EmailUtils.getVectorTotal(repModel.getSpamVector()));
+			//logger.info("new email's textcontent vector : " + EmailUtils.getVectorTotal(newEmail.getTextContextVector()));
+			double spamTopicSimilarity = EmailUtils.calculateCosineSimilarity(spamVector, newEmail.getTextContextVector());
+			double spamPeopleSimilarity = EmailUtils.calculateCosineSimilarity(spamPeopleVector, newEmail.getRecipientContextVector()); 
+			double spamNLPKeywordSimilarity = EmailUtils.calculateCosineSimilarity(spamKeywordVector, newEmail.getNlpKeywordsVector());
+				
+			newEmail.setSpamTopicScore(spamTopicSimilarity);
+			newEmail.setSpamPeopleScore(spamPeopleSimilarity);
+			newEmail.setSpamKeywordscore(spamNLPKeywordSimilarity);
+			
+			logger.info("The similarity of the email with SPAM emails in the model \n:"
+			+" spam topic similarity : " + spamTopicSimilarity 
+			+ " spam NLP keyword similarity : " + spamNLPKeywordSimilarity 			
+			+ " spam people similarity : " + spamPeopleSimilarity);
+			
+		}
+		if(newEmail.isDirect() || newEmail.isCCd()){
+			System.out.println("The email is a direct or ccd email and not a list email");
+			double maxTopicSimilarity = Double.MIN_VALUE;
+			//if(repliedContentClusters !=  null && repliedContentClusters.size() > 0){
+				for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedContentClusters){
+					double similarity = contentCluster.getSimilarity(newEmail.getSubjectContextVector(), newEmail.getBodyContextVector());
+					if(similarity > maxTopicSimilarity){
+						maxTopicSimilarity = similarity;
+					}
+				}
+				double repliedTopicScore = maxTopicSimilarity;
+				newEmail.setRepliedTopicscore(repliedTopicScore);
+//			}else{
+//				logger.error("rep-model replied profile content clusters are not created..");
+//			}
+//			if(repliedPeopleClusters != null && repliedPeopleClusters.size() > 0){
+				double maxPeopleSimilarity = Double.MIN_VALUE;
+				for(EmailRecipientCluster peopleCluster : repliedPeopleClusters){
+					double similarity = peopleCluster.getSimilarity(newEmail.getRecipientContextVector());
+					if(similarity > maxPeopleSimilarity){
+						maxPeopleSimilarity = similarity;
+					}
+				}
+				double repliedPeopleScore = maxPeopleSimilarity;
+				newEmail.setRepliedPeoplescore(repliedPeopleScore);
+//			}else{
+//				logger.error("rep-model seen profile people clusters are not created..");
+//			}
+			
+			//seen emails
+			double maxTopicSeenSimilarity = Double.MIN_VALUE;
+//			if(seenContentClusters !=  null && seenContentClusters.size() > 0){
+				for(EmailWeightedSubjectBodyContentCluster contentCluster : seenContentClusters){
+					double similarity = contentCluster.getSimilarity(newEmail.getSubjectContextVector(), newEmail.getBodyContextVector());
+					if(similarity > maxTopicSeenSimilarity){
+						maxTopicSeenSimilarity = similarity;
+					}
+				}
+				double seenTopicScore = maxTopicSeenSimilarity;
+				newEmail.setSeenTopicscore(seenTopicScore);
+//			}else{
+//				logger.error("rep-model seen profile content clusters are not created..");
+//			}
+//			if(seenPeopleClusters != null && seenPeopleClusters.size() > 0){
+				double maxSeenPeopleSimilarity = Double.MIN_VALUE;
+				for(EmailRecipientCluster peopleCluster : seenPeopleClusters){
+					double similarity = peopleCluster.getSimilarity(newEmail.getRecipientContextVector());
+					if(similarity > maxSeenPeopleSimilarity){
+						maxSeenPeopleSimilarity = similarity;
+					}
+				}
+				double seenPeopleScore = maxSeenPeopleSimilarity;
+				newEmail.setSeenPeoplescore(seenPeopleScore);
+//			}else{
+//				logger.error("rep-model seen profile people clusters are not created..");
+//			}
+			//spam portion
+			double spamTopicSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamVector(), newEmail.getTextContextVector());
+			newEmail.setSpamTopicScore(spamTopicSimilarity);
+			
+			logger.info("replied topic similarity : " + newEmail.getRepliedTopicscore() + " replied recipient similarity: " + newEmail.getRepliedPeoplescore() );
+			logger.info(" seen topic similarity : " + newEmail.getSeenTopicscore() +" seen recipient similarity: " + newEmail.getSeenPeoplescore());
+			logger.info("spam similarity : " + newEmail.getSpamTopicScore());
+			
+			//checking if the email require to be replied/read
+				if((newEmail.getRepliedTopicscore() > replyTopicScoreThreshold | newEmail.getSeenTopicscore() > seeTopicScoreThreshold) && (newEmail.getRepliedPeoplescore() > replyPeopleScoreThreshold | newEmail.getSeenPeoplescore() > seePeopleScoreThreshold)){
+					newEmail.setNeedRead(true);
+					if(newEmail.isRequest() || newEmail.isPropose() || newEmail.isMeeting()){
+						newEmail.setNeedReply(true);
+					}	
+				}
+			
+						
+		}else {
+			System.out.println("The email is not a direct email, calculating similarities with list email profiles");
+			double maxTopicSimilarity = Double.MIN_VALUE;
+//			if(repliedListContentClusters !=  null && repliedListContentClusters.size() > 0){
+				for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedListContentClusters){
+					double similarity = contentCluster.getSimilarity(newEmail.getSubjectContextVector(), newEmail.getBodyContextVector());
+					if(similarity > maxTopicSimilarity){
+						maxTopicSimilarity = similarity;
+					}
+				}
+				double repliedTopicScore = maxTopicSimilarity;
+				newEmail.setRepliedTopicscore(repliedTopicScore);
+//			}else{
+//				logger.error("rep-model replied profile content clusters are not created..");
+//			}
+//			if(repliedListPeopleClusters != null && repliedListPeopleClusters.size() > 0){
+				double maxPeopleSimilarity = Double.MIN_VALUE;
+				for(EmailRecipientCluster peopleCluster : repliedListPeopleClusters){
+					double similarity = peopleCluster.getSimilarity(newEmail.getRecipientContextVector());
+					if(similarity > maxPeopleSimilarity){
+						maxPeopleSimilarity = similarity;
+					}
+				}
+				double repliedPeopleScore = maxPeopleSimilarity;
+				newEmail.setRepliedPeoplescore(repliedPeopleScore);
+//			}else{
+//				logger.error("rep-model seen profile people clusters are not created..");
+//			}
+			
+			//seen emails
+			double maxTopicSeenSimilarity = Double.MIN_VALUE;
+//			if(seenListContentClusters !=  null && seenListContentClusters.size() > 0){
+				for(EmailWeightedSubjectBodyContentCluster contentCluster : seenListContentClusters){
+					double similarity = contentCluster.getSimilarity(newEmail.getSubjectContextVector(), newEmail.getBodyContextVector());
+					if(similarity > maxTopicSeenSimilarity){
+						maxTopicSeenSimilarity = similarity;
+					}
+				}
+				double seenTopicScore = maxTopicSeenSimilarity;
+				newEmail.setSeenTopicscore(seenTopicScore);
+//			}else{
+//				logger.error("rep-model seen profile content clusters are not created..");
+//			}
+//			if(seenListPeopleClusters != null && seenListPeopleClusters.size() > 0){
+				double maxSeenPeopleSimilarity = Double.MIN_VALUE;
+				for(EmailRecipientCluster peopleCluster : seenListPeopleClusters){
+					double similarity = peopleCluster.getSimilarity(newEmail.getRecipientContextVector());
+					if(similarity > maxSeenPeopleSimilarity){
+						maxSeenPeopleSimilarity = similarity;
+					}
+				}
+				double seenPeopleScore = maxSeenPeopleSimilarity;
+				newEmail.setSeenPeoplescore(seenPeopleScore);
+//			}else{
+//				logger.error("rep-model seen profile people clusters are not created..");
+//			}
+			double spamTopicSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamVector(), newEmail.getTextContextVector());
+			newEmail.setSpamTopicScore(spamTopicSimilarity);
+			logger.info("replied topic similarity : " + newEmail.getRepliedTopicscore() + " seen topic similarity : " + newEmail.getSeenTopicscore());
+			logger.info("replied recipient similarity: " + newEmail.getRepliedPeoplescore() +" seen recipient similarity: " + newEmail.getSeenPeoplescore());
+			logger.info("spam similarity : " + newEmail.getSpamTopicScore());
+			
+			if((newEmail.getRepliedTopicscore() > replyTopicScoreThreshold | newEmail.getSeenTopicscore() > seeTopicScoreThreshold) && (newEmail.getRepliedPeoplescore() > replyPeopleScoreThreshold | newEmail.getSeenPeoplescore() > seePeopleScoreThreshold)){
+				newEmail.setNeedRead(true);
+				if(newEmail.isRequest() || newEmail.isPropose() || newEmail.isMeeting()){
+					newEmail.setNeedReply(true);
+				}	
+			}
+			
+		}
+		return newEmail;
+	}
+	
+	public Email predictImportanceFromEmail(Email newEmail){
 		newEmail.setModel(false);
 		newEmail.setPredicted(true);
 		EmailReputationDataModel repModel = this.getReputationDataModel();

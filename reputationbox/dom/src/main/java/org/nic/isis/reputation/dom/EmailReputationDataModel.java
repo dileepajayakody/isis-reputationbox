@@ -137,6 +137,21 @@ public class EmailReputationDataModel {
 	private double sseRecipientClusters;
 	private double sseSubjectBodyClusters;
 	
+	
+	
+	//clusters in the profiles
+	private List<EmailWeightedSubjectBodyContentCluster> repliedProfileContentClusters;
+	private List<EmailRecipientCluster> repliedProfilePeopleClusters;
+	
+	private List<EmailWeightedSubjectBodyContentCluster> seenProfileContentClusters;
+	private List<EmailRecipientCluster> seenProfilePeopleClusters;
+	
+	//list emails
+	private List<EmailWeightedSubjectBodyContentCluster> repliedListProfileContentClusters;
+	private List<EmailRecipientCluster> repliedListProfilePeopleClusters;
+	private List<EmailWeightedSubjectBodyContentCluster> seenListProfileContentClusters;
+	private List<EmailRecipientCluster> seenListProfilePeopleClusters;
+	
 	//spam emails which have some how managed to get into inbox
 	//identified by spam,precedence headers
 	Set<Email> spamEmails;
@@ -148,6 +163,18 @@ public class EmailReputationDataModel {
 		contentClusters = new ArrayList<EmailContentCluster>();
 		recipientClusters = new ArrayList<EmailRecipientCluster>();
 		weightedSubjectBodyClusters = new ArrayList<EmailWeightedSubjectBodyContentCluster>();
+		
+		//profile clusters
+		repliedProfileContentClusters = new ArrayList<EmailWeightedSubjectBodyContentCluster>();
+		repliedProfilePeopleClusters = new ArrayList<EmailRecipientCluster>();
+		seenProfileContentClusters = new ArrayList<EmailWeightedSubjectBodyContentCluster>();
+		seenProfilePeopleClusters = new ArrayList<EmailRecipientCluster>();
+		//list email profile clusters
+		repliedListProfileContentClusters = new ArrayList<EmailWeightedSubjectBodyContentCluster>();
+		repliedListProfilePeopleClusters = new ArrayList<EmailRecipientCluster>();
+		seenListProfileContentClusters = new ArrayList<EmailWeightedSubjectBodyContentCluster>();
+		seenListProfilePeopleClusters = new ArrayList<EmailRecipientCluster>();
+		
 		
 		flaggedEmails = new HashSet<Email>();
 		repliedEmails = new HashSet<Email>();
@@ -1148,6 +1175,94 @@ public class EmailReputationDataModel {
 	@javax.jdo.annotations.Column(allowsNull = "true")
 	public double getDunnIndexForContentClusters() {
 		return dunnIndexForContentClusters;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<EmailWeightedSubjectBodyContentCluster> getRepliedProfileContentClusters() {
+		return repliedProfileContentClusters;
+	}
+
+	public void setRepliedProfileContentClusters(
+			List<EmailWeightedSubjectBodyContentCluster> repliedProfileContentClusters) {
+		this.repliedProfileContentClusters = repliedProfileContentClusters;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<EmailRecipientCluster> getRepliedProfilePeopleClusters() {
+		return repliedProfilePeopleClusters;
+	}
+
+	public void setRepliedProfilePeopleClusters(
+			List<EmailRecipientCluster> repliedProfilePeopleClusters) {
+		this.repliedProfilePeopleClusters = repliedProfilePeopleClusters;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<EmailWeightedSubjectBodyContentCluster> getSeenProfileContentClusters() {
+		return seenProfileContentClusters;
+	}
+
+	public void setSeenProfileContentClusters(
+			List<EmailWeightedSubjectBodyContentCluster> seenProfileContentClusters) {
+		this.seenProfileContentClusters = seenProfileContentClusters;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<EmailRecipientCluster> getSeenProfilePeopleClusters() {
+		return seenProfilePeopleClusters;
+	}
+
+	public void setSeenProfilePeopleClusters(
+			List<EmailRecipientCluster> seenProfilePeopleClusters) {
+		this.seenProfilePeopleClusters = seenProfilePeopleClusters;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<EmailWeightedSubjectBodyContentCluster> getRepliedListProfileContentClusters() {
+		return repliedListProfileContentClusters;
+	}
+
+	public void setRepliedListProfileContentClusters(
+			List<EmailWeightedSubjectBodyContentCluster> repliedListProfileContentClusters) {
+		this.repliedListProfileContentClusters = repliedListProfileContentClusters;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<EmailRecipientCluster> getRepliedListProfilePeopleClusters() {
+		return repliedListProfilePeopleClusters;
+	}
+
+	public void setRepliedListProfilePeopleClusters(
+			List<EmailRecipientCluster> repliedListProfilePeopleClusters) {
+		this.repliedListProfilePeopleClusters = repliedListProfilePeopleClusters;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<EmailWeightedSubjectBodyContentCluster> getSeenListProfileContentClusters() {
+		return seenListProfileContentClusters;
+	}
+
+	public void setSeenListProfileContentClusters(
+			List<EmailWeightedSubjectBodyContentCluster> seenListProfileContentClusters) {
+		this.seenListProfileContentClusters = seenListProfileContentClusters;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<EmailRecipientCluster> getSeenListProfilePeopleClusters() {
+		return seenListProfilePeopleClusters;
+	}
+
+	public void setSeenListProfilePeopleClusters(
+			List<EmailRecipientCluster> seenListProfilePeopleClusters) {
+		this.seenListProfilePeopleClusters = seenListProfilePeopleClusters;
 	}
 
 }

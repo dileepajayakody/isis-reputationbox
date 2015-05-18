@@ -305,9 +305,9 @@ public class EmailAnalysisService {
 
 	
 	@Programmatic
-	public List<EmailContentCluster> kMeansClusterText(List<Email> emails) {
-		KMeansClustering kmeans = new KMeansClustering();
-		List<EmailContentCluster> clusters = kmeans.clusterBasedOnContent(emails);
+	public static List<EmailContentCluster> kMeansClusterText(List<Email> emails) {
+		//KMeansClustering kmeans = new KMeansClustering();
+		List<EmailContentCluster> clusters = KMeansClustering.clusterBasedOnContent(emails);
 
 		int totalEMailsInClusters = 0;
 		double sumOfSquaredError = 0;
@@ -341,9 +341,9 @@ public class EmailAnalysisService {
 	}
 	
 	@Programmatic
-	public List<EmailWeightedSubjectBodyContentCluster> kMeansClusterWeightedSubjectBodyContent(List<Email> emails) {
-		KMeansClustering kmeans = new KMeansClustering();
-		List<EmailWeightedSubjectBodyContentCluster> clusters = kmeans.clusterBasedOnSubjectAndBody(emails);
+	public static List<EmailWeightedSubjectBodyContentCluster> kMeansClusterWeightedSubjectBodyContent(List<Email> emails) {
+		//KMeansClustering kmeans = new KMeansClustering();
+		List<EmailWeightedSubjectBodyContentCluster> clusters = KMeansClustering.clusterBasedOnSubjectAndBody(emails);
 
 		int totalEMailsInClusters = 0;
 		double subjectSumOfSquaredError = 0;
@@ -383,9 +383,9 @@ public class EmailAnalysisService {
 	
 
 	@Programmatic
-	public List<EmailRecipientCluster> kMeansClusterRecipients(List<Email> emails) {
-		KMeansClustering kmeans = new KMeansClustering();
-		List<EmailRecipientCluster> clusters = kmeans.clusterBasedOnRecipients(emails);
+	public static List<EmailRecipientCluster> kMeansClusterRecipients(List<Email> emails) {
+		//KMeansClustering kmeans = new KMeansClustering();
+		List<EmailRecipientCluster> clusters = KMeansClustering.clusterBasedOnRecipients(emails);
 		
 		int totalEMailsInClusters = 0;
 		double sumOfSquaredError = 0;

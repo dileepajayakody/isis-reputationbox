@@ -164,6 +164,9 @@ public class JavaMailService {
 			//setting an empty email model for the mailbox
 			logger.info("Emails to retrieve :" + messages.length );
 			int messageLimit = 50;
+			if(messages.length < messageLimit){
+				messageLimit = messages.length;
+			}
 			logger.info("Starting to retrieve emails with limit:" + messageLimit );
 			//messageLimit should be messages.length
 			
@@ -205,15 +208,15 @@ public class JavaMailService {
 							recipientSemantics.removeAllSemantics();
 							
 							// adding email to mailbox...
+							
 							//don't add the reputation results email to the email lists
-							if(!newEmail.getFromAddress().equals("reputationbox1@gmail.com")){
-									//whether to use this email to update the model or classify the email and recommend scores
-								logger.info("adding the email to the mailbox with emails count : " + count);
+							//if(!newEmail.getFromAddress().equals("reputationbox1@gmail.com")){
+								//logger.info("adding the email to the mailbox with emails count : " + count +" mbox size : " + mailbox.getAllEmails().size());
 								//mailbox.updateMailBoxProfiles(newEmail);
 								mailbox.addEmail(newEmail);
 								
 								//container.flush();
-							}
+							//}
 																		
 						}
 					} else {
@@ -339,6 +342,9 @@ public class JavaMailService {
 			
 			List<Email> newEmails = new ArrayList<Email>();			
 			int messagesLimit = 50;
+			if(messages.length < messagesLimit){
+				messagesLimit = messages.length;
+			}
 				
 			for (int count = 0; count < messagesLimit; count++) {
 				try{					
@@ -368,12 +374,14 @@ public class JavaMailService {
 								+ newEmail.getSentTimestamp());
 						// adding email to mailbox...
 						//don't add the reputation results email to the email lists
-						if(!newEmail.getFromAddress().equals("reputationbox1@gmail.com")){
+						//if(!newEmail.getFromAddress().equals("reputationbox1@gmail.com")){
 							//classify and recommend the reputation of the email based on importance model
 							logger.info("Predicting the reputation of the email based on existing importance model");								
-							newEmail = mailbox.predictImportanceFormEmail(newEmail);													
+							//newEmail = mailbox.predictImportanceFromEmail(newEmail);													
+							newEmail = mailbox.predictImportanceBasedOnClusterSimilarity(newEmail);
+							
 							//also classify new email based on the content and people clusters
-							newEmail = mailbox.classifyEmailBasedOnContentAndRecipients(newEmail);
+							//newEmail = mailbox.classifyEmailBasedOnContentAndRecipients(newEmail);
 							
 							newEmails.add(newEmail);
 							mailbox.addEmail(newEmail);
@@ -398,7 +406,7 @@ public class JavaMailService {
 //							
 //						}
 						
-					}
+				//	}
 
 				}catch(Exception ex){
 					logger.error("Error occurred while processing email", ex);
@@ -791,13 +799,13 @@ public class JavaMailService {
 		// temp changes for data retriaval
 		// day.set(Calendar.MONTH, 0);
 		//getting emails for last 2 weeks
-		day.add(Calendar.DAY_OF_MONTH, -14);
+		day.add(Calendar.DAY_OF_MONTH, from);
 
 		Date fromDate = day.getTime();
 
 		//emails till 3 days ago
 		Calendar toDay = Calendar.getInstance();
-		toDay.add(Calendar.DATE, -2);			
+		toDay.add(Calendar.DATE, to);			
 		
 		Date toDate = toDay.getTime();
 		logger.info("Retrieving emails from date : " + fromDate);

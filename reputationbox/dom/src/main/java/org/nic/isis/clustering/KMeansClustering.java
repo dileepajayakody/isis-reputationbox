@@ -1,6 +1,7 @@
 package org.nic.isis.clustering;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Random;
 
@@ -21,7 +22,9 @@ public class KMeansClustering {
 	private static double peopleClusterThreshold = 0.4;
 	//private static int maxClusters = 100;
 
-	public List<EmailContentCluster> clusterBasedOnContent(List<Email> emailCollection) {
+	public static List<EmailContentCluster> clusterBasedOnContent(List<Email> emailCollection) {
+		//need to give each cluster a unique id
+		
 		int numDocs = emailCollection.size();
 		int numClusters = 0;
 		
@@ -101,7 +104,7 @@ public class KMeansClustering {
 	
 	
 	
-	public List<EmailRecipientCluster> clusterBasedOnRecipients(List<Email> emailCollection) {
+	public static List<EmailRecipientCluster> clusterBasedOnRecipients(List<Email> emailCollection) {
 		int numDocs = emailCollection.size();
 		int numClusters = 0;
 		// build initial clusters
@@ -388,11 +391,73 @@ public class KMeansClustering {
             }
 		return recipientClusters;
 	}
-	
+
+	//classify new email based on subject and body
+	public static List<EmailWeightedSubjectBodyContentCluster> classifyNewEmailBySubjectBody(Email newEmail, List<EmailWeightedSubjectBodyContentCluster> contentClusters){
+		logger.info("Classifying email by subject:body content");
+		int bestCluster = 0;
+		double maxSimilarity = Double.MIN_VALUE;
+		String messageId = newEmail.getMessageId();
+		EmailWeightedSubjectBodyContentCluster bestMatchCluster = null;
+		
+		for (int j = 0; j < contentClusters.size(); j++) {
+			double similarity = 0.0D;
+			similarity = contentClusters.get(j).getSimilarity(newEmail.getSubjectContextVector(), newEmail.getBodyContextVector());
+			/*logger.info("Similarity of email : " + newEmail.getMessageId() + " with cluster : " + contentClusters.get(j).getId() + " similarity :"
+					+ similarity);*/
+			if (similarity > maxSimilarity) {
+				bestCluster = j;
+				maxSimilarity = similarity;
+			}
+		}
+		//added recenty
+		bestMatchCluster = contentClusters
+				.get(bestCluster);
+		if (maxSimilarity >= contentClusterThreshold) { 
+			//	|| contentClusters.size() >= maxClusters) {
+				logger.info(" The best cluster : " + bestMatchCluster.getId());
+				if (bestMatchCluster != null) {
+					logger.info("The best content cluster for email found... clusterId : "
+							+ bestMatchCluster.getId() + " similarity : " + maxSimilarity);		
+					
+					bestMatchCluster.addEmail(messageId, newEmail);
+					double clusterRepuScore = bestMatchCluster
+							.calculateClusterReputationScore();
+					//newEmail.setTextClusterId(bestMatchCluster.getId());
+					newEmail.setWeightedSubjectBodyClusterId(bestMatchCluster.getId());
+					newEmail.setContentReputationScore(clusterRepuScore);
+					
+					//setting the reference of the clusters back to the list..
+					contentClusters.set(bestCluster, bestMatchCluster);
+				}	
+            } else {
+                // lock to ensure that the number of clusters doesn't change
+                // while we add this one
+                synchronized(contentClusters) {
+                    // Perform an additional check to see whether the number of
+                    // contentClusters changed while we waiting on the lock
+//                    if (contentClusters.size() < maxClusters) {
+                        bestMatchCluster = new EmailWeightedSubjectBodyContentCluster("sb" + String.valueOf(contentClusters.size()));
+                        logger.info("Adding the email to the newly added content cluster  " + bestMatchCluster.getId());
+    					bestMatchCluster.addEmail(messageId, newEmail);
+    					double clusterRepuScore = bestMatchCluster
+    							.calculateClusterReputationScore();
+    					//newEmail.setTextClusterId(bestMatchCluster.getId());
+    					newEmail.setWeightedSubjectBodyClusterId(bestMatchCluster.getId());
+    					newEmail.setContentReputationScore(clusterRepuScore);
+                        contentClusters.add(bestMatchCluster);
+//                    } else {
+//                    	logger.info(" the max content cluster number has exceed and the email has not gained threshold similarity to any existing clusters.."
+//                    			+ " hence ignoring email from clustering ");
+//                    }    
+                }
+            }
+		return contentClusters;
+	}
 	
 //clustering based on separate vector for subject,body	
 
-	public List<EmailWeightedSubjectBodyContentCluster> clusterBasedOnSubjectAndBody(List<Email> emailCollection) {
+	public static List<EmailWeightedSubjectBodyContentCluster> clusterBasedOnSubjectAndBody(List<Email> emailCollection) {
 		int numDocs = emailCollection.size();
 		int numClusters = 0;
 		

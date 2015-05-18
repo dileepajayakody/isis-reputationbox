@@ -32,6 +32,7 @@ import org.nic.isis.reputation.dom.EmailReputationDataModel;
 import org.nic.isis.reputation.dom.RandomIndexVector;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.reputation.utils.EmailUtils;
+import org.nic.isis.reputation.viewmodels.EmailVectorViewModel;
 import org.nic.isis.ri.RandomIndexing;
 import org.nic.isis.vector.VectorsMath;
 import org.slf4j.Logger;
@@ -139,8 +140,8 @@ public class EmailService {
 					}	
 				}
 				
-				int modelSize = 1200;
-				//int modelSize = mailBox.getCurrentModelSize();
+				//int modelSize = 1200;
+				int modelSize = mailBox.getCurrentModelSize();
 				
 				//if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() == 0)){
 				if(!mailBox.isUpdatingModel() && mailBox.isRequireNewModel() && (mailBox.getAllEmails().size() < modelSize)){
@@ -159,18 +160,18 @@ public class EmailService {
 						logger.info("Creating topic clusters for the mailbox emails ..");
 						EmailReputationDataModel model = mailBox.getReputationDataModel();
 						logger.info("Creating the content and people clusters from training dataset");	
-						List<Email> allEmails = mailBox.getAllEmails();
-						List<EmailContentCluster> contentClusters = emailAnalysisService.kMeansClusterText(allEmails);
-						List<EmailRecipientCluster> recipientClusters = emailAnalysisService.kMeansClusterRecipients(allEmails);
-						List<EmailWeightedSubjectBodyContentCluster> weightedSubjectBodyClusters = emailAnalysisService.kMeansClusterWeightedSubjectBodyContent(allEmails);
-						model.setContentClusters(contentClusters);
-						model.setRecipientClusters(recipientClusters);
-						model.setWeightedSubjectBodyClusters(weightedSubjectBodyClusters);
-						
-						logger.info("Dunn index for content clusters : " + model.calculateDunnIndexForContentClusters());
-						logger.info("Dunn index for recipient clusters : " + model.calculateDunnIndexForRecipientClusters());
-						logger.info("Avg dunn index for weighted subject-body clusters : " + model.calculateDunnIndexForSubjectBodyClusters());
-						
+//						List<Email> allEmails = mailBox.getAllEmails();
+//						List<EmailContentCluster> contentClusters = EmailAnalysisService.kMeansClusterText(allEmails);
+//						List<EmailRecipientCluster> recipientClusters = EmailAnalysisService.kMeansClusterRecipients(allEmails);
+//						List<EmailWeightedSubjectBodyContentCluster> weightedSubjectBodyClusters = EmailAnalysisService.kMeansClusterWeightedSubjectBodyContent(allEmails);
+//						model.setContentClusters(contentClusters);
+//						model.setRecipientClusters(recipientClusters);
+//						model.setWeightedSubjectBodyClusters(weightedSubjectBodyClusters);
+//						
+//						logger.info("Dunn index for content clusters : " + model.calculateDunnIndexForContentClusters());
+//						logger.info("Dunn index for recipient clusters : " + model.calculateDunnIndexForRecipientClusters());
+//						logger.info("Avg dunn index for weighted subject-body clusters : " + model.calculateDunnIndexForSubjectBodyClusters());
+//						
 						mailBox.setReputationDataModel(model);			
 						//mailBox = EmailUtils.updateAverageImportanceVectors(mailBox);
 						//setting the average profiles for direct replied, flagged, seen and list replied, flagged, seen
@@ -184,33 +185,120 @@ public class EmailService {
 					//still the model is not set hence setting the model
 					logger.info("Updating profile vector indexes ..");
 					mailBox = EmailUtils.calculateImportanceModel(mailBox);
-					
-					logger.info("Creating topic clusters for the mailbox emails ..");
-					EmailReputationDataModel model = mailBox.getReputationDataModel();
-					logger.info("Creating the content and people clusters from training dataset");	
-					List<Email> allEmails = mailBox.getAllEmails();
-					List<EmailContentCluster> contentClusters = emailAnalysisService.kMeansClusterText(allEmails);
-					List<EmailRecipientCluster> recipientClusters = emailAnalysisService.kMeansClusterRecipients(allEmails);
-					List<EmailWeightedSubjectBodyContentCluster> weightedSubjectBodyClusters = emailAnalysisService.kMeansClusterWeightedSubjectBodyContent(allEmails);
-					model.setContentClusters(contentClusters);
-					model.setRecipientClusters(recipientClusters);
-					model.setWeightedSubjectBodyClusters(weightedSubjectBodyClusters);
-					
-					logger.info("Dunn index for content clusters : " + model.calculateDunnIndexForContentClusters());
-					logger.info("Dunn index for recipient clusters : " + model.calculateDunnIndexForRecipientClusters());
-					logger.info("Avg dunn index for weighted subject-body clusters : " + model.calculateDunnIndexForSubjectBodyClusters());
-					
-					mailBox.setReputationDataModel(model);			
+					//generate clusters
+					mailBox = EmailUtils.generateEmailClusters(mailBox);	
 					//mailBox = EmailUtils.updateAverageImportanceVectors(mailBox);
 					//setting the average profiles for direct replied, flagged, seen and list replied, flagged, seen
 			
 					//since the model has sufficient model data
 					mailBox.setRequireNewModel(false);
-				} else if(!mailBox.isUpdatingModel() && !mailBox.isRequireNewModel() && (mailBox.getAllEmails().size() >= modelSize)){
+				} else if(!mailBox.isUpdatingModel() && !mailBox.isRequireNewModel() && (mailBox.getAllEmails().size() >= modelSize) && (mailBox.getAllEmails().size() <= 3000)){
 					//mailBox.setEmailId("dileepajayakody@gmail.com");
 					logger.info("Loading mailbox : " + mailBox.getEmailId());			
 					logger.info("Updaing mailbox and predicting email importance for emails for mailbox : " + mailBox.getEmailId() + " since email count: " + mailBox.getAllEmails().size()
 							+ " last indexed email  UID : " + mailBox.getLastIndexedMsgUid());
+					
+					//printing the repmodel profile content clusters
+					List<EmailWeightedSubjectBodyContentCluster> repliedContentClusters = mailBox.getReputationDataModel().getRepliedProfileContentClusters();
+					List<EmailRecipientCluster> repliedPeopleClusters = mailBox.getReputationDataModel().getRepliedProfilePeopleClusters();
+					List<EmailWeightedSubjectBodyContentCluster> repliedListContentClusters = mailBox.getReputationDataModel().getRepliedListProfileContentClusters();
+					List<EmailRecipientCluster> repliedListPeopleClusters = mailBox.getReputationDataModel().getRepliedListProfilePeopleClusters();
+					
+					List<EmailWeightedSubjectBodyContentCluster> seenContentClusters = mailBox.getReputationDataModel().getSeenProfileContentClusters();
+					List<EmailWeightedSubjectBodyContentCluster> seenListContentClusters = mailBox.getReputationDataModel().getSeenListProfileContentClusters();
+					List<EmailRecipientCluster> seenPeopleClusters = mailBox.getReputationDataModel().getSeenProfilePeopleClusters();					
+					List<EmailRecipientCluster> seenListPeopleClusters = mailBox.getReputationDataModel().getSeenListProfilePeopleClusters();
+					double[] spamVector = mailBox.getReputationDataModel().getSpamVector();
+					double[] spamPeopleVector = mailBox.getReputationDataModel().getSpamPeopleVector();
+					double[] spamKeywordVector = mailBox.getReputationDataModel().getSpamNLPKeywordVector();
+					
+					
+					logger.info("Printing the repmodel replied profile content clusters");
+					for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedContentClusters){
+						List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
+						
+						double[] subjectCentroid = contentCluster.getSubjectCentroid();
+						double[] bodyCentroid = contentCluster.getBodyCentroid();
+						double subjectTotal = EmailUtils.getVectorTotal(subjectCentroid);
+						double bodyTotal = EmailUtils.getVectorTotal(bodyCentroid);
+						String clusterId = contentCluster.getId();
+						
+//						logger.info(clusterId + " subject vector total : " + subjectTotal + " body total : " + bodyTotal);
+//						
+//						for(Email email : repliedClusterEmails){
+//							logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+//						}
+					}
+//					logger.info("Printing the repmodel replied people clusters");
+					for(EmailRecipientCluster repliedCluster : repliedPeopleClusters){
+						List<Email> pplMails = repliedCluster.getRecipientEmails();
+						double centroidTotal = EmailUtils.getVectorTotal(repliedCluster.getCentroid());
+						logger.info(repliedCluster.getId() + " : centroid vec.total : " + centroidTotal);
+						String clusterId = repliedCluster.getId();
+//						for(Email email : pplMails){
+//							logger.info(clusterId + " : " + email.getMsgUid() + " from : " + email.getFromAddress());
+//						}
+					}
+//					
+//					logger.info("Printing the repmodel replied list profile content clusters");
+					for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedListContentClusters){
+						List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
+						double[] subjectCentroid = contentCluster.getSubjectCentroid();
+						double[] bodyCentroid = contentCluster.getBodyCentroid();
+						double subjectTotal = EmailUtils.getVectorTotal(subjectCentroid);
+						double bodyTotal = EmailUtils.getVectorTotal(bodyCentroid);
+						String clusterId = contentCluster.getId();
+//						
+//						logger.info(clusterId + " subject vector total : " + subjectTotal + " body total : " + bodyTotal);
+//						for(Email email : repliedClusterEmails){
+//							logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+//						}
+					}
+					
+					
+					//seen profiles
+					//printing the repmodel profile content clusters
+//					logger.info("Printing the repmodel seen profile content clusters");
+					for(EmailWeightedSubjectBodyContentCluster contentCluster : seenContentClusters){
+						List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
+						
+						double[] subjectCentroid = contentCluster.getSubjectCentroid();
+						double[] bodyCentroid = contentCluster.getBodyCentroid();
+						double subjectTotal = EmailUtils.getVectorTotal(subjectCentroid);
+						double bodyTotal = EmailUtils.getVectorTotal(bodyCentroid);
+						String clusterId = contentCluster.getId();
+//						
+//						logger.info(clusterId + " subject vector total : " + subjectTotal + " body total : " + bodyTotal);						
+//						for(Email email : repliedClusterEmails){
+//							logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+//						}
+					}
+//					
+//					logger.info("Printing the repmodel replied list profile content clusters");
+					for(EmailWeightedSubjectBodyContentCluster contentCluster : seenListContentClusters){
+						List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
+						double[] subjectCentroid = contentCluster.getSubjectCentroid();
+						double[] bodyCentroid = contentCluster.getBodyCentroid();
+						double subjectTotal = EmailUtils.getVectorTotal(subjectCentroid);
+						double bodyTotal = EmailUtils.getVectorTotal(bodyCentroid);
+						String clusterId = contentCluster.getId();						
+//						logger.info(clusterId + " subject vector total : " + subjectTotal + " body total : " + bodyTotal);
+//						for(Email email : repliedClusterEmails){
+//							logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+//						}
+					}
+//					logger.info("Printing the repmodel seen list people clusters");
+					for(EmailRecipientCluster seenListCluster : seenListPeopleClusters){
+						List<Email> pplMails = seenListCluster.getRecipientEmails();
+						double centroidTotal = EmailUtils.getVectorTotal(seenListCluster.getCentroid());
+						logger.info(seenListCluster.getId() + " : centroid vec.total : " + centroidTotal);
+						String clusterId = seenListCluster.getId();
+//						for(Email email : pplMails){
+//							logger.info(clusterId + " : " + email.getMsgUid() + " from : " + email.getFromAddress());
+//						}
+					}
+					
+					//predict importance
 					mailBox = javaMailService.predictImportanceForNewEmails(mailBox);			
 				}
 				
@@ -329,20 +417,6 @@ public class EmailService {
 
 	}
 	
-	@Named("Cluster all emails based on weighted subject and body")
-	public void clusterEmailsBasedOnWeightedTopics(){
-		List<UserMailBox> mailBoxes = listAllMailBoxes();
-		for (UserMailBox mb : mailBoxes){
-			EmailReputationDataModel model = mb.getReputationDataModel();
-			
-			List<Email> allEmails = mb.getAllEmails();
-			List<EmailWeightedSubjectBodyContentCluster> clusters = emailAnalysisService.kMeansClusterWeightedSubjectBodyContent(allEmails);
-			model.setWeightedSubjectBodyClusters(clusters);
-			logger.info("Dunn index for content clusters : " + model.calculateDunnIndexForContentClusters());
-		}
-		container.flush();
-
-	}
 	
 	@Named("Update mailbox importance profiles")
 	public void updateMailBoxImportanceProfiles(){
@@ -376,17 +450,17 @@ public class EmailService {
 		
 	}
 	
-	@Named("Print Cluster Centroids")
-	public void printClusterCentroids(){
-		List<UserMailBox> mailBoxes = listAllMailBoxes();
-		for (UserMailBox mb : mailBoxes){
-			List<EmailContentCluster> emailContentClusters = mb.getReputationDataModel().getContentClusters();
-			logger.info("printing cluster centroids...");
-			for(EmailContentCluster cluster : emailContentClusters){
-				logger.info("cluster : " + cluster.getId() + " centroid : " + EmailUtils.getVectorTotal(cluster.getCentroid()));
-			}
-		}
-	}
+//	@Named("Print Cluster Centroids")
+//	public void printClusterCentroids(){
+//		List<UserMailBox> mailBoxes = listAllMailBoxes();
+//		for (UserMailBox mb : mailBoxes){
+//			List<EmailContentCluster> emailContentClusters = mb.getReputationDataModel().getContentClusters();
+//			logger.info("printing cluster centroids...");
+//			for(EmailContentCluster cluster : emailContentClusters){
+//				logger.info("cluster : " + cluster.getId() + " centroid : " + EmailUtils.getVectorTotal(cluster.getCentroid()));
+//			}
+//		}
+//	}
 	
 //	@Named("Check Similarity with the same vector")
 //	public void checkSimilarity(){
@@ -497,7 +571,33 @@ public class EmailService {
 		
 	}
 	
-	
+	public void printRepModelClusters(){
+		List<UserMailBox> mailBoxes = listAllMailBoxes();
+		for(UserMailBox mb : mailBoxes){
+			EmailReputationDataModel repModel = mb.getReputationDataModel();
+			List<EmailWeightedSubjectBodyContentCluster> repliedContentClusters = repModel.getRepliedProfileContentClusters();
+			List<EmailWeightedSubjectBodyContentCluster> repliedListContentClusters = repModel.getRepliedListProfileContentClusters();
+			List<EmailRecipientCluster> repliedPeopleClusters = repModel.getRepliedProfilePeopleClusters();
+			List<EmailRecipientCluster> repliedListPeopleClusters = repModel.getRepliedListProfilePeopleClusters();
+			
+			List<EmailWeightedSubjectBodyContentCluster> seenContentClusters = repModel.getSeenProfileContentClusters();
+			List<EmailWeightedSubjectBodyContentCluster> seenListContentClusters = repModel.getSeenListProfileContentClusters();
+			List<EmailRecipientCluster> seenPeopleClusters = repModel.getSeenProfilePeopleClusters();
+			List<EmailRecipientCluster> seenListPeopleClusters = repModel.getSeenListProfilePeopleClusters();
+
+			for(EmailWeightedSubjectBodyContentCluster repliedContentCluster : repliedContentClusters){
+				logger.info(repliedContentCluster.getId() + " bodyCentroid : " + EmailUtils.getVectorTotal(repliedContentCluster.getBodyCentroid()));
+				for(Email mail : repliedContentCluster.getSubjectBodyContentEmails()){
+					logger.info(repliedContentCluster.getId() + " subject : " + mail.getSubject());
+				}
+			}
+			for(EmailWeightedSubjectBodyContentCluster repliedListContentCluster : repliedListContentClusters){
+				
+			}
+
+		}
+
+	}
 	public void printClusterResults(){
 		List<UserMailBox> mailBoxes = listAllMailBoxes();
 		for(UserMailBox mb : mailBoxes){
@@ -620,7 +720,6 @@ public class EmailService {
 	public UserMailBox createSample() {
 		UserMailBox mb = container.newTransientInstance(UserMailBox.class);	
 		
-		//mb.setAccountId("530f0d8eb4810fd65d6d2149");
 		
 		Date today = new Date();
 		
@@ -783,7 +882,7 @@ public class EmailService {
 			    		}
 			    	String sub = mail.getSubject();
 						
-					//sub.replace("'", " ");
+					sub = sub.replace(",", " ");
 					
 			    	//final conclusions if the email is predicted for reply,read, important
 			    	double totalPplScore = mail.getTotalPeopleScore();
@@ -951,22 +1050,31 @@ public class EmailService {
 				//return null;
 				reputationObj = new JSONObject();
 				reputationObj.put("id", "NaN");
-				reputationObj.put("is_predicted", "false");
+				reputationObj.put("is_predicted", "0");
 			}else{
 				if(email.isModel() || !email.isPredicted()){
 					reputationObj = new JSONObject();
 					reputationObj.put("id", email.getMessageId());
 					reputationObj.put("uid", email.getMsgUid());
-					reputationObj.put("is_predicted", "false");
+					reputationObj.put("is_predicted", "0");
 				}else if(email.isPredicted()){
 					reputationObj = EmailUtils.getReputationObjectJSON(email);
-					reputationObj.put("is_predicted", "true");
+					reputationObj.put("is_predicted", "1");
 				}
 
 			}
 		}
 		return reputationObj.toString();
 	}
+	
+//	public void printListOfModelEmailMsgUids(){
+//		
+//	}
+//	public void printListOfPredictedEmailMsgUids(){
+//		mailBoxes = listAllMailBoxes();	
+//		
+//	}
+	
 	/**
 //	 * @param from
 //	 * @param to

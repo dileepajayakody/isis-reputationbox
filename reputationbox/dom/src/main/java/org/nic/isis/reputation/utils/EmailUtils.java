@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -53,6 +54,7 @@ import org.nic.isis.clustering.EmailCluster;
 import org.nic.isis.clustering.EmailContentCluster;
 import org.nic.isis.clustering.EmailRecipientCluster;
 import org.nic.isis.clustering.EmailWeightedSubjectBodyContentCluster;
+import org.nic.isis.clustering.KMeansClustering;
 import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.EmailBody;
 import org.nic.isis.reputation.dom.EmailReputationDataModel;
@@ -60,6 +62,7 @@ import org.nic.isis.reputation.dom.RandomIndexVector;
 import org.nic.isis.reputation.dom.TextContent;
 import org.nic.isis.reputation.dom.TextTokenMap;
 import org.nic.isis.reputation.dom.UserMailBox;
+import org.nic.isis.reputation.services.EmailAnalysisService;
 import org.nic.isis.vector.VectorsMath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,12 +81,12 @@ public final class EmailUtils {
 	private static SigFilePredictor signatureDetector = new SigFilePredictor();
 	private static SpeechAct speechAct = new SpeechAct();
 	
-	private static StanfordCoreNLP pipeline;
+	//private static StanfordCoreNLP pipeline;
 
 	static {
 		Properties props = new Properties(); 
 		props.setProperty("annotators", "tokenize, ssplit, pos, lemma, ner, parse");
-		pipeline = new StanfordCoreNLP(props);
+		//pipeline = new StanfordCoreNLP(props);
 		
 		HTML_CODES.put("&nbsp;", " ");
 		HTML_CODES.put("&Agrave;", "À");
@@ -627,20 +630,27 @@ public final class EmailUtils {
 		JSONObject reputationObj = new JSONObject();
 		reputationObj.put("id", email.getMessageId());
 		reputationObj.put("uid", email.getMsgUid());
-		reputationObj.put("is_predicted", email.isPredicted());
+		if(email.isPredicted()){
+			reputationObj.put("is_predicted", 1);	
+		}else{
+			reputationObj.put("is_predicted", 0);
+		}
+		if(email.isListMail()){
+			reputationObj.put("is_list", 1);
+		}
 		//total topic score : combined topic scores for reply, see, flag email similarity
 		reputationObj
-				.put("contentscore", email.getTotalTopicScore());
+				.put("contentscore", email.getContentReputationScore());
 		//total people score : combined people scores for from,cc,to email similarity
 		reputationObj.put("peoplescore",
-				email.getTotalPeopleScore());
+				email.getRecipientReputationScore());
 		reputationObj.put("contentclusterid", email.getTextClusterId());
 		reputationObj.put("peopleclusterid", email.getPeopleClusterId());
 		
 		//adding new fields for speech acts and nlp fields/keywords
 		String intentString = getMessageIntentString(email);
 		reputationObj.put("emailintent",intentString);
-		reputationObj.put("nlpkeywords", getNLPKeywordsFromEmail(email));
+		//reputationObj.put("nlpkeywords", getNLPKeywordsFromEmail(email));
 		
 		
 		//score calculations
@@ -651,12 +661,12 @@ public final class EmailUtils {
 		//separate calculations for separate vectors (to,from.cc & subject,body vectors)
 		double peopleScoreSeparateVectors = (email.getRepliedPeopleFromscore() + email.getRepliedPeopleToscore() + email.getRepliedPeopleCCscore())/3;
 		double topicScoreSeparateVectors = (email.getRepliedTopicSubjectscore() + email.getRepliedTopicBodyscore())/2;
-		double totalReplySeparateScore = peopleScoreSeparateVectors + topicScoreSeparateVectors;
+		double totalReplySeparateScore = (peopleScoreSeparateVectors + topicScoreSeparateVectors)/2;
 		
 		//
-		double replyScoreToSend = email.getRepliedPeoplescore() + topicScoreSeparateVectors;
+		double replyScoreToSend = (email.getRepliedPeoplescore() + topicScoreSeparateVectors)/2;
 		reputationObj.put("replyscore", replyScoreToSend);
-		logger.info(email.getMsgUid()+ " : sending reply score (people, (subject+body)/2):" + replyScoreToSend + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2 : " + totalReplySeparateScore);
+		logger.info(email.getMsgUid()+ " : sending reply score (people + (subject+body)/2)/2:" + replyScoreToSend + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2)/2 : " + totalReplySeparateScore);
 		
 		
 		//flag scores
@@ -665,11 +675,11 @@ public final class EmailUtils {
 //	
 		double peopleScoreSeparateFlaggedVectors = (email.getFlaggedPeopleFromscore() + email.getFlaggedPeopleToscore() + email.getFlaggedPeopleCCscore())/3;
 		double topicScoreSeparateFlaggedVectors = (email.getFlaggedTopicSubjectscore() + email.getFlaggedTopicBodyscore())/2;
-		double totalFlaggedSeparateScore = peopleScoreSeparateFlaggedVectors + topicScoreSeparateFlaggedVectors;
+		double totalFlaggedSeparateScore = (peopleScoreSeparateFlaggedVectors + topicScoreSeparateFlaggedVectors)/2;
 		
-		double flagScoreToSend = email.getFlaggedPeoplescore() + topicScoreSeparateFlaggedVectors;
+		double flagScoreToSend = (email.getFlaggedPeoplescore() + topicScoreSeparateFlaggedVectors)/2;
 		reputationObj.put("flagscore", flagScoreToSend);
-		logger.info(email.getMsgUid()+ " : sending flagged score  (people,(subject+body)/2):" + flagScoreToSend + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2 : " + totalFlaggedSeparateScore);		
+		logger.info(email.getMsgUid()+ " : sending flagged score  (people+ (subject+body)/2)/2 :" + flagScoreToSend + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2)/2 : " + totalFlaggedSeparateScore);		
 			
 		
 		//seen scores
@@ -678,11 +688,11 @@ public final class EmailUtils {
 		
 		double peopleScoreSeparateSeenVectors = (email.getSeenPeopleFromscore() + email.getSeenPeopleToscore() + email.getSeenPeopleCCscore())/3;
 		double topicScoreSeparateSeenVectors = (email.getSeenTopicSubjectscore() + email.getSeenTopicBodyscore())/2;
-		double totalSeenSeparateScore = peopleScoreSeparateSeenVectors + topicScoreSeparateSeenVectors;
+		double totalSeenSeparateScore = (peopleScoreSeparateSeenVectors + topicScoreSeparateSeenVectors)/2;
 		
-		double seenScoreToSend = email.getSeenPeoplescore() + topicScoreSeparateSeenVectors;
+		double seenScoreToSend = (email.getSeenPeoplescore() + topicScoreSeparateSeenVectors)/2;
 		reputationObj.put("seescore", seenScoreToSend);
-		logger.info(email.getMsgUid()+ " : sending seen score :" + seenScoreToSend + " combined score ((from,to,cc)/3, (body.subject)/2 : " + totalSeenSeparateScore);		
+		logger.info(email.getMsgUid()+ " : sending seen score (people+ (subject+body)/2)/2 :" + seenScoreToSend + " combined score ((from,to,cc)/3, (body.subject)/2)/2 : " + totalSeenSeparateScore);		
 		
 		//send spam results also
 		reputationObj.put("spamcontentscore", email.getSpamTopicScore());
@@ -690,10 +700,15 @@ public final class EmailUtils {
 		reputationObj.put("spamkeywordscore", email.getSpamKeywordscore());
 		
 		
-		logger.info("the scores in results email to be sent :  uid : " + email.getMsgUid() + " contentscore : " + email.getTotalTopicScore()
-				+ " people score : " + email.getTotalPeopleScore() + " content cluster : " + email.getTextClusterId() + " content cluster rep score : " + email.getContentReputationScore() 
-				+ " people cluster : " + email.getPeopleClusterId() + " people cluster rep score : " + email.getRecipientReputationScore()
-				+  " email intent : " + intentString + " reply-score : " + replyScoreToSend + " flag score : " + flagScoreToSend + " see score: " + seenScoreToSend);
+		logger.info(email.getMsgUid() + " : " + email.getSubject() + 
+				"\n The scores in results email to be sent : "+" total contentscore : " + email.getContentReputationScore()
+				+ " total people score : " + email.getRecipientReputationScore() + " content cluster : " + email.getTextClusterId()  
+				+ " people cluster : " + email.getPeopleClusterId()
+				+  " email intent : " + intentString + " reply-score : " + replyScoreToSend 
+				+ " flag score : " + flagScoreToSend + " see score: " + seenScoreToSend
+				+ " is List mail : " + email.isListMail());
+		
+		logger.info("======================================================================================================================================================");
 		return reputationObj;
 	}
 	
@@ -1016,7 +1031,7 @@ public final class EmailUtils {
 		if (msg.isSet(Flags.Flag.ANSWERED)) {
 			logger.info("This is an answered message");
 			newEmail.setAnswered(true);
-
+			newEmail.setSeen(true);
 		}
 		//normally all answered emails are also seen; so to distinguish only seen emails use else-if
 		else if (msg.isSet(Flags.Flag.SEEN)) {
@@ -1051,9 +1066,8 @@ public final class EmailUtils {
 			subject = subject.substring(0, 254);
 		}
 		//processing nlp
-		logger.info("processing NLP results for subject..");
-		//subject = subject.toLowerCase();
-		newEmail = getNLPResults(subject, newEmail);
+		//logger.info("processing NLP results for subject..");
+		//newEmail = getNLPResults(subject, newEmail);
 		TextContent subjectTextContent = EmailUtils.processText(subject);
 		newEmail.setSubject(subject);
 		newEmail.setSubjectContent(subjectTextContent);
@@ -1102,7 +1116,6 @@ public final class EmailUtils {
 
 		// getting the speech-act features, they are only important if the email
 		// is directly sent or ccd and not sent on a bulk
-		double[] speechActVector = new double[5];
 		try{
 			if (newEmail.isDirect() || newEmail.isCCd()) {
 				logger.info("Size of the content to extract SA : " + cleanedText.length());
@@ -1110,46 +1123,14 @@ public final class EmailUtils {
 				if(cleanedText.length() >= 30000){
 					saText = cleanedText.substring(0, 29999);
 				}
-				speechAct.loadMessage(msg.getSubject() + "\n " + saText);
-				//boolean isCommit = speechAct.hasCommit();
-				//boolean hasDData = speechAct.hasDdata();
-				boolean isDelivery = speechAct.hasDeliver();
-				boolean isMeeting = speechAct.hasMeet();
-				boolean isProposal = speechAct.hasPropose();
-				boolean isRequest = speechAct.hasRequest();
-
-				newEmail.setMeeting(isMeeting);
-				//newEmail.setCommit(isCommit);
-				newEmail.setDelivery(isDelivery);
-				newEmail.setPropose(isProposal);
-				newEmail.setRequest(isRequest);
+				String text = msg.getSubject() + "\n " + saText;
+				newEmail = processSpeechAct(newEmail, text, speechAct);
 				
-//				if (isCommit) {
-//					logger.info("Speech act identified commit");				
-//					speechActVector[0] = 1;
-//				}
-				if (isDelivery) {
-					logger.info("Speech act identified delivery");
-					speechActVector[1] = 1;
-				}
-				if (isMeeting) {
-					logger.info("Speech act identified meeting");
-					speechActVector[2] = 1;
-				}
-				if (isProposal) {
-					logger.info("Speech act identified proposal");
-					speechActVector[3] = 1;
-				}
-				if (isRequest) {
-					logger.info("Speech act identified request");
-					speechActVector[4] = 1;
-				}
 			}
 		}catch(Exception ex){
 			logger.error("Exception occurred while processing email speech acts ", ex);
 		}	
-		newEmail.setSpeechActVector(speechActVector);
-
+		
 		bodyTextContent = EmailUtils.processText(cleanedText);
 		logger.info("\n After tokenizing, stemming content. tokenStream : \n" + bodyTextContent.getTokenStream());
 		newEmail.setBodyContent(bodyTextContent);
@@ -1190,6 +1171,47 @@ public final class EmailUtils {
 		return newEmail;
 	}
 
+	private static Email processSpeechAct(Email newEmail, String text, SpeechAct speechAct){
+		double[] speechActVector = new double[5];
+		
+		speechAct.loadMessage(text);
+		//boolean isCommit = speechAct.hasCommit();
+		//boolean hasDData = speechAct.hasDdata();
+		boolean isDelivery = speechAct.hasDeliver();
+		boolean isMeeting = speechAct.hasMeet();
+		boolean isProposal = speechAct.hasPropose();
+		boolean isRequest = speechAct.hasRequest();
+
+		newEmail.setMeeting(isMeeting);
+		//newEmail.setCommit(isCommit);
+		newEmail.setDelivery(isDelivery);
+		newEmail.setPropose(isProposal);
+		newEmail.setRequest(isRequest);
+		
+//		if (isCommit) {
+//			logger.info("Speech act identified commit");				
+//			speechActVector[0] = 1;
+//		}
+		if (isDelivery) {
+			logger.info("Speech act identified delivery");
+			speechActVector[1] = 1;
+		}
+		if (isMeeting) {
+			logger.info("Speech act identified meeting");
+			speechActVector[2] = 1;
+		}
+		if (isProposal) {
+			logger.info("Speech act identified proposal");
+			speechActVector[3] = 1;
+		}
+		if (isRequest) {
+			logger.info("Speech act identified request");
+			speechActVector[4] = 1;
+		}
+		
+		newEmail.setSpeechActVector(speechActVector);
+		return newEmail;
+	}
 	/**
 	 * combine content vector, recipient vector, speech act vector, list-header,
 	 * spam-header,is direct, is ccd, is bccd
@@ -1288,86 +1310,86 @@ public final class EmailUtils {
 		return email.getAllFeatureVector();
 	}
 
-	public static Email getNLPResults(String content, Email email){
-        
-		try{
-			//convert the string to lower case;
-			
-			//Set<String> persons = new HashSet<String>();
-			//Set<String> locations = new HashSet<String>();
-			//Set<String> organizations = new HashSet<String>();
-			List<String> keywords = new ArrayList<String>();
-			EnglishStemmer stemmer = new EnglishStemmer();
-
-			Map<String, Integer> keywordMatrix = new HashMap<String, Integer>();
-			if(content.length() > 5000){
-				logger.info("content too large to handle for NLP pipeline; ;length : " + content.length()); 
-				content = content.substring(0, 5000);
-			}
-			if(content != null && !content.equals("")){
-				Annotation document = new Annotation(content);
-			    // run all Annotators on this text
-			    pipeline.annotate(document);
-			    
-			    // these are all the sentences in this document
-			    // a CoreMap is essentially a Map that uses class objects as keys and has values with custom types
-			    List<CoreMap> sentences = document.get(SentencesAnnotation.class);
-			    
-			    for(CoreMap sentence: sentences) {
-			      // traversing the words in the current sentence
-			      // a CoreLabel is a CoreMap with additional token-specific methods
-			      for (CoreLabel token: sentence.get(TokensAnnotation.class)) {
-			        // this is the text of the token
-			        String word = token.get(TextAnnotation.class);
-			        // this is the POS tag of the token
-			        String pos = token.get(PartOfSpeechAnnotation.class);
-			        // this is the NER label of the token
-			        //String ne = token.get(NamedEntityTagAnnotation.class);
-			        if(pos.equalsIgnoreCase("NN") || pos.equalsIgnoreCase("NNS")){
-			        	//trim the word to 255 length due to storage requirements
-						if(word.length() >= 255){
-							word = word.substring(0, 254);
-						}
-						
-			        	word = stemmer.stem(word);
-			        	keywords.add(word);
-			        	if(keywordMatrix.containsKey(word)) {
-			        		Integer val = keywordMatrix.get(word);
-			        		keywordMatrix.put(word, val+1);
-			        	} else {
-			        		keywordMatrix.put(word, new Integer(1));
-			        	}
-
-			        	logger.info("Adding keyword : " + word);
-			        	//System.out.println("The word :" + word + " is a " + pos + " and added as a keyword");
-			        }
-
-//			        if(ne.equalsIgnoreCase("PERSON")){
-//			        	persons.add(word);
-//				        System.out.println("NLP word : " + word + " pos : " + pos + " Named entity : " + ne );
-//			        } else if(ne.equalsIgnoreCase("LOCATION")){
-//			        	locations.add(word);
-//				        System.out.println("NLP word : " + word + " pos : " + pos + " Named entity : " + ne );
-//			        }else if(ne.equalsIgnoreCase("ORGANIZATION")){
-//			        	organizations.add(word);
-//				        System.out.println("NLP word : " + word + " pos : " + pos + " Named entity : " + ne );
+//	public static Email getNLPResults(String content, Email email){
+//        
+//		try{
+//			//convert the string to lower case;
+//			
+//			//Set<String> persons = new HashSet<String>();
+//			//Set<String> locations = new HashSet<String>();
+//			//Set<String> organizations = new HashSet<String>();
+//			List<String> keywords = new ArrayList<String>();
+//			EnglishStemmer stemmer = new EnglishStemmer();
+//
+//			Map<String, Integer> keywordMatrix = new HashMap<String, Integer>();
+//			if(content.length() > 5000){
+//				logger.info("content too large to handle for NLP pipeline; ;length : " + content.length()); 
+//				content = content.substring(0, 5000);
+//			}
+//			if(content != null && !content.equals("")){
+//				Annotation document = new Annotation(content);
+//			    // run all Annotators on this text
+//			    pipeline.annotate(document);
+//			    
+//			    // these are all the sentences in this document
+//			    // a CoreMap is essentially a Map that uses class objects as keys and has values with custom types
+//			    List<CoreMap> sentences = document.get(SentencesAnnotation.class);
+//			    
+//			    for(CoreMap sentence: sentences) {
+//			      // traversing the words in the current sentence
+//			      // a CoreLabel is a CoreMap with additional token-specific methods
+//			      for (CoreLabel token: sentence.get(TokensAnnotation.class)) {
+//			        // this is the text of the token
+//			        String word = token.get(TextAnnotation.class);
+//			        // this is the POS tag of the token
+//			        String pos = token.get(PartOfSpeechAnnotation.class);
+//			        // this is the NER label of the token
+//			        //String ne = token.get(NamedEntityTagAnnotation.class);
+//			        if(pos.equalsIgnoreCase("NN") || pos.equalsIgnoreCase("NNS")){
+//			        	//trim the word to 255 length due to storage requirements
+//						if(word.length() >= 255){
+//							word = word.substring(0, 254);
+//						}
+//						
+//			        	word = stemmer.stem(word);
+//			        	keywords.add(word);
+//			        	if(keywordMatrix.containsKey(word)) {
+//			        		Integer val = keywordMatrix.get(word);
+//			        		keywordMatrix.put(word, val+1);
+//			        	} else {
+//			        		keywordMatrix.put(word, new Integer(1));
+//			        	}
+//
+//			        	logger.info("Adding keyword : " + word);
+//			        	//System.out.println("The word :" + word + " is a " + pos + " and added as a keyword");
 //			        }
-			      }
-			    }
-			    //email.setPersons(persons);
-			    //email.setOrganizations(organizations);
-			    //email.setLocations(locations);
-			    email.setKeywords(keywords);
-			    //for NLP tag analysis using random indexing
-			    email.setKeywordMatrix(keywordMatrix);
-			    
-			}
-		}catch(Exception ex){
-			logger.error("Error when getting NLP results", ex);
-		}
-		
-	    return email; 
-	}
+//
+////			        if(ne.equalsIgnoreCase("PERSON")){
+////			        	persons.add(word);
+////				        System.out.println("NLP word : " + word + " pos : " + pos + " Named entity : " + ne );
+////			        } else if(ne.equalsIgnoreCase("LOCATION")){
+////			        	locations.add(word);
+////				        System.out.println("NLP word : " + word + " pos : " + pos + " Named entity : " + ne );
+////			        }else if(ne.equalsIgnoreCase("ORGANIZATION")){
+////			        	organizations.add(word);
+////				        System.out.println("NLP word : " + word + " pos : " + pos + " Named entity : " + ne );
+////			        }
+//			      }
+//			    }
+//			    //email.setPersons(persons);
+//			    //email.setOrganizations(organizations);
+//			    //email.setLocations(locations);
+//			    email.setKeywords(keywords);
+//			    //for NLP tag analysis using random indexing
+//			    email.setKeywordMatrix(keywordMatrix);
+//			    
+//			}
+//		}catch(Exception ex){
+//			logger.error("Error when getting NLP results", ex);
+//		}
+//		
+//	    return email; 
+//	}
 
 
 	/**
@@ -1875,6 +1897,7 @@ public final class EmailUtils {
 				" no. of marked spam emails from thunderbird client : " + markedSpamEmails.size());
 		
 		for(Email email : allEmails) {
+			
 			email.setModel(true);
 			email.setPredicted(false);
 			if(markedImportantEmails.contains(email.getMsgUid())){
@@ -1901,7 +1924,7 @@ public final class EmailUtils {
 			//unimportant models
 			if( email.isSpam() || email.isDeleted()){
 				logger.info("this is a spam email recognized by flag or header : " + email.getMsgUid());
-				double vectorTotal = EmailUtils.getVectorTotal(email.getTextContextVector());
+				//double vectorTotal = EmailUtils.getVectorTotal(email.getTextContextVector());
 				//if(!Double.isNaN(vectorTotal)){
 					double[] unimportanttopicsVector = VectorsMath.addArrays(repModel.getSpamVector(), email.getTextContextVector());
 					repModel.setSpamVector(unimportanttopicsVector);
@@ -1952,7 +1975,7 @@ public final class EmailUtils {
 						//numberOfDirectEmailsReplied++;
 						repModel.getRepliedEmails().add(email);
 					}
-					else if(email.isSeen()){
+					else if(email.isSeen() || email.isAnswered()){
 						logger.info("this is a direct email seen : " + email.getMsgUid());
 						
 						double[] importantTopicsOnlySeen = VectorsMath.addArrays(repModel.getImportantTopicsOnlySeen(), email.getTextContextVector());
@@ -2047,7 +2070,7 @@ public final class EmailUtils {
 										
 					}
 					else if(email.isSeen()){
-						logger.info("this is a list email seen : "  + email.getMsgUid());
+						logger.info("this is a list email seen or replied : "  + email.getMsgUid());
 						double[] importantListTopicsOnlySeen = VectorsMath.addArrays
 								(repModel.getImportantListTopicsOnlySeen(), email.getTextContextVector());
 						repModel.setImportantListTopicsOnlySeen(importantListTopicsOnlySeen);
@@ -2114,6 +2137,72 @@ public final class EmailUtils {
 			}
 		}
 		
+		//building profile's clusters
+		List<Email> repliedEmails = new ArrayList<Email>();
+		repliedEmails.addAll(repModel.getRepliedEmails());
+		List<EmailWeightedSubjectBodyContentCluster> repliedContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(repliedEmails);
+		List<EmailRecipientCluster> repliedRecipientClusters = KMeansClustering.clusterBasedOnRecipients(repliedEmails);
+		repModel.setRepliedProfileContentClusters(repliedContentClusters);
+		repModel.setRepliedProfilePeopleClusters(repliedRecipientClusters);
+		//printing the repmodel profile content clusters
+		logger.info("printing the repmodel replied profile content clusters");
+		for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedContentClusters){
+			List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
+			String clusterId = contentCluster.getId();
+			for(Email email : repliedClusterEmails){
+				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		List<Email> seenEmails = new ArrayList<Email>();
+		seenEmails.addAll(repModel.getRepliedEmails());
+		List<EmailWeightedSubjectBodyContentCluster> seenContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(seenEmails);
+		List<EmailRecipientCluster> seenRecipientClusters = KMeansClustering.clusterBasedOnRecipients(seenEmails);
+		repModel.setSeenProfileContentClusters(seenContentClusters);
+		repModel.setSeenProfilePeopleClusters(seenRecipientClusters);
+		
+		logger.info("printing the repmodel seen profile content clusters");
+		for(EmailWeightedSubjectBodyContentCluster contentCluster : seenContentClusters){
+			List<Email> seenClusterEmails = contentCluster.getSubjectBodyContentEmails();
+			String clusterId = contentCluster.getId();
+			for(Email email : seenClusterEmails){
+				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		//profile's clusters for list emails
+		List<Email> repliedListEmails = new ArrayList<Email>();
+		repliedListEmails.addAll(repModel.getRepliedListEmails());
+		List<EmailWeightedSubjectBodyContentCluster> repliedListContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(repliedListEmails);
+		List<EmailRecipientCluster> repliedListRecipientClusters = KMeansClustering.clusterBasedOnRecipients(repliedListEmails);
+		repModel.setRepliedListProfileContentClusters(repliedListContentClusters);
+		repModel.setRepliedListProfilePeopleClusters(repliedListRecipientClusters);
+		
+		System.out.println("printing the repmodel replied list profile content clusters");
+		for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedListContentClusters){
+			List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
+			String clusterId = contentCluster.getId();
+			for(Email email : repliedClusterEmails){
+				System.out.println(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		List<Email> seenListEmails = new ArrayList<Email>();
+		seenListEmails.addAll(repModel.getSeenListEmails());
+		List<EmailWeightedSubjectBodyContentCluster> seenListContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(seenListEmails);
+		List<EmailRecipientCluster> seenListRecipientClusters = KMeansClustering.clusterBasedOnRecipients(seenListEmails);
+		repModel.setSeenListProfileContentClusters(seenListContentClusters);
+		repModel.setSeenListProfilePeopleClusters(seenListRecipientClusters);
+		
+		System.out.println("printing the repmodel seen profile content clusters");
+		for(EmailWeightedSubjectBodyContentCluster contentCluster : seenListContentClusters){
+			List<Email> seenClusterEmails = contentCluster.getSubjectBodyContentEmails();
+			String clusterId = contentCluster.getId();
+			for(Email email : seenClusterEmails){
+				System.out.println(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
 		mb.setReputationDataModel(repModel);
 		//no need to average the vectors as when taking cosine sim, the index values are not important
 		//only the direction of the vector is important.
@@ -2132,6 +2221,32 @@ public final class EmailUtils {
 	}
 	
 	
+	/**
+	 * generate the clusters for all emails in the mailbox
+	 * content clusters, recipient clusters, weighted-subjectbody clusters
+	 * @param mailBox
+	 * @return
+	 */
+	public static UserMailBox generateEmailClusters(UserMailBox mailBox){
+		
+		logger.info("Creating topic clusters for the mailbox emails ..");
+		EmailReputationDataModel model = mailBox.getReputationDataModel();
+		logger.info("Creating the content and people clusters from training dataset");	
+		List<Email> allEmails = mailBox.getAllEmails();
+		List<EmailContentCluster> contentClusters = EmailAnalysisService.kMeansClusterText(allEmails);
+		List<EmailRecipientCluster> recipientClusters = EmailAnalysisService.kMeansClusterRecipients(allEmails);
+		List<EmailWeightedSubjectBodyContentCluster> weightedSubjectBodyClusters = EmailAnalysisService.kMeansClusterWeightedSubjectBodyContent(allEmails);
+		model.setContentClusters(contentClusters);
+		model.setRecipientClusters(recipientClusters);
+		model.setWeightedSubjectBodyClusters(weightedSubjectBodyClusters);
+		
+		logger.info("Dunn index for content clusters : " + model.calculateDunnIndexForContentClusters());
+		logger.info("Dunn index for recipient clusters : " + model.calculateDunnIndexForRecipientClusters());
+		logger.info("Avg dunn index for weighted subject-body clusters : " + model.calculateDunnIndexForSubjectBodyClusters());
+		
+		mailBox.setReputationDataModel(model);		
+		return mailBox;
+	}
 @Deprecated
 	public static UserMailBox updateAverageImportanceVectors(UserMailBox mailBox) {
 		EmailReputationDataModel model = mailBox.getReputationDataModel();
@@ -2458,7 +2573,7 @@ public final class EmailUtils {
 				String row = vector.getWord() + ","
 						+ vector.getWordDocFrequency() + "," + posIndString
 						+ "," + negIndString;
-				System.out.println("writing indexvector to file : " + row);
+				//System.out.println("writing indexvector to file : " + row);
 				writer.println(row);
 			}
 		} catch (Exception e) {
@@ -2476,7 +2591,7 @@ public final class EmailUtils {
 			BufferedReader bf = new BufferedReader(new FileReader(vectorFile));
 			String line = null;
 			while ((line = bf.readLine()) != null) {
-				logger.info("parsing the line: " + line);
+				//logger.info("parsing the line: " + line);
 				String[] resultRow = line.split(",");
 				String word = resultRow[0];
 				int frequency = Integer.parseInt(resultRow[1]);
@@ -2516,7 +2631,7 @@ public final class EmailUtils {
 					if(negString.length() > 0){
 						String[] neg = negString.split(":");
 						negIndexes = new int[neg.length];
-						logger.info("parsing negative string : " + negString);
+//						logger.info("parsing negative string : " + negString);
 						for (int x = 0; x < neg.length; x++) {
 							try{
 								int indexVal = Integer.parseInt(neg[x]);
@@ -2532,9 +2647,9 @@ public final class EmailUtils {
 				}
 
 				
-				logger.info("loaded index vector for word : "+ word 
-						+ " frequency : " + frequency + " positive indexes : " + posIndexesString 
-						+ " negative indexes : " + negIndexesString);
+//				logger.info("loaded index vector for word : "+ word 
+//						+ " frequency : " + frequency + " positive indexes : " + posIndexesString 
+//						+ " negative indexes : " + negIndexesString);
 				// creating the RIVector object
 				RandomIndexVector riVector = new RandomIndexVector();
 				riVector.setWord(word);
@@ -2549,5 +2664,6 @@ public final class EmailUtils {
 		}
 	
 		return indexVectors;
-	}
+	}	
+	
 }
