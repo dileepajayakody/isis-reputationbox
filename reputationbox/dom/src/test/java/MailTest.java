@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
@@ -51,6 +52,7 @@ import org.nic.isis.reputation.dom.ContextVectorMap;
 import org.nic.isis.reputation.dom.Email;
 import org.nic.isis.reputation.dom.EmailBody;
 import org.nic.isis.reputation.dom.IndexVectorMap;
+import org.nic.isis.reputation.dom.TextContent;
 import org.nic.isis.reputation.dom.TextTokenMap;
 import org.nic.isis.reputation.dom.UserMailBox;
 import org.nic.isis.reputation.services.EmailAnalysisService;
@@ -99,28 +101,41 @@ public class MailTest {
 		
 		 System.out.print(root.toString());
 	}
+	
 	public static void main(String[] args) {
 		MailTest mt = new MailTest();
 		//mt.sendReputationResults();
-		mt.processFileBasedEmailImportanceResults();
+		//mt.processFileBasedEmailImportanceResults();
+		
+		
+		testTextSimilarity();
 		
 		//mt.javaMailIteratorTest();
 		//mt.testStanfordNlp();
 		//testVectors();
 		//splitMailFile();
 		
-//		String test = "M123M432M543M";
-//		String[] parts = test.split("M");
-//		for(String part : parts){
-//			if(!part.equals("")){
-//
-//				System.out.println("part: " + part);	
-//			}
-//		}
+
 	}
 	
 	
-	
+	public static void processThunderbirdEmailsForPeriod(Date from, Date to){
+		File mailDirectory = splitMailFile();
+		RandomIndexing textSemantics = new RandomIndexing(
+					new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap(), RandomIndexing.textSemanticType);
+		RandomIndexing recipientSemantics = new RandomIndexing(
+				  new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap(), RandomIndexing.peopleSemanticType);
+		  
+		textSemantics.setWordDocumentFrequencies(new HashMap<String, Integer>());
+		recipientSemantics.setWordDocumentFrequencies(new HashMap<String, Integer>());
+
+		List<Email> modelEmails = processEmailsInDirectory(mailDirectory.getAbsolutePath(), "dileepajayakody@gmail.com", textSemantics, recipientSemantics);
+		for(Email email : modelEmails){
+			//get the emails for the time period.also retrieve the flags
+			//X-Mozilla-Status: 0001  means read emails
+		}
+		
+	} 
 	
 	public void processEnronEmailSet(){
 		  File mailDir = new File("/home/dileepa/Desktop/research/DATA/reputationBasedSpamFilter/Enron_Sample_Data/enron_mail_20110402/maildir/allen-p/inbox");
@@ -282,8 +297,8 @@ public class MailTest {
 			Store store = session.getStore();
 			store.connect("imap.gmail.com", "gdcdemo2013@gmail.com",
 					"gdcdemo2013pass");
-			Folder inbox = store.getFolder("Trash");
-			//Folder inbox = store.getFolder("[Gmail]/Important");
+			//Folder inbox = store.getFolder("Trash");
+			Folder inbox = store.getFolder("[Gmail]/Important");
 			UIDFolder uf = (UIDFolder) inbox;
 
 			inbox.open(Folder.READ_ONLY);
@@ -378,7 +393,7 @@ public class MailTest {
 		System.out.println("centroid : " + centroid[0] + " , " + centroid[1] + " , " + centroid[2] );
 	}
 	
-	public List<Email> processEmailsInDirectory(String directory, String mailBoxId, RandomIndexing textSemantics, RandomIndexing recipientSemantics){
+	public static List<Email> processEmailsInDirectory(String directory, String mailBoxId, RandomIndexing textSemantics, RandomIndexing recipientSemantics){
 		File mailDir = new File(directory);
 	 	
 		 //File importantMailDir = new File("/home/dileepa/Desktop/research/DATA/reputationBasedSpamFilter/Enron_Sample_Data/enron_mail_20110402/maildir/stclair-c/important_e_mails");
@@ -439,6 +454,47 @@ public class MailTest {
 		  return emails;
 	}
 	
+	public static void testTextSimilarity(){
+		EmailAnalysisService emailAnalysisService = new EmailAnalysisService(); 
+		RandomIndexing textSemantics = new RandomIndexing(
+					new IndexVectorMap().getIndexVectorMap(), new ContextVectorMap().getContextVectorMap(), RandomIndexing.textSemanticType);
+		  
+		 textSemantics.setWordDocumentFrequencies(new HashMap<String, Integer>());
+		
+		 Email mail1 = new Email();
+		 TextContent subject = EmailUtils.processText("itjobs.lk introduction");
+		 mail1.setSubjectContent(subject);
+		 TextContent body1 = EmailUtils.processText("it's our pleasure to introduce the Sri lankan premier job portal itjobs.lk. Join us and find your dream job");
+		 mail1.setBodyContent(body1);
+		 
+		 Email mail2 = new Email();
+		 TextContent subject2 = EmailUtils.processText("top jobs introduction");
+		 mail2.setSubjectContent(subject2);
+		 TextContent body2 = EmailUtils.processText("topjobs.lk is the leading job portal in Sri lanka. there are no other job portal that is more prominent than topjobs.lk");
+		 mail2.setBodyContent(body2);
+		 
+		  
+		 Email mail3 = new Email();
+		 TextContent subject3 = EmailUtils.processText("please add me to linkedin");
+		 mail3.setSubjectContent(subject3);
+		 TextContent body3 = EmailUtils.processText("I'm a indian software engineer in wso2. I'm in seek of a job");
+		 mail3.setBodyContent(body3);
+		 try {
+			textSemantics = emailAnalysisService.processTextSemantics(
+						mail2, textSemantics);
+			
+			textSemantics = emailAnalysisService.processTextSemantics(
+					mail3, textSemantics);
+			
+			System.out.println("sim between 2 emails text: " + EmailUtils.calculateCosineSimilarity(mail2.getTextContextVector(), mail3.getTextContextVector()));
+		
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		  
+	}
+	
 	public void processFileBasedEmailImportanceResults(){
 //		  List<Email> emails = processEmailsInDirectory("/home/dileepa/Desktop"
 //		  		+ "/research/DATA/reputationBasedSpamFilter/Enron_Sample_Data/enron_mail_20110402/maildir/stclair-c/important_e_mails");
@@ -467,7 +523,7 @@ public class MailTest {
 		  UserMailBox mb = new UserMailBox();
 		  mb.setAllEmails(modelEmails);
 		  //now create the importance model using it
-		  mb = EmailUtils.calculateImportanceModel(mb);
+		  mb = EmailUtils.calculateImportanceModel(mb, mb.getAllEmails());
 		  //clusterEnronEmails(emails);
 	  
 		  
@@ -489,7 +545,7 @@ public class MailTest {
 		  for(Email email : emailsToPredict){
 				  
 			  //mb.predictImportanceFromEmail(email);
-			  mb.predictImportanceBasedOnClusterSimilarity(email);
+			  mb.predictImportanceBasedOnProfileSubClusterSimilarity(email);
 			  
 			  double repliedTopicScore = email.getRepliedTopicscore();
 			  double repliedPeopleScore = email.getRepliedPeoplescore();
@@ -731,7 +787,7 @@ public class MailTest {
 	}
 	
 	
-	public static void splitMailFile(){
+	public static File splitMailFile(){
 		
 		File readingParentMailDir = new File("/home/dileepa/.thunderbird/0nm254p6.default/ImapMail/imap.googlemail.com/[Gmail].sbd");
 		File inputMailFile = new File(readingParentMailDir,"All Mail");
@@ -775,7 +831,7 @@ public class MailTest {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-	 	
+	 	return outputDir;
 	}
 
 }

@@ -17,13 +17,28 @@ import edu.ucla.sspace.vector.IntegerVector;
 import edu.ucla.sspace.vector.SparseDoubleVector;
 import edu.ucla.sspace.vector.Vector;
 
-@javax.jdo.annotations.Queries({ @javax.jdo.annotations.Query(
-		name = "findEmailsForPeriod", 
+@javax.jdo.annotations.Queries({ 
+	@javax.jdo.annotations.Query(
+		name = "findEmailsBetweenMsgUid", 
 		language = "JDOQL", 
-		value = "SELECT FROM org.nic.isis.reputation.dom.Email WHERE mailboxId == mailboxId "
-				+ "&& sentTimestamp > fromDate && sentTimestamp <= toDate "
-				+ "PARAMETERS String mailboxId, long fromDate, long toDate "
-				+ "ORDER BY sentTimestamp ASC") })
+		value = "SELECT FROM org.nic.isis.reputation.dom.Email WHERE "
+				+ "msgUid > fromUid && msgUid <= toUid "
+				+ "PARAMETERS long fromUid, long toUid "
+				+ "ORDER BY msgUid ASC"), 
+	@javax.jdo.annotations.Query(
+		name = "findPredictedEmails", 
+		language = "JDOQL", 
+		value = "SELECT FROM org.nic.isis.reputation.dom.Email WHERE "
+				+ "msgUid > fromUid && isPredicted==true "
+				+ "PARAMETERS long fromUid "
+				+ "ORDER BY msgUid ASC"), 			
+	@javax.jdo.annotations.Query(
+		name = "findSenderReputation", 
+		language = "JDOQL", 
+		value = "SELECT FROM org.nic.isis.reputation.dom.Email WHERE "
+				+ "fromAddress == emailAddress "
+				+ "PARAMETERS String emailAddress ")})
+
 @javax.jdo.annotations.PersistenceCapable(identityType = IdentityType.DATASTORE)
 @javax.jdo.annotations.DatastoreIdentity(strategy = javax.jdo.annotations.IdGeneratorStrategy.IDENTITY, column = "id")
 @javax.jdo.annotations.Version(strategy = VersionStrategy.VERSION_NUMBER, column = "version")
@@ -134,11 +149,30 @@ public class Email {
 	private boolean isCCd = false;
 	private boolean isBCCd = false;
 	
-	
 	//these are assigned from clustering results
 	private double contentReputationScore;
 	private double recipientReputationScore;
 	private double weightedSubjectBodyContentScore;
+	
+	//profile sub cluster based reputation scores
+	private double profileClusterReadContentScore;
+	private double profileClusterReadRecipientScore;
+	private double profileClusterFlagContentScore;
+	private double profileClusterFlagRecipientScore;
+	private double profileClusterReplyContentScore;
+	private double profileClusterReplyRecipientScore;
+	
+	
+	//total read,reply,flag scores for userprofile based approach
+	private double totalProfileBasedReadScore;
+	private double totalProfileBasedReplyScore;
+	private double totalProfileBasedFlagScore;
+	
+	//total read,reply,flag scores for profile-subclusters based approach
+	private double totalSubClusterBasedReadScore;
+	private double totalSubClusterBasedReplyScore;
+	private double totalSubClusterBasedFlagScore;
+	
 	
 	//whether this is used for model creation or prediction
 	private boolean isModel = false;
@@ -1476,6 +1510,145 @@ public class Email {
 		this.totalPeopleCCScore = totalPeopleCCScore;
 	}
 
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getProfileClusterReadContentScore() {
+		return profileClusterReadContentScore;
+	}
 
+
+	public void setProfileClusterReadContentScore(
+			double profileClusterReadContentScore) {
+		this.profileClusterReadContentScore = profileClusterReadContentScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getProfileClusterReadRecipientScore() {
+		return profileClusterReadRecipientScore;
+	}
+
+
+	public void setProfileClusterReadRecipientScore(
+			double profileClusterReadRecipientScore) {
+		this.profileClusterReadRecipientScore = profileClusterReadRecipientScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getProfileClusterFlagContentScore() {
+		return profileClusterFlagContentScore;
+	}
+
+
+	public void setProfileClusterFlagContentScore(
+			double profileClusterFlagContentScore) {
+		this.profileClusterFlagContentScore = profileClusterFlagContentScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getProfileClusterFlagRecipientScore() {
+		return profileClusterFlagRecipientScore;
+	}
+
+	public void setProfileClusterFlagRecipientScore(
+			double profileClusterFlagRecipientScore) {
+		this.profileClusterFlagRecipientScore = profileClusterFlagRecipientScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getProfileClusterReplyContentScore() {
+		return profileClusterReplyContentScore;
+	}
+
+	public void setProfileClusterReplyContentScore(
+			double profileClusterReplyContentScore) {
+		this.profileClusterReplyContentScore = profileClusterReplyContentScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getProfileClusterReplyRecipientScore() {
+		return profileClusterReplyRecipientScore;
+	}
+
+	public void setProfileClusterReplyRecipientScore(
+			double profileClusterReplyRecipientScore) {
+		this.profileClusterReplyRecipientScore = profileClusterReplyRecipientScore;
+	}
+
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getTotalProfileBasedReadScore() {
+		return totalProfileBasedReadScore;
+	}
+
+
+	public void setTotalProfileBasedReadScore(double totalProfileBasedReadScore) {
+		this.totalProfileBasedReadScore = totalProfileBasedReadScore;
+	}
+
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getTotalProfileBasedReplyScore() {
+		return totalProfileBasedReplyScore;
+	}
+
+
+	public void setTotalProfileBasedReplyScore(double totalProfileBasedReplyScore) {
+		this.totalProfileBasedReplyScore = totalProfileBasedReplyScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getTotalProfileBasedFlagScore() {
+		return totalProfileBasedFlagScore;
+	}
+
+
+	public void setTotalProfileBasedFlagScore(double totalProfileBasedFlagScore) {
+		this.totalProfileBasedFlagScore = totalProfileBasedFlagScore;
+	}
+
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getTotalSubClusterBasedReadScore() {
+		return totalSubClusterBasedReadScore;
+	}
+
+
+	public void setTotalSubClusterBasedReadScore(
+			double totalSubClusterBasedReadScore) {
+		this.totalSubClusterBasedReadScore = totalSubClusterBasedReadScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getTotalSubClusterBasedReplyScore() {
+		return totalSubClusterBasedReplyScore;
+	}
+
+
+	public void setTotalSubClusterBasedReplyScore(
+			double totalSubClusterBasedReplyScore) {
+		this.totalSubClusterBasedReplyScore = totalSubClusterBasedReplyScore;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public double getTotalSubClusterBasedFlagScore() {
+		return totalSubClusterBasedFlagScore;
+	}
+
+
+	public void setTotalSubClusterBasedFlagScore(
+			double totalSubClusterBasedFlagScore) {
+		this.totalSubClusterBasedFlagScore = totalSubClusterBasedFlagScore;
+	}
 
 }

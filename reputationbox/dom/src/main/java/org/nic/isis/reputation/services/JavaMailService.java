@@ -72,6 +72,11 @@ public class JavaMailService {
 	private final static Logger logger = LoggerFactory
 			.getLogger(JavaMailService.class);
 
+	/**
+	 * adding more emails to the model
+	 * @param mailbox
+	 * @return
+	 */
 	@Programmatic
 	public UserMailBox addMailsToModel(UserMailBox mailbox){
 		logger.info("creating email model for important emails..");
@@ -163,7 +168,7 @@ public class JavaMailService {
 
 			//setting an empty email model for the mailbox
 			logger.info("Emails to retrieve :" + messages.length );
-			int messageLimit = 50;
+			int messageLimit = 200;
 			if(messages.length < messageLimit){
 				messageLimit = messages.length;
 			}
@@ -176,6 +181,7 @@ public class JavaMailService {
 					if(mailbox.getAllEmails().size() <= mailbox.getCurrentModelSize()){
 
 						Message msg = messages[count];
+						
 						// setting the address objects
 						Address[] from = msg.getFrom();
 						String fromAddress = EmailUtils.getEmailAddressString(from[0].toString());
@@ -341,7 +347,7 @@ public class JavaMailService {
 			messages = (Message[])ArrayUtils.subarray(messages, 1, messages.length);
 			
 			List<Email> newEmails = new ArrayList<Email>();			
-			int messagesLimit = 50;
+			int messagesLimit = 100;
 			if(messages.length < messagesLimit){
 				messagesLimit = messages.length;
 			}
@@ -378,10 +384,10 @@ public class JavaMailService {
 							//classify and recommend the reputation of the email based on importance model
 							logger.info("Predicting the reputation of the email based on existing importance model");								
 							//newEmail = mailbox.predictImportanceFromEmail(newEmail);													
-							newEmail = mailbox.predictImportanceBasedOnClusterSimilarity(newEmail);
+							newEmail = mailbox.predictImportanceFromEmailUserProfile(newEmail);
 							
 							//also classify new email based on the content and people clusters
-							//newEmail = mailbox.classifyEmailBasedOnContentAndRecipients(newEmail);
+							newEmail = mailbox.classifyEmailBasedOnContentAndRecipients(newEmail);
 							
 							newEmails.add(newEmail);
 							mailbox.addEmail(newEmail);
@@ -805,7 +811,9 @@ public class JavaMailService {
 
 		//emails till 3 days ago
 		Calendar toDay = Calendar.getInstance();
-		toDay.add(Calendar.DATE, to);			
+		if(to != 0){
+			toDay.add(Calendar.DATE, to);				
+		}
 		
 		Date toDate = toDay.getTime();
 		logger.info("Retrieving emails from date : " + fromDate);

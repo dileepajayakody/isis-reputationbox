@@ -8,8 +8,10 @@ import edu.stanford.nlp.ling.CoreAnnotations.TextAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
 import edu.stanford.nlp.pipeline.Annotation;
 import edu.stanford.nlp.pipeline.StanfordCoreNLP;
+import edu.stanford.nlp.trees.tregex.tsurgeon.CreateSubtreeNode;
 import edu.stanford.nlp.util.CoreMap;
 import edu.ucla.sspace.common.Similarity;
+import edu.ucla.sspace.ri.RandomIndexing;
 import edu.ucla.sspace.text.EnglishStemmer;
 import jangada.ReplyToAnnotator;
 import jangada.SigFilePredictor;
@@ -626,9 +628,10 @@ public final class EmailUtils {
 	 * @param email
 	 * @return
 	 */
+/*	
 	public static JSONObject getReputationObjectJSON(Email email){
 		JSONObject reputationObj = new JSONObject();
-		reputationObj.put("id", email.getMessageId());
+		//reputationObj.put("id", email.getMessageId());
 		reputationObj.put("uid", email.getMsgUid());
 		if(email.isPredicted()){
 			reputationObj.put("is_predicted", 1);	
@@ -665,8 +668,9 @@ public final class EmailUtils {
 		
 		//
 		double replyScoreToSend = (email.getRepliedPeoplescore() + topicScoreSeparateVectors)/2;
-		reputationObj.put("replyscore", replyScoreToSend);
-		logger.info(email.getMsgUid()+ " : sending reply score (people + (subject+body)/2)/2:" + replyScoreToSend + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2)/2 : " + totalReplySeparateScore);
+		String replyScore =  String.format("%.4f",replyScoreToSend);
+		reputationObj.put("replyscore",replyScore);
+		//logger.info(email.getMsgUid()+ " subject : " + email.getSubject() + " : sending reply score (people + (subject+body)/2)/2:" + replyScore + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2)/2 : " + totalReplySeparateScore);
 		
 		
 		//flag scores
@@ -678,8 +682,9 @@ public final class EmailUtils {
 		double totalFlaggedSeparateScore = (peopleScoreSeparateFlaggedVectors + topicScoreSeparateFlaggedVectors)/2;
 		
 		double flagScoreToSend = (email.getFlaggedPeoplescore() + topicScoreSeparateFlaggedVectors)/2;
-		reputationObj.put("flagscore", flagScoreToSend);
-		logger.info(email.getMsgUid()+ " : sending flagged score  (people+ (subject+body)/2)/2 :" + flagScoreToSend + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2)/2 : " + totalFlaggedSeparateScore);		
+		String flagScore = String.format("%.4f", flagScoreToSend);
+		reputationObj.put("flagscore", flagScore);
+		//logger.info(email.getMsgUid()+ " subject : " + email.getSubject() + " : sending flagged score  (people+ (subject+body)/2)/2 :" + flagScore + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2)/2 : " + totalFlaggedSeparateScore);		
 			
 		
 		//seen scores
@@ -691,21 +696,73 @@ public final class EmailUtils {
 		double totalSeenSeparateScore = (peopleScoreSeparateSeenVectors + topicScoreSeparateSeenVectors)/2;
 		
 		double seenScoreToSend = (email.getSeenPeoplescore() + topicScoreSeparateSeenVectors)/2;
-		reputationObj.put("seescore", seenScoreToSend);
-		logger.info(email.getMsgUid()+ " : sending seen score (people+ (subject+body)/2)/2 :" + seenScoreToSend + " combined score ((from,to,cc)/3, (body.subject)/2)/2 : " + totalSeenSeparateScore);		
+		String seeScore = String.format("%.4f",seenScoreToSend);
+		reputationObj.put("seescore", seeScore);
+		//logger.info(email.getMsgUid()+ " subject : " + email.getSubject() + " : sending seen score (people+ (subject+body)/2)/2 :" + seeScore + " combined score ((from,to,cc)/3, (body.subject)/2)/2 : " + totalSeenSeparateScore);		
 		
 		//send spam results also
-		reputationObj.put("spamcontentscore", email.getSpamTopicScore());
-		reputationObj.put("spampeoplescore", email.getSpamPeopleScore());
-		reputationObj.put("spamkeywordscore", email.getSpamKeywordscore());
+		//reputationObj.put("spamcontentscore", email.getSpamTopicScore());
+		//reputationObj.put("spampeoplescore", email.getSpamPeopleScore());
+		//reputationObj.put("spamkeywordscore", email.getSpamKeywordscore());
 		
 		
 		logger.info(email.getMsgUid() + " : " + email.getSubject() + 
 				"\n The scores in results email to be sent : "+" total contentscore : " + email.getContentReputationScore()
 				+ " total people score : " + email.getRecipientReputationScore() + " content cluster : " + email.getTextClusterId()  
 				+ " people cluster : " + email.getPeopleClusterId()
-				+  " email intent : " + intentString + " reply-score : " + replyScoreToSend 
-				+ " flag score : " + flagScoreToSend + " see score: " + seenScoreToSend
+				+  " email intent : " + intentString + " reply-score : " + replyScore 
+				+ " flag score : " + flagScore + " see score: " + seeScore
+				+ " is List mail : " + email.isListMail());
+		
+		logger.info("======================================================================================================================================================");
+		return reputationObj;
+	}
+*/	
+	
+	public static JSONObject getReputationObjectJSON(Email email){
+		JSONObject reputationObj = new JSONObject();
+		//reputationObj.put("id", email.getMessageId());
+		reputationObj.put("uid", email.getMsgUid());
+		if(email.isPredicted()){
+			reputationObj.put("is_predicted", 1);	
+		}else{
+			reputationObj.put("is_predicted", 0);
+		}
+		if(email.isListMail()){
+			reputationObj.put("is_list", 1);
+		}
+		//total topic score : combined topic scores for reply, see, flag email similarity
+		reputationObj
+				.put("contentscore", email.getContentReputationScore());
+		//total people score : combined people scores for from,cc,to email similarity
+		reputationObj.put("peoplescore",
+				email.getRecipientReputationScore());
+		reputationObj.put("contentclusterid", email.getTextClusterId());
+		reputationObj.put("peopleclusterid", email.getPeopleClusterId());
+		
+		//adding new fields for speech acts and nlp fields/keywords
+		String intentString = getMessageIntentString(email);
+		reputationObj.put("emailintent",intentString);
+	
+
+		String replyScore =  String.format("%.4f",email.getTotalSubClusterBasedReplyScore());
+		reputationObj.put("replyscore",replyScore);
+		//logger.info(email.getMsgUid()+ " subject : " + email.getSubject() + " : sending reply score (people + (subject+body)/2)/2:" + replyScore + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2)/2 : " + totalReplySeparateScore);
+		
+		String flagScore = String.format("%.4f", email.getTotalSubClusterBasedFlagScore());
+		reputationObj.put("flagscore", flagScore);
+		//logger.info(email.getMsgUid()+ " subject : " + email.getSubject() + " : sending flagged score  (people+ (subject+body)/2)/2 :" + flagScore + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2)/2 : " + totalFlaggedSeparateScore);		
+			
+		String seeScore = String.format("%.4f", email.getTotalSubClusterBasedReadScore());
+		reputationObj.put("seescore", seeScore);
+		//logger.info(email.getMsgUid()+ " subject : " + email.getSubject() + " : sending seen score (people+ (subject+body)/2)/2 :" + seeScore + " combined score ((from,to,cc)/3, (body.subject)/2)/2 : " + totalSeenSeparateScore);		
+		
+		logger.info(email.getMsgUid() + " : " + email.getSubject() + 
+				"\n The scores in results email to be sent : "+" total contentscore : " + email.getContentReputationScore()
+				+ " total people score : " + email.getRecipientReputationScore() + " content cluster : " + email.getTextClusterId()  
+				+ " people cluster : " + email.getPeopleClusterId()
+				+  " email intent : " + intentString + " reply-score : " + replyScore 
+				+ " flag score : " + flagScore + " see score: " + seeScore
 				+ " is List mail : " + email.isListMail());
 		
 		logger.info("======================================================================================================================================================");
@@ -1031,7 +1088,6 @@ public final class EmailUtils {
 		if (msg.isSet(Flags.Flag.ANSWERED)) {
 			logger.info("This is an answered message");
 			newEmail.setAnswered(true);
-			newEmail.setSeen(true);
 		}
 		//normally all answered emails are also seen; so to distinguish only seen emails use else-if
 		else if (msg.isSet(Flags.Flag.SEEN)) {
@@ -1061,16 +1117,20 @@ public final class EmailUtils {
 
 		// processing email subject
 		String subject = msg.getSubject();
-		subject = subject.toLowerCase();
-		if (subject.length() > 255) {
-			subject = subject.substring(0, 254);
+		TextContent subjectTextContent = null;
+		if(subject != null){
+			subject = subject.toLowerCase();
+			if (subject.length() > 255) {
+				subject = subject.substring(0, 254);
+			}
+			//processing nlp
+			//logger.info("processing NLP results for subject..");
+			//newEmail = getNLPResults(subject, newEmail);
+			subjectTextContent = EmailUtils.processText(subject);
+			newEmail.setSubject(subject);
+			newEmail.setSubjectContent(subjectTextContent);
+
 		}
-		//processing nlp
-		//logger.info("processing NLP results for subject..");
-		//newEmail = getNLPResults(subject, newEmail);
-		TextContent subjectTextContent = EmailUtils.processText(subject);
-		newEmail.setSubject(subject);
-		newEmail.setSubjectContent(subjectTextContent);
 
 		// processing email body
 		String contentType = msg.getContentType();
@@ -1876,8 +1936,10 @@ public final class EmailUtils {
 	 * create the reputation model again for all the email data
 	 * @param mb
 	 */
-	public static UserMailBox calculateImportanceModel(UserMailBox mb){
-		List<Email> allEmails = mb.getAllEmails();
+	public static UserMailBox calculateImportanceModel(UserMailBox mb, List<Email> modelEmails){
+		//setting the size of the model
+		mb.setCurrentModelSize(modelEmails.size());
+		
 		EmailReputationDataModel repModel = new EmailReputationDataModel();
 		//reset all numbers for emails
 		mb.setNofOfUnimportantEmails(0);
@@ -1889,6 +1951,8 @@ public final class EmailUtils {
 		mb.setNumberOfListEmailsFlagged(0);
 		mb.setNumberOfListEmailsReplied(0);
 		mb.setNumberOfListEmailsSeen(0);
+		
+		
 				
 		//marking user flagged important and spam emails before calculating importance model
 		List<Long> markedImportantEmails = mb.getMarkedImportantEmailUids();
@@ -1896,14 +1960,15 @@ public final class EmailUtils {
 		logger.info("no. of flagged important emails from thunderbird client : " + markedImportantEmails.size() +
 				" no. of marked spam emails from thunderbird client : " + markedSpamEmails.size());
 		
-		for(Email email : allEmails) {
+		for(Email email : modelEmails) {
 			
 			email.setModel(true);
 			email.setPredicted(false);
 			if(markedImportantEmails.contains(email.getMsgUid())){
-				logger.info("marked email :" + email.getMsgUid() + " as important based on user's feedback");
+				logger.info("marked email :" + email.getMsgUid() + " as flagged based on user's feedback");
 				email.setSpam(false);
 				email.setFlagged(true);
+				email.setSeen(true);
 				int index = markedImportantEmails.indexOf(email.getMsgUid());
 				markedImportantEmails.remove(index);
 				
@@ -1912,6 +1977,7 @@ public final class EmailUtils {
 				email.setSpam(true);
 				email.setFlagged(false);
 				email.setAnswered(false);
+				email.setSeen(false);
 				int index = markedSpamEmails.indexOf(email.getMsgUid());
 				markedSpamEmails.remove(index);
 				
@@ -1922,22 +1988,25 @@ public final class EmailUtils {
 			
 			//populate the profile vectors			
 			//unimportant models
-			if( email.isSpam() || email.isDeleted()){
+			if( email.isSpam()){
 				logger.info("this is a spam email recognized by flag or header : " + email.getMsgUid());
 				//double vectorTotal = EmailUtils.getVectorTotal(email.getTextContextVector());
 				//if(!Double.isNaN(vectorTotal)){
-					double[] unimportanttopicsVector = VectorsMath.addArrays(repModel.getSpamVector(), email.getTextContextVector());
-					repModel.setSpamVector(unimportanttopicsVector);
-					logger.info("Adding a Spam Email. Email text vector sum : " + EmailUtils.getVectorTotal(email.getTextContextVector()) + "spam topic vector sum: " + EmailUtils.getVectorTotal(unimportanttopicsVector));						
+				if(repModel.getSpamVector() == null ){
+					repModel.setSpamVector(new double[RandomIndexing.DEFAULT_VECTOR_LENGTH]);
+				}
+				if(repModel.getSpamPeopleVector() == null){
+					repModel.setSpamPeopleVector(new double[RandomIndexing.DEFAULT_VECTOR_LENGTH]);
+				}
+				double[] unimportanttopicsVector = VectorsMath.addArrays(repModel.getSpamVector(), email.getSubjectContextVector());
+				unimportanttopicsVector = VectorsMath.addArrays(unimportanttopicsVector, email.getBodyContextVector());
+				repModel.setSpamVector(unimportanttopicsVector);
+				logger.info("Adding a Spam Email to the unimportant topic vector : " + EmailUtils.getVectorTotal(unimportanttopicsVector));						
 				//}
 				
 				double[] unimportantPeopleVector = VectorsMath.addArrays(repModel.getSpamPeopleVector(), email.getRecipientContextVector());
 				repModel.setSpamPeopleVector(unimportantPeopleVector);
 				
-				double[] unimportantDirectKeywordVector = VectorsMath.addArrays(repModel.getSpamNLPKeywordVector(), email.getNlpKeywordsVector());
-				repModel.setSpamNLPKeywordVector(unimportantDirectKeywordVector);
-				
-
 				//nofOfUnimportantEmails++;
 				//trying out the spam vector from reputation data model
 				repModel.getSpamEmails().add(email);
@@ -1969,13 +2038,13 @@ public final class EmailUtils {
 						repModel.setImportantPeopleCCReplied(importantPeopleCCReplied);
 						
 						
-						double[] importantNLPKeywordsReplied = VectorsMath.addArrays(repModel.getImportantNLPKeywordsReplied(), email.getNlpKeywordsVector());
-						repModel.setImportantNLPKeywordsReplied(importantNLPKeywordsReplied);
+						//double[] importantNLPKeywordsReplied = VectorsMath.addArrays(repModel.getImportantNLPKeywordsReplied(), email.getNlpKeywordsVector());
+						//repModel.setImportantNLPKeywordsReplied(importantNLPKeywordsReplied);
 						
 						//numberOfDirectEmailsReplied++;
 						repModel.getRepliedEmails().add(email);
 					}
-					else if(email.isSeen() || email.isAnswered()){
+					if(email.isSeen() || email.isAnswered()){
 						logger.info("this is a direct email seen : " + email.getMsgUid());
 						
 						double[] importantTopicsOnlySeen = VectorsMath.addArrays(repModel.getImportantTopicsOnlySeen(), email.getTextContextVector());
@@ -1995,13 +2064,14 @@ public final class EmailUtils {
 						double[] importantPeopleCCOnlySeen = VectorsMath.addArrays(repModel.getImportantPeopleCCOnlySeen(), email.getCcContextVector());
 						repModel.setImportantPeopleCCOnlySeen(importantPeopleCCOnlySeen);
 						
-						double[] importantNLPKeywordsOnlySeen = VectorsMath.addArrays(repModel.getImportantNLPKeywordsOnlySeen(), email.getNlpKeywordsVector());
-						repModel.setImportantNLPKeywordsOnlySeen(importantNLPKeywordsOnlySeen);
+						//double[] importantNLPKeywordsOnlySeen = VectorsMath.addArrays(repModel.getImportantNLPKeywordsOnlySeen(), email.getNlpKeywordsVector());
+						//repModel.setImportantNLPKeywordsOnlySeen(importantNLPKeywordsOnlySeen);
 						
 						//numberOfDirectEmailsSeen++;
 						repModel.getSeenEmails().add(email);
 					}
 					if(email.isFlagged() || email.getIsImportantByHeader() || email.isSensitiveByHeader()){
+					//if(email.isFlagged()){	
 						System.out.println("this is a direct email user has flagged or set important/sensitive by header : " + email.getMsgUid());
 						
 						double[] importantTopicsFlagged = VectorsMath.addArrays(repModel.getImportantTopicsFlagged(), email.getTextContextVector());
@@ -2021,8 +2091,8 @@ public final class EmailUtils {
 						double[] importantPeopleCCFlagged = VectorsMath.addArrays(repModel.getImportantPeopleCCFlagged(), email.getCcContextVector());
 						repModel.setImportantPeopleCCFlagged(importantPeopleCCFlagged);
 						
-						double[] importantNLPKeywordsFlagged = VectorsMath.addArrays(repModel.getImportantNLPKeywordsFlagged(), email.getNlpKeywordsVector());
-						repModel.setImportantNLPKeywordsFlagged(importantNLPKeywordsFlagged);
+						//double[] importantNLPKeywordsFlagged = VectorsMath.addArrays(repModel.getImportantNLPKeywordsFlagged(), email.getNlpKeywordsVector());
+						//repModel.setImportantNLPKeywordsFlagged(importantNLPKeywordsFlagged);
 						
 						//numberOfDirectEmailsFlagged++;
 						repModel.getFlaggedEmails().add(email);
@@ -2061,15 +2131,15 @@ public final class EmailUtils {
 						
 						
 						
-						double[] importantListNLPKeywordsReplied = VectorsMath.addArrays
-								(repModel.getImportantListNLPKeywordsReplied(), email.getNlpKeywordsVector());
-						repModel.setImportantListNLPKeywordsReplied(importantListNLPKeywordsReplied);
+//						double[] importantListNLPKeywordsReplied = VectorsMath.addArrays
+//								(repModel.getImportantListNLPKeywordsReplied(), email.getNlpKeywordsVector());
+//						repModel.setImportantListNLPKeywordsReplied(importantListNLPKeywordsReplied);
 						
 						//numberOfListEmailsReplied++;
 						repModel.getRepliedListEmails().add(email);
 										
 					}
-					else if(email.isSeen()){
+					if(email.isSeen() || email.isAnswered()){
 						logger.info("this is a list email seen or replied : "  + email.getMsgUid());
 						double[] importantListTopicsOnlySeen = VectorsMath.addArrays
 								(repModel.getImportantListTopicsOnlySeen(), email.getTextContextVector());
@@ -2095,8 +2165,8 @@ public final class EmailUtils {
 						repModel.setImportantListPeopleCCOnlySeen(importantListCCPeopleOnlySeen);
 						
 						
-						double[] importantListNLPKeywordsOnlySeen = VectorsMath.addArrays(repModel.getImportantListNLPKeywordsOnlySeen(), email.getNlpKeywordsVector());
-						repModel.setImportantListNLPKeywordsOnlySeen(importantListNLPKeywordsOnlySeen);
+//						double[] importantListNLPKeywordsOnlySeen = VectorsMath.addArrays(repModel.getImportantListNLPKeywordsOnlySeen(), email.getNlpKeywordsVector());
+//						repModel.setImportantListNLPKeywordsOnlySeen(importantListNLPKeywordsOnlySeen);
 						//logger.info("emai nlp keyword vector sum : " + EmailUtils.getVectorTotal(email.getNlpKeywordsVector()) + "list-seen-keyword vector sum: " + EmailUtils.getVectorTotal(importantListNLPKeywordsOnlySeen));
 						
 						//numberOfListEmailsSeen++;
@@ -2127,8 +2197,8 @@ public final class EmailUtils {
 								(repModel.getImportantListPeopleCCFlagged(), email.getCcContextVector());
 						repModel.setImportantListPeopleCCFlagged(importantListCCPeopleFlagged);						
 						
-						double[] importantListNLPKeywordsFlagged = VectorsMath.addArrays(repModel.getImportantListNLPKeywordsFlagged(), email.getNlpKeywordsVector());
-						repModel.setImportantListNLPKeywordsFlagged(importantListNLPKeywordsFlagged);
+//						double[] importantListNLPKeywordsFlagged = VectorsMath.addArrays(repModel.getImportantListNLPKeywordsFlagged(), email.getNlpKeywordsVector());
+//						repModel.setImportantListNLPKeywordsFlagged(importantListNLPKeywordsFlagged);
 						
 						//numberOfListEmailsFlagged++;
 						repModel.getFlaggedListEmails().add(email);
@@ -2137,71 +2207,28 @@ public final class EmailUtils {
 			}
 		}
 		
+		
+		//clustering all model emails based on content and recipients
+		repModel = clusterModelEmails(repModel, modelEmails);
+				
 		//building profile's clusters
 		List<Email> repliedEmails = new ArrayList<Email>();
 		repliedEmails.addAll(repModel.getRepliedEmails());
-		List<EmailWeightedSubjectBodyContentCluster> repliedContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(repliedEmails);
-		List<EmailRecipientCluster> repliedRecipientClusters = KMeansClustering.clusterBasedOnRecipients(repliedEmails);
-		repModel.setRepliedProfileContentClusters(repliedContentClusters);
-		repModel.setRepliedProfilePeopleClusters(repliedRecipientClusters);
-		//printing the repmodel profile content clusters
-		logger.info("printing the repmodel replied profile content clusters");
-		for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedContentClusters){
-			List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
-			String clusterId = contentCluster.getId();
-			for(Email email : repliedClusterEmails){
-				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
-			}
-		}
-		
 		List<Email> seenEmails = new ArrayList<Email>();
-		seenEmails.addAll(repModel.getRepliedEmails());
-		List<EmailWeightedSubjectBodyContentCluster> seenContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(seenEmails);
-		List<EmailRecipientCluster> seenRecipientClusters = KMeansClustering.clusterBasedOnRecipients(seenEmails);
-		repModel.setSeenProfileContentClusters(seenContentClusters);
-		repModel.setSeenProfilePeopleClusters(seenRecipientClusters);
-		
-		logger.info("printing the repmodel seen profile content clusters");
-		for(EmailWeightedSubjectBodyContentCluster contentCluster : seenContentClusters){
-			List<Email> seenClusterEmails = contentCluster.getSubjectBodyContentEmails();
-			String clusterId = contentCluster.getId();
-			for(Email email : seenClusterEmails){
-				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
-			}
-		}
-		
-		//profile's clusters for list emails
-		List<Email> repliedListEmails = new ArrayList<Email>();
-		repliedListEmails.addAll(repModel.getRepliedListEmails());
-		List<EmailWeightedSubjectBodyContentCluster> repliedListContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(repliedListEmails);
-		List<EmailRecipientCluster> repliedListRecipientClusters = KMeansClustering.clusterBasedOnRecipients(repliedListEmails);
-		repModel.setRepliedListProfileContentClusters(repliedListContentClusters);
-		repModel.setRepliedListProfilePeopleClusters(repliedListRecipientClusters);
-		
-		System.out.println("printing the repmodel replied list profile content clusters");
-		for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedListContentClusters){
-			List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
-			String clusterId = contentCluster.getId();
-			for(Email email : repliedClusterEmails){
-				System.out.println(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
-			}
-		}
-		
+		seenEmails.addAll(repModel.getSeenEmails());
+		List<Email> flaggedEmails = new ArrayList<Email>();
+		flaggedEmails.addAll(repModel.getFlaggedEmails());
+				
 		List<Email> seenListEmails = new ArrayList<Email>();
 		seenListEmails.addAll(repModel.getSeenListEmails());
-		List<EmailWeightedSubjectBodyContentCluster> seenListContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(seenListEmails);
-		List<EmailRecipientCluster> seenListRecipientClusters = KMeansClustering.clusterBasedOnRecipients(seenListEmails);
-		repModel.setSeenListProfileContentClusters(seenListContentClusters);
-		repModel.setSeenListProfilePeopleClusters(seenListRecipientClusters);
+		List<Email> repliedListEmails = new ArrayList<Email>();
+		repliedListEmails.addAll(repModel.getRepliedListEmails());
+		List<Email> flaggedListEmails = new ArrayList<Email>();
+		flaggedListEmails.addAll(repModel.getFlaggedListEmails());
+								
+		repModel = createSubClustersForProfile(repModel, repliedEmails, flaggedEmails, seenEmails, 
+				repliedListEmails, flaggedListEmails, seenListEmails);
 		
-		System.out.println("printing the repmodel seen profile content clusters");
-		for(EmailWeightedSubjectBodyContentCluster contentCluster : seenListContentClusters){
-			List<Email> seenClusterEmails = contentCluster.getSubjectBodyContentEmails();
-			String clusterId = contentCluster.getId();
-			for(Email email : seenClusterEmails){
-				System.out.println(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
-			}
-		}
 		
 		mb.setReputationDataModel(repModel);
 		//no need to average the vectors as when taking cosine sim, the index values are not important
@@ -2221,6 +2248,215 @@ public final class EmailUtils {
 	}
 	
 	
+	//create sub clustered for the reputation model
+	private static EmailReputationDataModel createSubClustersForProfile(EmailReputationDataModel repModel, List<Email> repliedEmails,List<Email> flaggedEmails, List<Email> seenEmails,List<Email> repliedListEmails,
+			List<Email> flaggedListEmails, List<Email> seenListEmails ){
+		logger.info("creating sub clusters for email profile");
+		logger.info("creating replied sub clusters for email profile");
+		List<EmailWeightedSubjectBodyContentCluster> repliedContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(repliedEmails);
+		List<EmailRecipientCluster> repliedRecipientClusters = KMeansClustering.clusterBasedOnRecipients(repliedEmails);
+		double repliedEmailsNumber = repliedEmails.size();
+		//processing the repmodel profile content clusters
+		logger.info("calculating the repmodel replied profile content clusters reputations");
+		for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedContentClusters){
+			List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
+			String clusterId = contentCluster.getId();
+			double clusterReputation = repliedClusterEmails.size()/ repliedEmailsNumber;
+			contentCluster.setReputationScore(clusterReputation);
+	
+			for(Email email : repliedClusterEmails){
+				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}	
+		logger.info("calculating the repmodel replied profile recipient clusters reputations");
+		for(EmailRecipientCluster recipientCluster : repliedRecipientClusters){
+			List<Email> repliedClusterEmails = recipientCluster.getRecipientEmails();
+			String clusterId = recipientCluster.getId();
+			double clusterReputation = repliedClusterEmails.size()/ repliedEmailsNumber;
+			recipientCluster.setReputationScore(clusterReputation);
+	
+			for(Email email : repliedClusterEmails){
+				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		logger.info("creating read sub clusters for email profile");
+		List<EmailWeightedSubjectBodyContentCluster> seenContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(seenEmails);
+		List<EmailRecipientCluster> seenRecipientClusters = KMeansClustering.clusterBasedOnRecipients(seenEmails);
+		
+		logger.info("calculating the repmodel seen profile content clusters reputations");
+		double totalSeenEmailsNumber = seenEmails.size();
+		
+		for(EmailWeightedSubjectBodyContentCluster contentCluster : seenContentClusters){
+			List<Email> seenClusterEmails = contentCluster.getSubjectBodyContentEmails();
+			String clusterId = contentCluster.getId();
+			double clusterReputation = seenClusterEmails.size()/totalSeenEmailsNumber;
+			contentCluster.setReputationScore(clusterReputation);
+			for(Email email : seenClusterEmails){
+				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		logger.info("calculating the repmodel seen people cluster reputations");
+		for(EmailRecipientCluster recipientCluster : seenRecipientClusters){
+			List<Email> seenClusterEmails = recipientCluster.getRecipientEmails();
+			double clusterReputation = seenClusterEmails.size()/totalSeenEmailsNumber;
+			recipientCluster.setReputationScore(clusterReputation);
+			String clusterId = recipientCluster.getId();
+			for(Email email : seenClusterEmails){
+				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		logger.info("creating flagged sub clusters for email profile");
+		List<EmailWeightedSubjectBodyContentCluster> flaggedContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(flaggedEmails);
+		List<EmailRecipientCluster> flaggedRecipientClusters = KMeansClustering.clusterBasedOnRecipients(flaggedEmails);
+		
+		logger.info("calculating the repmodel flagged profile content clusters reputations");
+		double totalflaggedEmailsNumber = seenEmails.size();
+		
+		for(EmailWeightedSubjectBodyContentCluster contentCluster : flaggedContentClusters){
+			List<Email> seenClusterEmails = contentCluster.getSubjectBodyContentEmails();
+			String clusterId = contentCluster.getId();
+			double clusterReputation = seenClusterEmails.size()/totalflaggedEmailsNumber;
+			contentCluster.setReputationScore(clusterReputation);
+			for(Email email : seenClusterEmails){
+				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		logger.info("calculating the repmodel flagged people cluster reputations");
+		for(EmailRecipientCluster recipientCluster : flaggedRecipientClusters){
+			List<Email> seenClusterEmails = recipientCluster.getRecipientEmails();
+			double clusterReputation = seenClusterEmails.size()/totalflaggedEmailsNumber;
+			recipientCluster.setReputationScore(clusterReputation);
+			String clusterId = recipientCluster.getId();
+			for(Email email : seenClusterEmails){
+				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		//profile's clusters for list emails
+		
+		List<EmailWeightedSubjectBodyContentCluster> repliedListContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(repliedListEmails);
+		List<EmailRecipientCluster> repliedListRecipientClusters = KMeansClustering.clusterBasedOnRecipients(repliedListEmails);
+		double repliedListEmailsNumber = repModel.getRepliedListEmails().size();
+		logger.info("calculating the repmodel replied list profile content clusters");
+		for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedListContentClusters){
+			List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
+			String clusterId = contentCluster.getId();
+			double clusterReputation = contentCluster.size() / repliedListEmailsNumber;
+			contentCluster.setReputationScore(clusterReputation);
+			for(Email email : repliedClusterEmails){
+				System.out.println(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		logger.info("calculating the repmodel replied list profile recipient clusters");
+		for(EmailRecipientCluster recipientCluster : repliedListRecipientClusters){
+			List<Email> seenClusterEmails = recipientCluster.getRecipientEmails();
+			double clusterReputation = seenClusterEmails.size()/repliedListEmailsNumber;
+			recipientCluster.setReputationScore(clusterReputation);
+			String clusterId = recipientCluster.getId();
+			for(Email email : seenClusterEmails){
+				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		List<EmailWeightedSubjectBodyContentCluster> seenListContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(seenListEmails);
+		List<EmailRecipientCluster> seenListRecipientClusters = KMeansClustering.clusterBasedOnRecipients(seenListEmails);
+	
+		logger.info("calculating the repmodel for seen list content clusters");
+		for(EmailWeightedSubjectBodyContentCluster contentCluster : seenListContentClusters){
+			List<Email> seenClusterEmails = contentCluster.getSubjectBodyContentEmails();
+			String clusterId = contentCluster.getId();
+			double clusterReputation = seenClusterEmails.size() / totalSeenEmailsNumber;
+			contentCluster.setReputationScore(clusterReputation);
+			for(Email email : seenClusterEmails){
+				System.out.println(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		logger.info("calculating the repmodel for seen list people clusters");
+		for(EmailRecipientCluster recipientCluster : seenListRecipientClusters){
+			List<Email> seenClusterEmails = recipientCluster.getRecipientEmails();
+			double clusterReputation = seenClusterEmails.size()/totalSeenEmailsNumber;
+			recipientCluster.setReputationScore(clusterReputation);
+			String clusterId = recipientCluster.getId();
+			for(Email email : seenClusterEmails){
+				System.out.println(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		logger.info("creating flagged list sub clusters for email profile");
+		List<EmailWeightedSubjectBodyContentCluster> flaggedListContentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(flaggedListEmails);
+		List<EmailRecipientCluster> flaggedListRecipientClusters = KMeansClustering.clusterBasedOnRecipients(flaggedListEmails);
+		
+		logger.info("calculating the repmodel flagged profile content clusters reputations");
+		double totalListFlaggedEmailsNumber = seenEmails.size();
+		
+		for(EmailWeightedSubjectBodyContentCluster contentCluster : flaggedListContentClusters){
+			List<Email> seenClusterEmails = contentCluster.getSubjectBodyContentEmails();
+			String clusterId = contentCluster.getId();
+			double clusterReputation = seenClusterEmails.size()/totalListFlaggedEmailsNumber;
+			contentCluster.setReputationScore(clusterReputation);
+			for(Email email : seenClusterEmails){
+				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		logger.info("calculating the repmodel flagged people cluster reputations");
+		for(EmailRecipientCluster recipientCluster : flaggedListRecipientClusters){
+			List<Email> seenClusterEmails = recipientCluster.getRecipientEmails();
+			double clusterReputation = seenClusterEmails.size()/totalListFlaggedEmailsNumber;
+			recipientCluster.setReputationScore(clusterReputation);
+			String clusterId = recipientCluster.getId();
+			for(Email email : seenClusterEmails){
+				logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
+			}
+		}
+		
+		
+		repModel.setRepliedProfileContentClusters(repliedContentClusters);
+		repModel.setRepliedProfilePeopleClusters(repliedRecipientClusters);
+		repModel.setRepliedListProfileContentClusters(repliedListContentClusters);
+		repModel.setRepliedListProfilePeopleClusters(repliedListRecipientClusters);
+		
+		repModel.setSeenProfileContentClusters(seenContentClusters);
+		repModel.setSeenProfilePeopleClusters(seenRecipientClusters);
+		repModel.setSeenListProfileContentClusters(seenListContentClusters);
+		repModel.setSeenListProfilePeopleClusters(seenListRecipientClusters);
+		
+		repModel.setFlaggedProfileContentClusters(flaggedContentClusters);
+		repModel.setFlaggedProfilePeopleClusters(flaggedRecipientClusters);
+		repModel.setFlaggedListProfileContentClusters(flaggedListContentClusters);
+		repModel.setFlaggedListProfilePeopleClusters(flaggedListRecipientClusters);
+		
+		return repModel;
+	}
+	
+	
+	private static EmailReputationDataModel clusterModelEmails(EmailReputationDataModel repModel, List<Email> modelEmails){
+		List<EmailWeightedSubjectBodyContentCluster> contentClusters = KMeansClustering.clusterBasedOnSubjectAndBody(modelEmails);
+		List<EmailRecipientCluster> peopleClusters = KMeansClustering.clusterBasedOnRecipients(modelEmails);
+		logger.info("calculating reputation scores of weighted subject-body content clusters for model emails");
+		for(EmailWeightedSubjectBodyContentCluster contentCluster : contentClusters){
+			contentCluster.calculateClusterReputationScore();
+			logger.info(contentCluster.getId() + " : " + contentCluster.getReputationScore());
+		}
+		logger.info("calculating reputation scores of people clusters for model emails");
+		for(EmailRecipientCluster peopleCluster : peopleClusters){
+			peopleCluster.calculateClusterReputationScore();
+			logger.info(peopleCluster.getId() + " : " + peopleCluster.getReputationScore());
+
+		}
+		repModel.setWeightedSubjectBodyClusters(contentClusters);
+		repModel.setRecipientClusters(peopleClusters);
+		
+		logger.info("Dunn index for recipient clusters : " + repModel.calculateDunnIndexForRecipientClusters());
+		logger.info("Avg dunn index for weighted subject-body clusters : " + repModel.calculateDunnIndexForSubjectBodyClusters());
+		
+		return repModel;
+	}
 	/**
 	 * generate the clusters for all emails in the mailbox
 	 * content clusters, recipient clusters, weighted-subjectbody clusters
@@ -2247,7 +2483,8 @@ public final class EmailUtils {
 		mailBox.setReputationDataModel(model);		
 		return mailBox;
 	}
-@Deprecated
+	
+	@Deprecated
 	public static UserMailBox updateAverageImportanceVectors(UserMailBox mailBox) {
 		EmailReputationDataModel model = mailBox.getReputationDataModel();
 		
@@ -2535,6 +2772,75 @@ public final class EmailUtils {
 		
 	}	
 
+	public static Email normalizeClusteredProfileBasedEmailScores(Email email, double subClusterSimilarityThreshold){
+		//normalize sub cluster based scores
+		logger.info("before normalizing sub-cluster based email scores : readTopicScore" + email.getProfileClusterReadContentScore()
+				+ " replyTopicScore : " + email.getProfileClusterReplyContentScore() + " flaggedTopicScore : " + email.getProfileClusterFlagContentScore());
+		//content score is given high priority for direct emails..
+		if(!email.isListMail() && email.getProfileClusterReadContentScore() < subClusterSimilarityThreshold && email.getProfileClusterReplyContentScore() < subClusterSimilarityThreshold 
+				&& email.getProfileClusterFlagContentScore() < subClusterSimilarityThreshold){
+			logger.info(" All read,reply,flag, content scores are below threshold: " + subClusterSimilarityThreshold);
+				
+			email.setTotalSubClusterBasedReadScore(0);
+			email.setTotalSubClusterBasedReplyScore(0);	
+			email.setTotalSubClusterBasedFlagScore(0);
+		}
+//		else{
+//			double totalSeeScore = (email.getProfileClusterReadContentScore() + email.getProfileClusterReadRecipientScore())/2;
+//			email.setTotalSubClusterBasedReadScore(totalSeeScore);
+//		
+//			double totalReplyScore = (email.getProfileClusterReplyContentScore() + email.getProfileClusterReplyRecipientScore())/2;
+//			email.setTotalSubClusterBasedReplyScore(totalReplyScore);
+//					
+//			double totalFlagScore = (email.getProfileClusterFlagContentScore() + email.getProfileClusterFlagRecipientScore())/2;
+//			email.setTotalSubClusterBasedFlagScore(totalFlagScore);
+//			logger.info("Any of read,reply,flag scores are above threshold: " + subClusterSimilarityThreshold);
+//			logger.info("readSubClusterScore : " + totalSeeScore + " replySubClusterScore : " + totalReplyScore + " flagSubClusteScore : " + totalFlagScore);
+//					
+//		}
+			
+		return email;
+	}
+	
+	public static Email normalizeUserProfileBasedEmailScores(Email email, double profileSimilarityThreshold){
+		//normalize profile based scores
+		logger.info("before normalizing profile based email scores : readTopicScore" + email.getSeenTopicscore()
+				+ " replyTopicScore : " + email.getRepliedTopicscore() + " flaggedTopicScore : " + email.getFlaggedTopicscore());
+		
+		if(!email.isListMail() && email.getSeenTopicscore() < profileSimilarityThreshold && email.getRepliedTopicscore() < profileSimilarityThreshold 
+				&& email.getFlaggedTopicscore() < profileSimilarityThreshold){
+			
+			logger.info(" All subject scores for read,reply,flag, scores are below threshold: " + profileSimilarityThreshold);
+			email.setTotalProfileBasedReadScore(0);
+			email.setTotalProfileBasedReplyScore(0);
+			email.setTotalProfileBasedFlagScore(0);
+					
+		}
+//		else {
+//			double seeTopicScore = (email.getSeenTopicSubjectscore() + email.getSeenTopicBodyscore())/2;
+//			email.setSeenTopicscore(seeTopicScore);
+//			
+//			double replyTopicScore = (email.getRepliedTopicSubjectscore() + email.getRepliedTopicBodyscore())/2;
+//			email.setRepliedTopicscore(replyTopicScore);
+//			
+//			double flaggedTopicScore = (email.getFlaggedTopicSubjectscore() + email.getFlaggedTopicBodyscore())/2;
+//			email.setFlaggedTopicscore(flaggedTopicScore);
+//						
+//			double totalSeeScore = (seeTopicScore + email.getSeenPeoplescore())/2;
+//			email.setTotalProfileBasedReadScore(totalSeeScore);
+//			
+//			double totalReplyScore = (replyTopicScore + email.getRepliedPeoplescore())/2;
+//			email.setTotalProfileBasedReplyScore(totalReplyScore);
+//			
+//			double totalFlagScore = (flaggedTopicScore + email.getFlaggedPeoplescore())/2;
+//			email.setTotalProfileBasedFlagScore(totalFlagScore);
+//			logger.info("any of the profile subject scores for read,reply,flag profiles are above : " +profileSimilarityThreshold);
+//			logger.info("calculated total read score : " + totalSeeScore + " reply score : " + totalReplyScore + " flag score : " + totalFlagScore);
+//			
+//		}					
+		return email;
+	}
+	
 	public static void persistIndexVectors(String fileName,
 			List<RandomIndexVector> indexVectors) {
 		File indexVectorFile = new File(fileName);

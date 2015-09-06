@@ -146,11 +146,18 @@ public class EmailReputationDataModel {
 	private List<EmailWeightedSubjectBodyContentCluster> seenProfileContentClusters;
 	private List<EmailRecipientCluster> seenProfilePeopleClusters;
 	
+	private List<EmailWeightedSubjectBodyContentCluster> flaggedProfileContentClusters;
+	private List<EmailRecipientCluster> flaggedProfilePeopleClusters;
+	
 	//list emails
 	private List<EmailWeightedSubjectBodyContentCluster> repliedListProfileContentClusters;
 	private List<EmailRecipientCluster> repliedListProfilePeopleClusters;
 	private List<EmailWeightedSubjectBodyContentCluster> seenListProfileContentClusters;
 	private List<EmailRecipientCluster> seenListProfilePeopleClusters;
+	
+	private List<EmailWeightedSubjectBodyContentCluster> flaggedListProfileContentClusters;
+	private List<EmailRecipientCluster> flaggedListProfilePeopleClusters;
+	
 	
 	//spam emails which have some how managed to get into inbox
 	//identified by spam,precedence headers
@@ -169,11 +176,16 @@ public class EmailReputationDataModel {
 		repliedProfilePeopleClusters = new ArrayList<EmailRecipientCluster>();
 		seenProfileContentClusters = new ArrayList<EmailWeightedSubjectBodyContentCluster>();
 		seenProfilePeopleClusters = new ArrayList<EmailRecipientCluster>();
+		setFlaggedProfileContentClusters(new ArrayList<EmailWeightedSubjectBodyContentCluster>());
+		flaggedProfilePeopleClusters = new ArrayList<EmailRecipientCluster>();
+		
 		//list email profile clusters
 		repliedListProfileContentClusters = new ArrayList<EmailWeightedSubjectBodyContentCluster>();
 		repliedListProfilePeopleClusters = new ArrayList<EmailRecipientCluster>();
 		seenListProfileContentClusters = new ArrayList<EmailWeightedSubjectBodyContentCluster>();
 		seenListProfilePeopleClusters = new ArrayList<EmailRecipientCluster>();
+		flaggedListProfileContentClusters = new ArrayList<EmailWeightedSubjectBodyContentCluster>();
+		flaggedListProfilePeopleClusters = new ArrayList<EmailRecipientCluster>();
 		
 		
 		flaggedEmails = new HashSet<Email>();
@@ -1263,6 +1275,50 @@ public class EmailReputationDataModel {
 	public void setSeenListProfilePeopleClusters(
 			List<EmailRecipientCluster> seenListProfilePeopleClusters) {
 		this.seenListProfilePeopleClusters = seenListProfilePeopleClusters;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<EmailWeightedSubjectBodyContentCluster> getFlaggedProfileContentClusters() {
+		return flaggedProfileContentClusters;
+	}
+
+	public void setFlaggedProfileContentClusters(
+			List<EmailWeightedSubjectBodyContentCluster> flaggedProfileContentClusters) {
+		this.flaggedProfileContentClusters = flaggedProfileContentClusters;
+	}
+
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<EmailRecipientCluster> getFlaggedProfilePeopleClusters() {
+		return flaggedProfilePeopleClusters;
+	}
+
+	public void setFlaggedProfilePeopleClusters(
+			List<EmailRecipientCluster> flaggedProfilePeopleClusters) {
+		this.flaggedProfilePeopleClusters = flaggedProfilePeopleClusters;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<EmailWeightedSubjectBodyContentCluster> getFlaggedListProfileContentClusters() {
+		return flaggedListProfileContentClusters;
+	}
+
+	public void setFlaggedListProfileContentClusters(
+			List<EmailWeightedSubjectBodyContentCluster> flaggedListProfileContentClusters) {
+		this.flaggedListProfileContentClusters = flaggedListProfileContentClusters;
+	}
+	
+	@javax.jdo.annotations.Persistent
+	@javax.jdo.annotations.Column(allowsNull = "true")
+	public List<EmailRecipientCluster> getFlaggedListProfilePeopleClusters() {
+		return flaggedListProfilePeopleClusters;
+	}
+
+	public void setFlaggedListProfilePeopleClusters(
+			List<EmailRecipientCluster> flaggedListProfilePeopleClusters) {
+		this.flaggedListProfilePeopleClusters = flaggedListProfilePeopleClusters;
 	}
 
 }

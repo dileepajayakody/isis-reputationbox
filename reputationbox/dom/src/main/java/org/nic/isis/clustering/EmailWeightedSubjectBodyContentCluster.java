@@ -258,6 +258,7 @@ public class EmailWeightedSubjectBodyContentCluster {
 	 * gets the avg. subject centroid
 	 * @return
 	 */
+	@Deprecated
 	public double[] getAverageSubjectCentroid() {
 		// TODO Auto-generated method stub
 		double[] avgCentroid = subjectCentroid;
@@ -273,6 +274,7 @@ public class EmailWeightedSubjectBodyContentCluster {
 	 * gets the avg. body centroid
 	 * @return
 	 */
+	@Deprecated
 	public double[] getAverageBodyCentroid() {
 		// TODO Auto-generated method stub
 		double[] avgCentroid = bodyCentroid;
@@ -307,8 +309,28 @@ public class EmailWeightedSubjectBodyContentCluster {
 	}
 	
 	public double calculateClusterReputationScore(){
+		
 		int totalPositiveWeight = FLAGGED_WEIGHT + ANSWERERD_WEIGHT
 				+ SEEN_WEIGHT;
+		noOfMessagesAnswered = 0;
+		noOfMessagesSeen = 0;
+		noOfMessagesFlagged = 0;
+		noOfMessagesDeleted = 0;
+		
+		for(Email email : this.getSubjectBodyContentEmails()){
+			if(email.isAnswered()){
+				noOfMessagesAnswered++;
+			}
+			if (email.isFlagged()) {
+				noOfMessagesFlagged++;
+			}
+			if (email.isSeen()){
+				noOfMessagesSeen++;
+			}
+			if(email.isDeleted()){
+				noOfMessagesDeleted++;
+			}
+		}
 		double reputationScore = (double)((noOfMessagesFlagged * FLAGGED_WEIGHT)
 				+ (noOfMessagesAnswered * ANSWERERD_WEIGHT)
 				+ (noOfMessagesSeen * SEEN_WEIGHT) - (noOfMessagesDeleted * DELETED_WEIGHT)) 

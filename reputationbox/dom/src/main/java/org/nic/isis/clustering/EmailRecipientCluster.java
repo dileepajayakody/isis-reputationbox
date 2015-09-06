@@ -149,6 +149,37 @@ public class EmailRecipientCluster extends EmailCluster {
 		}
 	}
 	public double calculateClusterReputationScore(){
+		noOfMessagesDirectAndAnswered = 0;
+		noOfMessagesCCdAndAnswered = 0;
+		noOfMessagesDirectAndSeen = 0;
+		noOfMessagesCCdAndSeen = 0;
+		
+		for(Email email : this.getRecipientEmails()){
+			if(email.isAnswered()){
+				if(email.isDirect()){
+					this.noOfMessagesDirectAndAnswered++;
+				}else if(email.isCCd()){
+					this.noOfMessagesCCdAndAnswered++;
+				}else{
+					this.noOfMessagesAnswered++;
+				}
+			}
+			if (email.isFlagged()) {
+				noOfMessagesFlagged++;
+			}
+			if (email.isSeen()){
+				if(email.isDirect()){
+					this.noOfMessagesDirectAndSeen++;
+				}else if(email.isCCd()){
+					this.noOfMessagesCCdAndSeen++;
+				}else{
+					noOfMessagesSeen++;
+				}
+			}
+			if(email.isDeleted()){
+				noOfMessagesDeleted++;
+			}
+		}
 		int totalPositiveWeight = FLAGGED_WEIGHT + ANSWERERD_WEIGHT
 				+ SEEN_WEIGHT + DIRECT_ANSWERED_WEIGHT + DIRECT_SEEN_WEIGHT 
 				+ CC_ANSWERED_WEIGHT + CC_SEEN_WEIGHT;

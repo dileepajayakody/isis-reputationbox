@@ -1,9 +1,13 @@
 package org.nic.isis.reputation.services;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.nio.channels.ReadPendingException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -63,7 +67,7 @@ public class EmailService {
 	//current session's emailboxes
 	private List<UserMailBox> mailBoxes;
 	
-	@Named("Update MailBox Model and Predict for new emails")
+	@Named("Update MailBox Model with new emails")
 	public synchronized List<UserMailBox> updateNew(){
 		//List<UserMailBox> mailBoxes = listAllMailBoxes();
 		long startTime = System.currentTimeMillis();
@@ -74,14 +78,18 @@ public class EmailService {
 //		
 //		}
 		if (mailBoxes == null || mailBoxes.isEmpty()) {
-			logger.info("There is no mailboxes in test-datastore. creating test mailbox");
-			mailBoxes = new ArrayList<UserMailBox>();
-			createSample();
+			logger.info("There is no mailboxes added in ReputationBox. creating a new mailbox");
+			//mailBoxes = new ArrayList<UserMailBox>();
+			//createSample();
+			UserMailBox newMb = createMailBoxFromFile();
+			if(newMb != null){
+				mailBoxes = new ArrayList<UserMailBox>();
+				mailBoxes.add(newMb);
+			}
 		}
-		
-	//	else {
+		if(mailBoxes != null && !mailBoxes.isEmpty()){
+			logger.info("Loading mailboxes...");
 			for (UserMailBox mailBox : mailBoxes) {
-
 				if(mailBox.getContentVectors() == null || mailBox.getContentVectors().size() == 0){
 					//getting the riVectors from file
 					File contentVectorFile = new File(CONTENT_VECTOR_FILE);
@@ -110,7 +118,7 @@ public class EmailService {
 				if(!mailBox.isUpdatingModel() && mailBox.isRequireNewModel() && mailBox.getCurrentModelSize() == 0){
 					Properties props = new Properties();
 					props.setProperty("mail.store.protocol", "imaps");
-					Message[] messages = null;		
+					Message[] modelMessages = null;		
 					Session session = null;
 					Store store = null;
 					try {
@@ -121,12 +129,13 @@ public class EmailService {
 						Folder inbox = store.getFolder("INBOX");
 						//Folder inbox = store.getFolder("[Gmail]/Important");
 						inbox.open(Folder.READ_ONLY);
-						//messages = javaMailService.getModelEmailSetForPeriod(inbox, -28, -14);
+						Message[] totalMessagesForPeriod = javaMailService.getModelEmailSetForPeriod(inbox, -28, 0);
 						
-						messages = javaMailService.getModelEmailSetForPeriod(inbox, -28, -7);
-
-						logger.info("Setting model size for the current period : " + messages.length);
-						mailBox.setCurrentModelSize(messages.length);
+						modelMessages = javaMailService.getModelEmailSetForPeriod(inbox, -28, -2);
+						logger.info("Total number of messages to retrieve for the past 4 weeks : " + totalMessagesForPeriod.length);
+						mailBox.setMailToRetrieveForPeriod(totalMessagesForPeriod.length);
+						logger.info("Setting model size for the model period : " + modelMessages.length);
+						mailBox.setCurrentModelSize(modelMessages.length);
 						logger.info("set mailbox model size : " + mailBox.getCurrentModelSize());
 						
 					}catch(Exception ex){
@@ -155,11 +164,11 @@ public class EmailService {
 					if(mailBox.getAllEmails().size() >= modelSize){
 						
 						logger.info("Updating profile vector indexes ..");
-						mailBox = EmailUtils.calculateImportanceModel(mailBox);
+						mailBox = EmailUtils.calculateImportanceModel(mailBox, mailBox.getAllEmails());
 						
-						logger.info("Creating topic clusters for the mailbox emails ..");
-						EmailReputationDataModel model = mailBox.getReputationDataModel();
-						logger.info("Creating the content and people clusters from training dataset");	
+//						logger.info("Creating topic clusters for the mailbox emails ..");
+//						EmailReputationDataModel model = mailBox.getReputationDataModel();
+//						logger.info("Creating the content and people clusters from training dataset");	
 //						List<Email> allEmails = mailBox.getAllEmails();
 //						List<EmailContentCluster> contentClusters = EmailAnalysisService.kMeansClusterText(allEmails);
 //						List<EmailRecipientCluster> recipientClusters = EmailAnalysisService.kMeansClusterRecipients(allEmails);
@@ -172,7 +181,7 @@ public class EmailService {
 //						logger.info("Dunn index for recipient clusters : " + model.calculateDunnIndexForRecipientClusters());
 //						logger.info("Avg dunn index for weighted subject-body clusters : " + model.calculateDunnIndexForSubjectBodyClusters());
 //						
-						mailBox.setReputationDataModel(model);			
+//						mailBox.setReputationDataModel(model);			
 						//mailBox = EmailUtils.updateAverageImportanceVectors(mailBox);
 						//setting the average profiles for direct replied, flagged, seen and list replied, flagged, seen
 				
@@ -184,76 +193,73 @@ public class EmailService {
 				}else if(!mailBox.isUpdatingModel() && mailBox.isRequireNewModel() && (mailBox.getAllEmails().size() >= modelSize)){
 					//still the model is not set hence setting the model
 					logger.info("Updating profile vector indexes ..");
-					mailBox = EmailUtils.calculateImportanceModel(mailBox);
+					mailBox = EmailUtils.calculateImportanceModel(mailBox, mailBox.getAllEmails());
 					//generate clusters
-					mailBox = EmailUtils.generateEmailClusters(mailBox);	
-					//mailBox = EmailUtils.updateAverageImportanceVectors(mailBox);
-					//setting the average profiles for direct replied, flagged, seen and list replied, flagged, seen
-			
+					//mailBox = EmailUtils.generateEmailClusters(mailBox);	
+					
 					//since the model has sufficient model data
 					mailBox.setRequireNewModel(false);
-				} else if(!mailBox.isUpdatingModel() && !mailBox.isRequireNewModel() && (mailBox.getAllEmails().size() >= modelSize) && (mailBox.getAllEmails().size() <= 3000)){
+				} else if(!mailBox.isUpdatingModel() && !mailBox.isRequireNewModel() && (mailBox.getAllEmails().size() >= modelSize)){
 					//mailBox.setEmailId("dileepajayakody@gmail.com");
 					logger.info("Loading mailbox : " + mailBox.getEmailId());			
 					logger.info("Updaing mailbox and predicting email importance for emails for mailbox : " + mailBox.getEmailId() + " since email count: " + mailBox.getAllEmails().size()
 							+ " last indexed email  UID : " + mailBox.getLastIndexedMsgUid());
 					
 					//printing the repmodel profile content clusters
-					List<EmailWeightedSubjectBodyContentCluster> repliedContentClusters = mailBox.getReputationDataModel().getRepliedProfileContentClusters();
-					List<EmailRecipientCluster> repliedPeopleClusters = mailBox.getReputationDataModel().getRepliedProfilePeopleClusters();
-					List<EmailWeightedSubjectBodyContentCluster> repliedListContentClusters = mailBox.getReputationDataModel().getRepliedListProfileContentClusters();
-					List<EmailRecipientCluster> repliedListPeopleClusters = mailBox.getReputationDataModel().getRepliedListProfilePeopleClusters();
-					
+//					List<EmailWeightedSubjectBodyContentCluster> repliedContentClusters = mailBox.getReputationDataModel().getRepliedProfileContentClusters();
+//					List<EmailRecipientCluster> repliedPeopleClusters = mailBox.getReputationDataModel().getRepliedProfilePeopleClusters();
+//					List<EmailWeightedSubjectBodyContentCluster> repliedListContentClusters = mailBox.getReputationDataModel().getRepliedListProfileContentClusters();
+//					List<EmailRecipientCluster> repliedListPeopleClusters = mailBox.getReputationDataModel().getRepliedListProfilePeopleClusters();
+//					
 					List<EmailWeightedSubjectBodyContentCluster> seenContentClusters = mailBox.getReputationDataModel().getSeenProfileContentClusters();
 					List<EmailWeightedSubjectBodyContentCluster> seenListContentClusters = mailBox.getReputationDataModel().getSeenListProfileContentClusters();
 					List<EmailRecipientCluster> seenPeopleClusters = mailBox.getReputationDataModel().getSeenProfilePeopleClusters();					
 					List<EmailRecipientCluster> seenListPeopleClusters = mailBox.getReputationDataModel().getSeenListProfilePeopleClusters();
 					double[] spamVector = mailBox.getReputationDataModel().getSpamVector();
 					double[] spamPeopleVector = mailBox.getReputationDataModel().getSpamPeopleVector();
-					double[] spamKeywordVector = mailBox.getReputationDataModel().getSpamNLPKeywordVector();
 					
 					
-					logger.info("Printing the repmodel replied profile content clusters");
-					for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedContentClusters){
-						List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
-						
-						double[] subjectCentroid = contentCluster.getSubjectCentroid();
-						double[] bodyCentroid = contentCluster.getBodyCentroid();
-						double subjectTotal = EmailUtils.getVectorTotal(subjectCentroid);
-						double bodyTotal = EmailUtils.getVectorTotal(bodyCentroid);
-						String clusterId = contentCluster.getId();
-						
+//					logger.info("Printing the repmodel replied profile content clusters");
+//					for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedContentClusters){
+//						List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
+//						
+//						double[] subjectCentroid = contentCluster.getSubjectCentroid();
+//						double[] bodyCentroid = contentCluster.getBodyCentroid();
+//						double subjectTotal = EmailUtils.getVectorTotal(subjectCentroid);
+//						double bodyTotal = EmailUtils.getVectorTotal(bodyCentroid);
+//						String clusterId = contentCluster.getId();
+//						
 //						logger.info(clusterId + " subject vector total : " + subjectTotal + " body total : " + bodyTotal);
 //						
 //						for(Email email : repliedClusterEmails){
 //							logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
 //						}
-					}
+//					}
 //					logger.info("Printing the repmodel replied people clusters");
-					for(EmailRecipientCluster repliedCluster : repliedPeopleClusters){
-						List<Email> pplMails = repliedCluster.getRecipientEmails();
-						double centroidTotal = EmailUtils.getVectorTotal(repliedCluster.getCentroid());
-						logger.info(repliedCluster.getId() + " : centroid vec.total : " + centroidTotal);
-						String clusterId = repliedCluster.getId();
+//					for(EmailRecipientCluster repliedCluster : repliedPeopleClusters){
+//						List<Email> pplMails = repliedCluster.getRecipientEmails();
+//						double centroidTotal = EmailUtils.getVectorTotal(repliedCluster.getCentroid());
+//						logger.info(repliedCluster.getId() + " : centroid vec.total : " + centroidTotal);
+//						String clusterId = repliedCluster.getId();
 //						for(Email email : pplMails){
 //							logger.info(clusterId + " : " + email.getMsgUid() + " from : " + email.getFromAddress());
 //						}
-					}
+//					}
 //					
 //					logger.info("Printing the repmodel replied list profile content clusters");
-					for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedListContentClusters){
-						List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
-						double[] subjectCentroid = contentCluster.getSubjectCentroid();
-						double[] bodyCentroid = contentCluster.getBodyCentroid();
-						double subjectTotal = EmailUtils.getVectorTotal(subjectCentroid);
-						double bodyTotal = EmailUtils.getVectorTotal(bodyCentroid);
-						String clusterId = contentCluster.getId();
+//					for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedListContentClusters){
+//						List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
+//						double[] subjectCentroid = contentCluster.getSubjectCentroid();
+//						double[] bodyCentroid = contentCluster.getBodyCentroid();
+//						double subjectTotal = EmailUtils.getVectorTotal(subjectCentroid);
+//						double bodyTotal = EmailUtils.getVectorTotal(bodyCentroid);
+//						String clusterId = contentCluster.getId();
 //						
 //						logger.info(clusterId + " subject vector total : " + subjectTotal + " body total : " + bodyTotal);
 //						for(Email email : repliedClusterEmails){
 //							logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
 //						}
-					}
+//					}
 					
 					
 					//seen profiles
@@ -287,6 +293,13 @@ public class EmailService {
 //							logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
 //						}
 					}
+					
+					for(EmailRecipientCluster seenCluster : seenPeopleClusters){
+						List<Email> pplMails = seenCluster.getRecipientEmails();
+						double centroidTotal = EmailUtils.getVectorTotal(seenCluster.getCentroid());
+						logger.info(seenCluster.getId() + " : centroid vec.total : " + centroidTotal);
+						String clusterId = seenCluster.getId();
+					}
 //					logger.info("Printing the repmodel seen list people clusters");
 					for(EmailRecipientCluster seenListCluster : seenListPeopleClusters){
 						List<Email> pplMails = seenListCluster.getRecipientEmails();
@@ -319,7 +332,7 @@ public class EmailService {
 
 				//container.persist(mailBox);
 			}
-	//	}
+		}
 		//logger.info("creating the results for the emails model and test data");
 		//createResultsFile();
 		
@@ -364,6 +377,7 @@ public class EmailService {
 //		return mailBoxes;
 //	}
 	
+	@Hidden
 	public void updateEmailModels(){
 		List<UserMailBox> mailBoxes = listAllMailBoxes();
 		
@@ -378,7 +392,7 @@ public class EmailService {
 //			List<Email> emailsForLastMonth = getEmailsForTimePeriod(dateMonthAgo, todayTime, mailboxID);
 //			
 			logger.info("Updating profile vector indexes ..");
-			mb = EmailUtils.calculateImportanceModel(mb);
+			mb = EmailUtils.calculateImportanceModel(mb, mb.getAllEmails());
 			
 			logger.info("Emails clustered according to text cooccurence.");
 			List<EmailContentCluster> contentClusters = emailAnalysisService.kMeansClusterText(mb.getAllEmails());	
@@ -396,7 +410,7 @@ public class EmailService {
 		container.flush();
 	}
 
-	
+	@Hidden
 	@Named("Cluster all emails for topics and people")
 	public void batchClusterEmails(){
 		List<UserMailBox> mailBoxes = listAllMailBoxes();
@@ -432,7 +446,7 @@ public class EmailService {
 			
 			mb.setNofOfUnimportantEmails(0);
 			
-			mb = EmailUtils.calculateImportanceModel(mb);
+			mb = EmailUtils.calculateImportanceModel(mb, mb.getAllEmails());
 			logger.info("\n\n");
 			//EmailUtils.printImportanceModelForMailBox(mb);
 			mb.printImportanceModelForMailBox();
@@ -585,16 +599,127 @@ public class EmailService {
 			List<EmailRecipientCluster> seenPeopleClusters = repModel.getSeenProfilePeopleClusters();
 			List<EmailRecipientCluster> seenListPeopleClusters = repModel.getSeenListProfilePeopleClusters();
 
+			logger.info("printing replied content clusters...");
 			for(EmailWeightedSubjectBodyContentCluster repliedContentCluster : repliedContentClusters){
 				logger.info(repliedContentCluster.getId() + " bodyCentroid : " + EmailUtils.getVectorTotal(repliedContentCluster.getBodyCentroid()));
 				for(Email mail : repliedContentCluster.getSubjectBodyContentEmails()){
 					logger.info(repliedContentCluster.getId() + " subject : " + mail.getSubject());
 				}
 			}
-			for(EmailWeightedSubjectBodyContentCluster repliedListContentCluster : repliedListContentClusters){
-				
+			logger.info("\n\n printing replied list content clusters");
+			for(EmailWeightedSubjectBodyContentCluster repliedContentCluster : repliedListContentClusters){
+				logger.info(repliedContentCluster.getId() + " bodyCentroid : " + EmailUtils.getVectorTotal(repliedContentCluster.getBodyCentroid()));
+				for(Email mail : repliedContentCluster.getSubjectBodyContentEmails()){
+					logger.info(repliedContentCluster.getId() + " subject : " + mail.getSubject());
+				}
 			}
-
+			logger.info("printing seen content clusters...");
+			for(EmailWeightedSubjectBodyContentCluster seenContentCluster : seenContentClusters){
+				logger.info(seenContentCluster.getId() + " bodyCentroid : " + EmailUtils.getVectorTotal(seenContentCluster.getBodyCentroid()));
+				for(Email mail : seenContentCluster.getSubjectBodyContentEmails()){
+					logger.info(seenContentCluster.getId() + " subject : " + mail.getSubject());
+				}
+			}
+			logger.info("\n\n printing seen list content clusters");
+			for(EmailWeightedSubjectBodyContentCluster seenContentCluster : seenListContentClusters){
+				logger.info(seenContentCluster.getId() + " bodyCentroid : " + EmailUtils.getVectorTotal(seenContentCluster.getBodyCentroid()));
+				for(Email mail : seenContentCluster.getSubjectBodyContentEmails()){
+					logger.info(seenContentCluster.getId() + " subject : " + mail.getSubject());
+				}
+			}
+			
+			logger.info("\n\n printing replied clusters");
+			for(EmailRecipientCluster repliedPplCluster : repliedPeopleClusters){
+				logger.info(repliedPplCluster.getId() + " centroid : " + EmailUtils.getVectorTotal(repliedPplCluster.getCentroid()));
+				for(Email email : repliedPplCluster.getRecipientEmails()){
+					String toAddressStr = "";
+					if(email.getToAddresses() != null){
+						for(String adrs : email.getToAddresses()){
+							toAddressStr += " " + adrs;
+						}
+					}
+					
+					List<String> ccAddr = email.getCcAddresses();
+					String ccAddressStr = "";
+					if(ccAddr != null){
+						for(String adrs : ccAddr){
+							ccAddressStr += " " + adrs;
+						}
+					}
+					logger.info(repliedPplCluster.getId() + " from : " + email.getFromAddress() +  " to : " + toAddressStr 
+							+ " cc : " + ccAddressStr);
+				}
+			}
+			
+			logger.info("\n\n printing seen ppl clusters");
+			for(EmailRecipientCluster seenPplCluster : seenPeopleClusters){
+				logger.info(seenPplCluster.getId() + " centroid : " + EmailUtils.getVectorTotal(seenPplCluster.getCentroid()));
+				for(Email email : seenPplCluster.getRecipientEmails()){
+					String toAddressStr = "";
+					if(email.getToAddresses() != null){
+						for(String adrs : email.getToAddresses()){
+							toAddressStr += " " + adrs;
+						}
+					}
+					
+					List<String> ccAddr = email.getCcAddresses();
+					String ccAddressStr = "";
+					if(ccAddr != null){
+						for(String adrs : ccAddr){
+							ccAddressStr += " " + adrs;
+						}
+					}
+					logger.info(seenPplCluster.getId() + " from : " + email.getFromAddress() +  " to : " + toAddressStr 
+							+ " cc : " + ccAddressStr);
+				}
+			}
+			
+			logger.info("\n\n printing list replied clusters");
+			for(EmailRecipientCluster repliedPplCluster : repliedListPeopleClusters){
+				logger.info(repliedPplCluster.getId() + " centroid : " + EmailUtils.getVectorTotal(repliedPplCluster.getCentroid()));
+				for(Email email : repliedPplCluster.getRecipientEmails()){
+					String toAddressStr = "";
+					if(email.getToAddresses() != null){
+						for(String adrs : email.getToAddresses()){
+							toAddressStr += " " + adrs;
+						}
+					}
+					
+					List<String> ccAddr = email.getCcAddresses();
+					String ccAddressStr = "";
+					if(ccAddr != null){
+						for(String adrs : ccAddr){
+							ccAddressStr += " " + adrs;
+						}
+					}
+					logger.info(repliedPplCluster.getId() + " from : " + email.getFromAddress() +  " to : " + toAddressStr 
+							+ " cc : " + ccAddressStr);
+				}
+			}
+			
+			logger.info("\n\n printing seen list ppl clusters");
+			for(EmailRecipientCluster seenPplCluster : seenListPeopleClusters){
+				logger.info(seenPplCluster.getId() + " centroid : " + EmailUtils.getVectorTotal(seenPplCluster.getCentroid()));
+				for(Email email : seenPplCluster.getRecipientEmails()){
+					String toAddressStr = "";
+					if(email.getToAddresses() != null){
+						for(String adrs : email.getToAddresses()){
+							toAddressStr += " " + adrs;
+						}
+					}
+					
+					List<String> ccAddr = email.getCcAddresses();
+					String ccAddressStr = "";
+					if(ccAddr != null){
+						for(String adrs : ccAddr){
+							ccAddressStr += " " + adrs;
+						}
+					}
+					logger.info(seenPplCluster.getId() + " from : " + email.getFromAddress() +  " to : " + toAddressStr 
+							+ " cc : " + ccAddressStr);
+				}
+			}
+			
 		}
 
 	}
@@ -718,8 +843,13 @@ public class EmailService {
 	@Programmatic
 	//sample mailbox
 	public UserMailBox createSample() {
-		UserMailBox mb = container.newTransientInstance(UserMailBox.class);	
 		
+		UserMailBox mb = container.newTransientInstance(UserMailBox.class);	
+		mb.setEmailId("dileepajayakody@gmail.com");
+		mb.setImapHostId("imap.gmail.com");
+		//mb.setPassword("test");
+		mb.setUserFirstName("Dileepa");
+		mb.setUserLastName("Jayakody");
 		
 		Date today = new Date();
 		
@@ -728,6 +858,59 @@ public class EmailService {
 		mb.setMailBoxAddedDateTimeStamp(todayTimestamp);
 		container.persist(mb);
 		
+		return mb;
+	}
+	
+	@Programmatic
+	private UserMailBox createMailBoxFromFile(){
+		String mailBoxPropFileName = "mailbox.properties";
+		Properties prop = new Properties();
+		InputStream input = null;
+		UserMailBox mb = null;	
+		File propFile = new File(mailBoxPropFileName);
+		if(propFile.exists()){
+			try {	 
+				mb = container.newTransientInstance(UserMailBox.class);
+				input = new FileInputStream(propFile);
+				// load a properties file
+				prop.load(input);
+				String firstName = prop.getProperty("firstname");
+				String lastName = prop.getProperty("lastname");
+				String user = prop.getProperty("username");
+				String password = prop.getProperty("password");
+				String imap = prop.getProperty("imap");
+				// get the property value and print it out
+				
+				mb.setEmailId(user);
+				mb.setImapHostId(imap);
+				mb.setPassword(password);
+				mb.setUserFirstName(firstName);
+				mb.setUserLastName(lastName);
+				Date today = new Date();
+				
+				long todayTimestamp = EmailUtils.getTodayTimestamp();
+				//logger.info("Today's date in long : " + todayTimestamp);
+				mb.setMailBoxAddedDateTimeStamp(todayTimestamp);
+				container.persist(mb);
+				logger.info("creating a new mailbox based on mailbox.properties : email address : " + user);
+				
+		 
+			} catch (IOException ex) {
+				ex.printStackTrace();
+				return null;
+			} finally {
+				if (input != null) {
+					try {
+						input.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		 
+		}else {
+			logger.info("No mailbox.properties file configured in app-root. Please add mailbox.properties file or add mailbox from web console");
+		}
 		return mb;
 	}
 
@@ -765,24 +948,37 @@ public class EmailService {
 	 */
 	@Named("Create RepuBox Results File")
 	public void createResultsFile(){
-		if(this.mailBoxes == null){
+	//	if(this.mailBoxes == null){
 			this.mailBoxes = listAllMailBoxes();
-		}
+	//	}
 		//List<UserMailBox> mailBoxes = listAllMailBoxes();
 		for(UserMailBox mb : mailBoxes){
 			List<Email> allEmails = mb.getAllEmails();
 			logger.info(mb.getEmailId() + " : The number of emails in the mailbox : " + allEmails.size());
-			String headerRecord = "msgUID,is_model,is_predicted,isDirect,isCCd,isList,"
-					+ "isAnswered,isFlagged,isSeen,isSpam,isImportantByHeader,importanceLevel,isSensitiveByHeader,"
+//			String headerRecord = "msgUID,is_model,is_predicted,isDirect,isCCd,isList,"
+//					+ "isAnswered,isFlagged,isSeen,isSpam,isImportantByHeader,importanceLevel,isSensitiveByHeader,"
+//					+ "isDelivery,isMeeting,isRequest,isProposal,"	
+//					+ "contentClusterScore,contentCID,recipientScore,recipientCID,"
+//					+ "flagTopicScore,flagKwScore,flagSubjectScore,flagBodyScore,flagPplScore,flagFromScore,flagCCScore,flagToScore,"
+//					+ "replyTopicScore,replyKwScore,replySubjectScore,replyBodyScore,replyPplScore,replyFromScore,replyCCScore,replyToScore,"
+//					+ "seenTopicScore,seenKwScore,seenSubjectScore,seenBodyScore,seenPplScore,seenFromScore,seenCCScore,seenToScore,"
+//					+ "spamTopicScore,spamSubjectScore,spamBodyScore,spamKwScore,spamPplScore,spamFromScore,spamCCScore,spamToScore,"
+//					+ "to,from,cc,keywords,subject,reply,read,important,contentClusterScore,recipientClusterScore";
+//			
+	    	
+			String headerRecord = 
+					"msgUID,is_model,is_predicted,isDirect,isCCd,isList,"
+					+ "isAnswered,isFlagged,isRead"
 					+ "isDelivery,isMeeting,isRequest,isProposal,"	
 					+ "contentClusterScore,contentCID,recipientScore,recipientCID,"
-					+ "flagTopicScore,flagKwScore,flagSubjectScore,flagBodyScore,flagPplScore,flagFromScore,flagCCScore,flagToScore,"
-					+ "replyTopicScore,replyKwScore,replySubjectScore,replyBodyScore,replyPplScore,replyFromScore,replyCCScore,replyToScore,"
-					+ "seenTopicScore,seenKwScore,seenSubjectScore,seenBodyScore,seenPplScore,seenFromScore,seenCCScore,seenToScore,"
-					+ "spamTopicScore,spamSubjectScore,spamBodyScore,spamKwScore,spamPplScore,spamFromScore,spamCCScore,spamToScore,"
-					+ "to,from,cc,keywords,subject,reply,read,important,contentClusterScore,recipientClusterScore";
+				//	+ "flagTopicScore,flagKwScore,flagSubjectScore,flagBodyScore,flagPplScore,flagFromScore,flagCCScore,flagToScore,"
+					+ "replyTopicScore,replySubjectScore,replyBodyScore,replyPplScore,replyFromScore,replyCCScore,replyToScore,"
+					+ "seenTopicScore,seenSubjectScore,seenBodyScore,seenPplScore,seenFromScore,seenCCScore,seenToScore,"
+				//	+ "spamTopicScore,spamSubjectScore,spamBodyScore,spamKwScore,spamPplScore,spamFromScore,spamCCScore,spamToScore,"
+					+ "to,from,cc,subject,reply,read,important,contentClusterScore,recipientClusterScore,replyTotalScore,readTotalScore";
 			
 	    	
+			
 			PrintWriter modelEmailWriter = null;		
 			PrintWriter predictedEmailWriter = null;
 			try {
@@ -804,11 +1000,11 @@ public class EmailService {
 					boolean isAnswered = mail.isAnswered();
 					boolean isFlagged = mail.isFlagged();
 					boolean isSeen = mail.isSeen();
-					boolean isSpam = mail.isSpam();
+					//boolean isSpam = mail.isSpam();
 				
-					boolean isImportantByHeader = mail.getIsImportantByHeader();
-					int importanceLevel = mail.getImportanceLevelByHeader();
-					boolean isSensitiveByHeader = mail.isSensitiveByHeader();
+					//boolean isImportantByHeader = mail.getIsImportantByHeader();
+					//int importanceLevel = mail.getImportanceLevelByHeader();
+					//boolean isSensitiveByHeader = mail.isSensitiveByHeader();
 					
 					boolean isDelivery = mail.isDelivery();
 					boolean isMeeting = mail.isMeeting();
@@ -817,22 +1013,22 @@ public class EmailService {
 				
 					//from clustering /clasificaion results
 					double contentScore = mail.getContentReputationScore();
-					String contentClusterId = mail.getTextClusterId();
+					String contentClusterId = mail.getWeightedSubjectBodyClusterId();
 					
 					double recipientScore = mail.getRecipientReputationScore();
 					String peopleClusterId = mail.getPeopleClusterId();
 					
-					double flaggedTopicScore = mail.getFlaggedTopicscore();			
-					double flaggedKeywordScore = mail.getFlaggedKeywordscore();
-					double flaggedSubjectScore = mail.getFlaggedTopicSubjectscore();
-					double flaggedBodyScore = mail.getFlaggedTopicBodyscore();
-					double flaggedPeopleScore = mail.getFlaggedPeoplescore();
-					double flaggedFromScore = mail.getFlaggedPeopleFromscore();
-					double flaggedCCScore = mail.getFlaggedPeopleCCscore();
-					double flaggedToScore = mail.getFlaggedPeopleToscore();
-					  
+//					double flaggedTopicScore = mail.getFlaggedTopicscore();			
+//					double flaggedKeywordScore = mail.getFlaggedKeywordscore();
+//					double flaggedSubjectScore = mail.getFlaggedTopicSubjectscore();
+//					double flaggedBodyScore = mail.getFlaggedTopicBodyscore();
+//					double flaggedPeopleScore = mail.getFlaggedPeoplescore();
+//					double flaggedFromScore = mail.getFlaggedPeopleFromscore();
+//					double flaggedCCScore = mail.getFlaggedPeopleCCscore();
+//					double flaggedToScore = mail.getFlaggedPeopleToscore();
+//					  
 					double repliedTopicScore = mail.getRepliedTopicscore();
-					double repliedKeywordScore = mail.getRepliedKeywordscore();
+//					double repliedKeywordScore = mail.getRepliedKeywordscore();
 					double repliedTopicSubjectScore = mail.getRepliedTopicSubjectscore();
 					double repliedTopicBodyScore = mail.getRepliedTopicBodyscore();
 					double repliedPeopleScore = mail.getRepliedPeoplescore();
@@ -840,24 +1036,28 @@ public class EmailService {
 					double repliedCCScore = mail.getRepliedPeopleCCscore();
 					double repliedToScore = mail.getRepliedPeopleToscore();
 					 
+					double repliedTotalScore = (((repliedTopicSubjectScore + repliedTopicBodyScore)/2)+repliedPeopleScore)/2;
+					
 					double seenTopicScore = mail.getSeenTopicscore();
-					double seenKeywordScore = mail.getSeenKeywordscore();
+//					double seenKeywordScore = mail.getSeenKeywordscore();
 					double seenTopicSubjectScore = mail.getSeenTopicSubjectscore();
 					double seenTopicBodyScore = mail.getSeenTopicBodyscore();
 					double seenPeopleScore = mail.getSeenPeoplescore();
 					double seenFromScore = mail.getSeenPeopleFromscore();
 					double seenCCScore = mail.getSeenPeopleCCscore();
 					double seenToScore = mail.getSeenPeopleToscore();
-					 
-					double spamTopicScore = mail.getSpamTopicScore();
-					double spamSubjectScore = mail.getSpamTopicSubjectScore();
-					double spamBodyScore = mail.getSpamTopicBodyScore();  
-					double spamKeywordScore = mail.getSpamKeywordscore();
-					double spamPeopleScore = mail.getSpamPeopleScore();
-					double spamPeopleFromScore = mail.getSpamPeopleFromScore();
-					double spamPeopleCCScore = mail.getSpamPeopleCCScore();
-					double spamPeopleToScore = mail.getSpamPeopleToScore();
-							
+					
+					double readTotalScore = (((seenTopicSubjectScore + seenTopicBodyScore)/2) + seenPeopleScore)/2;
+					
+//					double spamTopicScore = mail.getSpamTopicScore();
+//					double spamSubjectScore = mail.getSpamTopicSubjectScore();
+//					double spamBodyScore = mail.getSpamTopicBodyScore();  
+//					double spamKeywordScore = mail.getSpamKeywordscore();
+//					double spamPeopleScore = mail.getSpamPeopleScore();
+//					double spamPeopleFromScore = mail.getSpamPeopleFromScore();
+//					double spamPeopleCCScore = mail.getSpamPeopleCCScore();
+//					double spamPeopleToScore = mail.getSpamPeopleToScore();
+//							
 					
 					 String toAddrs = "";
 			    		if(mail.getToAddresses() != null && mail.getToAddresses().size() > 0){
@@ -874,52 +1074,44 @@ public class EmailService {
 				    			ccAddr += ccAdd + " | ";
 				    		}	
 			    		}
-			    	String keywords = "";
-			    		if(mail.getKeywords() != null){
-			    			for(String kw : mail.getKeywords()){
-				    			keywords += kw + " | ";
-				    		}	
-			    		}
+//			    	String keywords = "";
+//			    		if(mail.getKeywords() != null){
+//			    			for(String kw : mail.getKeywords()){
+//				    			keywords += kw + " | ";
+//				    		}	
+//			    		}
 			    	String sub = mail.getSubject();
-						
-					sub = sub.replace(",", " ");
+					if(sub != null){
+						sub = sub.replace(",", " ");	
+					}	
 					
 			    	//final conclusions if the email is predicted for reply,read, important
-			    	double totalPplScore = mail.getTotalPeopleScore();
-			    	double totalTopicScore = mail.getTotalTopicScore();
-			    	boolean shouldReply = false;
-			    	boolean shouldRead = false;
-			    	boolean shouldFlag = false;
+			    	boolean shouldReply = mail.isNeedReply();
+			    	boolean shouldRead = mail.isNeedRead();
+			    	boolean shouldFlag = mail.isNeedFlag();
 			    	
- 			    	if(repliedTopicScore > 0.4 && repliedPeopleScore > 0.3){
- 			    		shouldReply = true;
-			    	}
- 			    	if(seenTopicScore > 0.3 && seenPeopleScore > 0.4){
- 			    		shouldRead = true;
- 			    	}
- 			    	if(flaggedTopicScore > 0.4 && flaggedPeopleScore > 0.4){
- 			    		shouldFlag = true;
- 			    	}
-			    	
- 			    	
-
-			    	
-					String record = uid + "," + model + "," + predicted + "," + isDirect + "," + isCCd + "," + isList
-					+ "," + isAnswered  + "," + isFlagged  + "," + isSeen + "," + isSpam
-					+ "," + isImportantByHeader + "," + importanceLevel + "," + isSensitiveByHeader
-				    + "," + isDelivery + "," + isMeeting + "," + isRequest + "," + isProposal
+// 			    	if(repliedTopicScore > 0.4 && repliedPeopleScore > 0.3){
+// 			    		shouldReply = true;
+//			    	}
+// 			    	if(seenTopicScore > 0.3 && seenPeopleScore > 0.4){
+// 			    		shouldRead = true;
+// 			    	}
+// 			    	if(flaggedTopicScore > 0.4 && flaggedPeopleScore > 0.4){
+// 			    		shouldFlag = true;
+// 			    	}
+//			    	
+// 			   	    	
+					
+			    	String record = uid + "," + model + "," + predicted + "," + isDirect + "," + isCCd + "," + isList
+					+ "," + isAnswered  + "," + isFlagged  + "," + isSeen 
+					+ "," + isDelivery + "," + isMeeting + "," + isRequest + "," + isProposal
 					+ "," + contentScore + "," + contentClusterId + "," + recipientScore + "," +peopleClusterId 
-					+ "," + flaggedTopicScore + "," + flaggedKeywordScore + "," + flaggedSubjectScore + "," +flaggedBodyScore
-					+ "," + flaggedPeopleScore + "," + flaggedFromScore + "," + flaggedCCScore + "," + flaggedToScore  
-					+ "," + repliedTopicScore + "," + repliedKeywordScore + "," + repliedTopicSubjectScore + "," +repliedTopicBodyScore+ "," + repliedPeopleScore 
+					+ "," + repliedTopicScore  + "," + repliedTopicSubjectScore + "," +repliedTopicBodyScore+ "," + repliedPeopleScore 
 					+ "," + repliedFromScore + "," + repliedCCScore + "," + repliedToScore
-					+ "," + seenTopicScore + "," + seenKeywordScore + "," + seenTopicSubjectScore + "," + seenTopicBodyScore+ "," + seenPeopleScore
+					+ "," + seenTopicScore  + "," + seenTopicSubjectScore + "," + seenTopicBodyScore+ "," + seenPeopleScore
 					+ "," + seenFromScore + "," + seenCCScore + "," + seenToScore
-					+ "," + spamTopicScore + "," + spamSubjectScore + "," + spamBodyScore + "," + spamKeywordScore + "," + spamPeopleScore 
-					+ "," + spamPeopleFromScore + "," + spamPeopleCCScore + "," + spamPeopleToScore
-					+ "," + toAddrs + "," + fromAddrs + "," + ccAddr + "," + keywords + "," +"'" + sub + "'"
-					+ "," + shouldReply + "," + shouldRead + "," + shouldFlag
-					+ "," + contentScore + "," + recipientScore;
+					+ "," + toAddrs + "," + fromAddrs + "," + ccAddr + "," +"'" + sub + "'"
+					+ "," + contentScore + "," + recipientScore+ "," + repliedTotalScore +  "," + readTotalScore;
 					
 					
 					//String simpleRecord = mail.getMessageId()+ "," + "'" + sub + "'"+ "," + model + "," + predicted;
@@ -951,13 +1143,10 @@ public class EmailService {
 	}
 	
 	
-	//sample rest object retrieval from backend
-	public String returnNameString()
-	{
-		return "success";
-	}
+	
 	
 	//sample rest object retrieval from backend using a param
+	@Hidden
 	public String returnParamString(final long param)
 	{
 		logger.info("GOT a param string : " + param);
@@ -1013,21 +1202,39 @@ public class EmailService {
 			Map<Long,Email> emailMap = new HashMap<Long, Email>();
 			
 			List<Email> mails = mb.getAllEmails();
+			int modelSize = mb.getCurrentModelSize();
+			long lastUid = mb.getLastIndexedMsgUid();
+			long predictionStartEmailUid = lastUid - modelSize;
+			
 			for(Email mail : mails){
 				emailMap.put(mail.getMsgUid(), mail);
 			}
-			logger.info("loaded emailMap with size : " + emailMap.size());
+			logger.info("loaded emailMap with size : " + emailMap.size() + " with model size : " + modelSize 
+					+ " starting prediction of emails from uid : " + predictionStartEmailUid);
+			
+			
+			
 			JSONObject root = new JSONObject();
 			JSONArray resultsArray = new JSONArray();
 			for(Long msgKey : msgKeys){
 				logger.info("Getting the email for the msgKey : " + msgKey);
-				Email mail = emailMap.get(msgKey);
-				if(mail != null){
-					JSONObject reputationObj = EmailUtils.getReputationObjectJSON(mail);
+				//getting message results for emails of this month's prediction model
+				if(msgKey >= predictionStartEmailUid){
+					Email mail = emailMap.get(msgKey);
+					if(mail != null){
+						JSONObject reputationObj = EmailUtils.getReputationObjectJSON(mail);
+						resultsArray.put(reputationObj);
+					}else {
+						logger.info("The mail is not yet processed for msgKey : " + msgKey);
+					}	
+				}else{
+					//this requested email id is too old for this model
+					JSONObject reputationObj = new JSONObject();
+					reputationObj.put("uid", msgKey);
+					reputationObj.put("is_predicted", 0);
 					resultsArray.put(reputationObj);
-				}else {
-					logger.info("No mail for msgKey : " + msgKey);
 				}
+				
 			}
 			root.put("reputation", resultsArray);
 			reputationResultString = root.toString();
@@ -1035,7 +1242,7 @@ public class EmailService {
 		return reputationResultString;
 	}
 	
-	
+	@Hidden
 	public String getReputationForEmail(long uid){
 		JSONObject reputationObj = null;
 		
@@ -1066,35 +1273,454 @@ public class EmailService {
 		}
 		return reputationObj.toString();
 	}
+
 	
-//	public void printListOfModelEmailMsgUids(){
-//		
-//	}
-//	public void printListOfPredictedEmailMsgUids(){
-//		mailBoxes = listAllMailBoxes();	
-//		
-//	}
+    @Hidden
+	public void getEmailSenderReputation(String emailAddress){
+		QueryDefault<Email> query = 
+	            QueryDefault.create(
+	                Email.class, 
+	                "findSenderReputation", 
+	                "emailAddress", emailAddress);
+	                		
+		List<Email> matchedEmails = container.allMatches(query);
+		logger.info("Got results : " + matchedEmails.size());
+		int totalEmails = matchedEmails.size();
+		double repliedEmails = 0;
+		double seenEmails = 0;
 	
-	/**
-//	 * @param from
-//	 * @param to
-//	 * @param mailBoxID
-//	 * @return the list of emails from the mailbox within the time period from-to 
-//	 */
-//	@Programmatic
-//	public List<Email> getEmailsForTimePeriod(long from, long to, String mailBoxID) {
-//		
-//		QueryDefault<Email> query = 
-//		            QueryDefault.create(
-//		                Email.class, 
-//		                "findEmailsForPeriod", 
-//		                "fromDate", from, 
-//		                "toDate", to,
-//		                "mailboxId", mailBoxID);
-//		                
-//		
-//		return container.allMatches(query);
-//	}
+		for(Email mail : matchedEmails){
+			if(mail.isAnswered()){
+				repliedEmails++;
+			}
+			if(mail.isSeen()){
+				seenEmails++;
+			}
+		}
+		double replyReputation = 0.0;
+		double readReputation = 0.0;
+		
+		if(repliedEmails > 0){
+			replyReputation = repliedEmails / totalEmails;
+		}
+		if(seenEmails > 0){
+			readReputation = seenEmails / totalEmails;
+		}
+		
+		logger.info(emailAddress + "replyReputation : " + replyReputation + " readReputation :" + readReputation);
+	
+	}
+	
+    @Hidden
+	@Programmatic
+	public List<Email> getEmailsForTimePeriod(long from, long to) {
+		
+		QueryDefault<Email> query = 
+		            QueryDefault.create(
+		                Email.class, 
+		                "findEmailsBetweenMsgUid", 
+		                "fromUid", from, 
+		                "toUid", to);
+		                		
+		List<Email> matchedEmails = container.allMatches(query);
+		logger.info("Got emails from db for query from uid : " + from + " to: "+ to+ " results size: "  + matchedEmails.size());
+//		for(Email mail : matchedEmails){
+//			logger.info("email uid : "+ mail.getMsgUid());
+//		}
+		return matchedEmails;
+	}
+	
+	//reset properties for email loading..
+	public void resetLastPredictedMsgUid(){
+		mailBoxes = listAllMailBoxes();
+		for(UserMailBox mb : mailBoxes){
+			mb.setLastPredictedMsgUidSentToClient(0);
+		}
+	}
+
+	//the periodic method to call from thunderbird..
+	public String receivePredictedEmails() {
+		logger.info("predicted emails retriaval method called..");
+		JSONObject root = new JSONObject();
+		JSONArray resultsArray = new JSONArray();
+		
+		long lastPredictedMsgUid = 0;
+		mailBoxes = listAllMailBoxes();
+		for(UserMailBox mb : mailBoxes) {
+			lastPredictedMsgUid = mb.getLastPredictedMsgUidSentToClient();
+		
+		QueryDefault<Email> query = 
+		            QueryDefault.create(
+		                Email.class, 
+		                "findPredictedEmails", 
+		                "fromUid", lastPredictedMsgUid);
+		                		
+		List<Email> matchedEmails = container.allMatches(query);
+		logger.info("Got predicted emails from db for query from uid : " + lastPredictedMsgUid + " results size: "  + matchedEmails.size());
+			int msgLimit = 50;
+			int count = 0;
+			if(matchedEmails.size() > 0){
+				for(Email mail : matchedEmails){
+					lastPredictedMsgUid = mail.getMsgUid();
+					JSONObject reputationObj = EmailUtils.getReputationObjectJSON(mail);
+					resultsArray.put(reputationObj);
+					count++;
+					if(count >= msgLimit){
+						break;
+					}
+				}
+			}else {
+				logger.info("No predicted emails retrieved.. ");
+			}
+			mb.setLastPredictedMsgUidSentToClient(lastPredictedMsgUid);
+		}		
+//		for(Email mail : matchedEmails){
+//			logger.info("email uid : "+ mail.getMsgUid());
+//		}
+		
+		root.put("reputation", resultsArray);
+		String reputationResultString = root.toString();
+		return reputationResultString;
+	}
+	
+	
+	@Named("Process Predictions with Cluster Results")
+	public void processPredictionsWithClusterResults(){
+		mailBoxes = listAllMailBoxes();	
+		for(UserMailBox mb : mailBoxes){
+//			List<Email> modelEmails = getEmailsForTimePeriod(0, 168400);
+//			List<Email> predictEmails = getEmailsForTimePeriod(168400, 170000);
+			//int mailsToPredict = mb.getAllEmails().size() - 2995;
+			int testSize = mb.getAllEmails().size()/5;
+			int mailsToPredict = mb.getAllEmails().size() - testSize;
+			
+			//int mailsToPredict = mb.getAllEmails().size() - mb.getCurrentModelSize();
+			logger.info("no of emails to predict based on parameters : " + mailsToPredict);
+			long modelLimitUid = mb.getLastIndexedMsgUid() - mailsToPredict;
+			List<Email> modelEmails = getEmailsForTimePeriod(0, modelLimitUid);
+			List<Email> predictEmails = getEmailsForTimePeriod(modelLimitUid, mb.getLastIndexedMsgUid());
+			logger.info("mailbox size : " + mb.getAllEmails().size() + " processing model emails : " + modelEmails.size() + " emails to predict : " + predictEmails.size());
+			List<Email> resultEmails = new ArrayList<Email>();
+			mb = EmailUtils.calculateImportanceModel(mb, modelEmails);
+			for(Email emailToPredict : predictEmails){
+				Email predictedEmail = mb.predictImportanceFromEmailUserProfile(emailToPredict);
+				predictedEmail = mb.predictImportanceBasedOnProfileSubClusterSimilarity(emailToPredict);
+				predictedEmail = mb.classifyEmailBasedOnContentAndRecipients(emailToPredict);
+				resultEmails.add(predictedEmail);
+			}
+			createResultFileWithProfileAndSubClusterResults(mb.getEmailId(), resultEmails);
+		}
+	}
+
+	@Hidden
+	@Named("Process Predictions with Email Profiles")
+	public void processPredictionsFromEmailProfiles(){
+		mailBoxes = listAllMailBoxes();	
+		for(UserMailBox mb : mailBoxes){
+			logger.info("mailbox : " + mb.getEmailId() + " loaded with "+ mb.getAllEmails().size() + " model size: " + mb.getCurrentModelSize());
+			int mailsToPredict = mb.getAllEmails().size() - mb.getCurrentModelSize();
+			//int mailsToPredict = mb.getAllEmails().size() - 2995;
+			logger.info("no of emails to predict based on parameters : " + mailsToPredict);
+			long modelLimitUid = mb.getLastIndexedMsgUid() - mailsToPredict;
+			logger.info("calculated last email uid for model : " + modelLimitUid);
+			List<Email> modelEmails = getEmailsForTimePeriod(0, modelLimitUid);
+			List<Email> predictEmails = getEmailsForTimePeriod(modelLimitUid, mb.getLastIndexedMsgUid());
+			logger.info("mailbox size : " + mb.getAllEmails().size() + " processing model emails : " + modelEmails.size() + " emails to predict : " + predictEmails.size());
+			List<Email> resultEmails = new ArrayList<Email>();
+			
+			mb = EmailUtils.calculateImportanceModel(mb, modelEmails);
+			for(Email emailToPredict : predictEmails){
+				Email predictedEmail = mb.predictImportanceFromEmailUserProfile(emailToPredict);
+				predictedEmail = mb.predictImportanceBasedOnProfileSubClusterSimilarity(emailToPredict);
+				predictedEmail = mb.classifyEmailBasedOnContentAndRecipients(emailToPredict);
+				resultEmails.add(predictedEmail);
+			}
+			createResultFileWithProfileAndSubClusterResults(mb.getEmailId(), resultEmails);
+		}
+	}
+	
+	
+	private static void createResultFileWithProfileAndSubClusterResults(String emailId,List<Email> mails){
+		logger.info(emailId + " : The number of emails to write to the result file : " + mails.size());
+		String headerRecord = "uid,msgID,is_model,is_predicted,isDirect,isCCd,isList,"
+				+ "isAnswered,isFlagged,isSeen,"
+				+ "isDelivery,isMeeting,isRequest,isProposal,"	
+				+ "contentClusterScore,contentCID,recipientClusterScore,recipientCID,"
+				+ "to,from,cc,subject,"
+				+ "readProfileContentScore,readProfilePeopleScore,replyProfileContentScore,replyProfilePeopleScore,flagProfileContentScore,flagProfilePeopleScore,"
+				+ "totalReadProfileScore,totalReplyProfileScore,totalFlagProfileScore,"
+				+ "subClusterReadContentScore,subClusterReadPeopleScore,subClusterReplyContentScore,subClusterReplyPeopleScore,subClusterFlagContentScore,subClusterFlagPeopleScore,"
+				+ "readProfileSubClusterScore,replyProfileSubClusterScore,flagProfileSubClusterScore";
+		
+		PrintWriter modelEmailWriter = null;		
+		PrintWriter predictedEmailWriter = null;
+		try {
+			modelEmailWriter = new PrintWriter("Emails_model.csv", "UTF-8");
+			predictedEmailWriter = new PrintWriter("Emails_predicted.csv", "UTF-8");
+			
+			modelEmailWriter.println(headerRecord);
+			predictedEmailWriter.println(headerRecord);
+			
+			int count = 0;
+			for(Email mail : mails){
+				//String messageId = mail.getMessageId();
+				long uid = mail.getMsgUid();
+				boolean model = mail.isModel();
+				boolean predicted = mail.isPredicted();
+				boolean isDirect = mail.isDirect();
+				boolean isCCd = mail.isCCd();
+				boolean isList = mail.isListMail();
+				boolean isAnswered = mail.isAnswered();
+				boolean isFlagged = mail.isFlagged();
+				boolean isSeen = mail.isSeen();
+				
+				boolean isDelivery = mail.isDelivery();
+				boolean isMeeting = mail.isMeeting();
+				boolean isRequest = mail.isRequest();
+				boolean isProposal = mail.isPropose();
+			
+				//from clustering /clasificaion results
+				double contentScore = mail.getContentReputationScore();
+				String contentClusterId = mail.getTextClusterId();
+				
+				double recipientScore = mail.getRecipientReputationScore();
+				String peopleClusterId = mail.getPeopleClusterId();
+							
+				double subClusterReadScore = mail.getTotalSubClusterBasedReadScore();
+				double subClusterReplyScore = mail.getTotalSubClusterBasedReplyScore();
+				double subClusterFlagScore = mail.getTotalSubClusterBasedFlagScore();
+						
+				double profileReadScore = mail.getTotalProfileBasedReadScore();
+				double profileReplyScore = mail.getTotalProfileBasedReplyScore();
+				double profileFlagScore = mail.getTotalProfileBasedFlagScore();
+								
+				 String toAddrs = "";
+		    		if(mail.getToAddresses() != null && mail.getToAddresses().size() > 0){
+		    			for(String toAdd : mail.getToAddresses()){
+			    			toAddrs += toAdd + " | ";
+			    		}	
+		    		}
+		    		
+		    	String fromAddrs = mail.getFromAddress();
+		    	
+		    		String ccAddr = "";
+		    		if(mail.getCcAddresses() != null && mail.getCcAddresses().size() > 0){
+		    			for(String ccAdd : mail.getCcAddresses()){
+			    			ccAddr += ccAdd + " | ";
+			    		}	
+		    		}
+		    
+		    	String sub = mail.getSubject();
+					
+				sub = sub.replace(",", " ");	
+
+				String record = uid + "," + mail.getMessageId()+ "," + model + "," + predicted 
+				+ "," + isDirect + "," + isCCd + "," + isList
+				+ "," + isAnswered  + "," + isFlagged  + "," + isSeen 
+				+ "," + isDelivery + "," + isMeeting + "," + isRequest + "," + isProposal
+				+ "," + contentScore + "," + contentClusterId + "," + recipientScore + "," +peopleClusterId 
+				+ "," + toAddrs + "," + fromAddrs + "," + ccAddr + "," +"'" + sub + "'"
+				+ "," + mail.getSeenTopicscore() + "," + mail.getSeenPeoplescore() 
+				+ "," + mail.getRepliedTopicscore() + "," + mail.getRepliedPeoplescore() 
+				+ "," + mail.getFlaggedTopicscore() + "," + mail.getFlaggedPeoplescore() 
+				+ "," + profileReadScore + "," + profileReplyScore + "," + profileFlagScore
+				+ "," + mail.getProfileClusterReadContentScore() + "," + mail.getProfileClusterReadRecipientScore() 
+				+ "," + mail.getProfileClusterReplyContentScore() + "," + mail.getProfileClusterReplyRecipientScore() 
+				+ "," + mail.getProfileClusterFlagContentScore() + "," + mail.getProfileClusterFlagRecipientScore()
+				+ "," + subClusterReadScore + "," + subClusterReplyScore + "," + subClusterFlagScore;
+				
+				if(mail.isPredicted()){
+					predictedEmailWriter.println(record);
+				}else{
+					modelEmailWriter.println(record);
+				}
+				count++;
+//				if(count > 5){
+//					break;
+//				}
+					
+			}			
+			modelEmailWriter.close();	
+			predictedEmailWriter.close();
+			logger.info("Results file has been created successfully!!");
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally{
+			modelEmailWriter.close();
+		}
+		
+	}
+
+	@Programmatic
+	private static void createResultFileForEmails(String emailId,List<Email> mails){
+		logger.info(emailId + " : The number of emails to write to the result file : " + mails.size());
+		String headerRecord = "uid,msgID,is_model,is_predicted,isDirect,isCCd,isList,"
+				+ "isAnswered,isFlagged,isSeen,isSpam,"
+				+ "isDelivery,isMeeting,isRequest,isProposal,"	
+				+ "contentClusterScore,contentCID,recipientClusterScore,recipientCID,"
+				+ "readProfileClusterContentScore,replyProfileClusterContentScore,"
+				+ "readProfileClusterRecipientScore,replyProfileClusterRecipientScore,"
+				+ "flagTopicScore,flagSubjectScore,flagBodyScore,flagPplScore,flagFromScore,flagCCScore,flagToScore,"
+				+ "replyTextTopicScore,replySubjectScore,replyBodyScore,replyPplScore,replyFromScore,replyCCScore,replyToScore,"
+				+ "seenTextTopicScore,seenSubjectScore,seenBodyScore,seenPplScore,seenFromScore,seenCCScore,seenToScore,"
+				+ "spamTopicScore,spamSubjectScore,spamBodyScore,spamPplScore,spamFromScore,spamCCScore,spamToScore,"
+				+ "to,from,cc,subject,seeProfileScore,replyProfileScore,flagProfileScore,"
+				+ "seeProfileSubClusterScore,replyProfileSubClusterScore,contentClusterScore,recipientClusterScore";
+		
+    	
+		PrintWriter modelEmailWriter = null;		
+		PrintWriter predictedEmailWriter = null;
+		try {
+			modelEmailWriter = new PrintWriter("Emails_model.csv", "UTF-8");
+			predictedEmailWriter = new PrintWriter("Emails_predicted.csv", "UTF-8");
+			
+			modelEmailWriter.println(headerRecord);
+			predictedEmailWriter.println(headerRecord);
+			
+			int count = 0;
+			for(Email mail : mails){
+				//String messageId = mail.getMessageId();
+				long uid = mail.getMsgUid();
+				boolean model = mail.isModel();
+				boolean predicted = mail.isPredicted();
+				boolean isDirect = mail.isDirect();
+				boolean isCCd = mail.isCCd();
+				boolean isList = mail.isListMail();
+				boolean isAnswered = mail.isAnswered();
+				boolean isFlagged = mail.isFlagged();
+				boolean isSeen = mail.isSeen();
+				boolean isSpam = mail.isSpam();
+			
+				boolean isDelivery = mail.isDelivery();
+				boolean isMeeting = mail.isMeeting();
+				boolean isRequest = mail.isRequest();
+				boolean isProposal = mail.isPropose();
+			
+				//from clustering /clasificaion results
+				double contentScore = mail.getContentReputationScore();
+				String contentClusterId = mail.getTextClusterId();
+				
+				double recipientScore = mail.getRecipientReputationScore();
+				String peopleClusterId = mail.getPeopleClusterId();
+							
+				double flaggedTopicScore = mail.getFlaggedTopicscore();			
+				double flaggedSubjectScore = mail.getFlaggedTopicSubjectscore();
+				double flaggedBodyScore = mail.getFlaggedTopicBodyscore();
+				double flaggedPeopleScore = mail.getFlaggedPeoplescore();
+				double flaggedFromScore = mail.getFlaggedPeopleFromscore();
+				double flaggedCCScore = mail.getFlaggedPeopleCCscore();
+				double flaggedToScore = mail.getFlaggedPeopleToscore();
+				  
+				double repliedTopicScore = mail.getRepliedTopicscore();
+				double repliedTopicSubjectScore = mail.getRepliedTopicSubjectscore();
+				double repliedTopicBodyScore = mail.getRepliedTopicBodyscore();
+				double repliedPeopleScore = mail.getRepliedPeoplescore();
+				double repliedFromScore = mail.getRepliedPeopleFromscore();
+				double repliedCCScore = mail.getRepliedPeopleCCscore();
+				double repliedToScore = mail.getRepliedPeopleToscore();
+				 
+				double seenTopicScore = mail.getSeenTopicscore();
+				double seenTopicSubjectScore = mail.getSeenTopicSubjectscore();
+				double seenTopicBodyScore = mail.getSeenTopicBodyscore();
+				double seenPeopleScore = mail.getSeenPeoplescore();
+				double seenFromScore = mail.getSeenPeopleFromscore();
+				double seenCCScore = mail.getSeenPeopleCCscore();
+				double seenToScore = mail.getSeenPeopleToscore();
+				
+				double readProfileClusterContentScore = mail.getProfileClusterReadContentScore();
+				double readProfileClusterRecipientScore = mail.getProfileClusterReadRecipientScore(); 
+				double replyProfileClusterContentScore = mail.getProfileClusterReplyContentScore();
+				double replyProfileClusterRecipientScore = mail.getProfileClusterReplyRecipientScore();
+				
+				double readProfileClusterTotalScore = (readProfileClusterContentScore + readProfileClusterRecipientScore)/2;
+				double replyProfileClusterTotalScore = (replyProfileClusterContentScore + replyProfileClusterRecipientScore)/2;
+				
+				
+				double spamTopicScore = mail.getSpamTopicScore();
+				double spamSubjectScore = mail.getSpamTopicSubjectScore();
+				double spamBodyScore = mail.getSpamTopicBodyScore();  
+				double spamPeopleScore = mail.getSpamPeopleScore();
+				double spamPeopleFromScore = mail.getSpamPeopleFromScore();
+				double spamPeopleCCScore = mail.getSpamPeopleCCScore();
+				double spamPeopleToScore = mail.getSpamPeopleToScore();
+						
+				
+				 String toAddrs = "";
+		    		if(mail.getToAddresses() != null && mail.getToAddresses().size() > 0){
+		    			for(String toAdd : mail.getToAddresses()){
+			    			toAddrs += toAdd + " | ";
+			    		}	
+		    		}
+		    		
+		    	String fromAddrs = mail.getFromAddress();
+		    	
+		    		String ccAddr = "";
+		    		if(mail.getCcAddresses() != null && mail.getCcAddresses().size() > 0){
+		    			for(String ccAdd : mail.getCcAddresses()){
+			    			ccAddr += ccAdd + " | ";
+			    		}	
+		    		}
+		    
+		    	String sub = mail.getSubject();
+					
+				sub = sub.replace(",", " ");	
+					
+				//totalReadProfileScore
+				double totalSeeProfileScore = ((seenTopicSubjectScore + seenTopicBodyScore)/2 + seenPeopleScore)/2;
+				double totalReplyProfileScore = ((repliedTopicSubjectScore+ repliedTopicBodyScore)/2 + repliedPeopleScore)/2;
+				double totalFlagProfilScore = ((flaggedSubjectScore + flaggedBodyScore)/2 + flaggedPeopleScore)/2;
+//				
+//				+ "to,from,cc,subject,seeProfileScore,replyProfileScore,flagProfileScore,"
+//				+ "seeProfileSubClusterScore,replyProfileSubClusterScore,contentClusterScore,recipientClusterScore";
+		
+				String record = uid + "," + mail.getMessageId()+ "," + model + "," + predicted + "," + isDirect + "," + isCCd + "," + isList
+				+ "," + isAnswered  + "," + isFlagged  + "," + isSeen + "," + isSpam
+				+ "," + isDelivery + "," + isMeeting + "," + isRequest + "," + isProposal
+				+ "," + contentScore + "," + contentClusterId + "," + recipientScore + "," +peopleClusterId 
+				+ "," + readProfileClusterContentScore + "," + replyProfileClusterContentScore + "," + readProfileClusterRecipientScore + "," + replyProfileClusterRecipientScore
+				+ "," + flaggedTopicScore +  "," + flaggedSubjectScore + "," +flaggedBodyScore
+				+ "," + flaggedPeopleScore + "," + flaggedFromScore + "," + flaggedCCScore + "," + flaggedToScore  
+				+ "," + repliedTopicScore + ","  + repliedTopicSubjectScore + "," +repliedTopicBodyScore+ "," + repliedPeopleScore 
+				+ "," + repliedFromScore + "," + repliedCCScore + "," + repliedToScore
+				+ "," + seenTopicScore + "," + seenTopicSubjectScore + "," + seenTopicBodyScore+ "," + seenPeopleScore
+				+ "," + seenFromScore + "," + seenCCScore + "," + seenToScore
+				+ "," + spamTopicScore + "," + spamSubjectScore + "," + spamBodyScore + "," + spamPeopleScore 
+				+ "," + spamPeopleFromScore + "," + spamPeopleCCScore + "," + spamPeopleToScore
+				+ "," + toAddrs + "," + fromAddrs + "," + ccAddr + "," +"'" + sub + "'"
+				+ "," + totalSeeProfileScore + "," + totalReplyProfileScore + "," + totalFlagProfilScore
+				+ "," + readProfileClusterTotalScore + "," + replyProfileClusterTotalScore + "," + contentScore + "," + recipientScore;
+				
+				
+				//String simpleRecord = mail.getMessageId()+ "," + "'" + sub + "'"+ "," + model + "," + predicted;
+				//record = record.substring(0, (record.length()-1));
+				if(mail.isPredicted()){
+					predictedEmailWriter.println(record);
+				}else{
+					modelEmailWriter.println(record);
+				}
+				count++;
+//				if(count > 5){
+//					break;
+//				}
+					
+			}			
+			modelEmailWriter.close();	
+			predictedEmailWriter.close();
+			logger.info("Results file has been created successfully!!");
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally{
+			modelEmailWriter.close();
+		}
+	} 
 	
 	// region > dependencies
 	@Inject

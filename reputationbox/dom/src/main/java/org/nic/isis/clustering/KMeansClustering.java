@@ -295,7 +295,7 @@ public class KMeansClustering {
 					
 					bestMatchCluster.addEmail(messageId, newEmail);
 					double clusterRepuScore = bestMatchCluster
-							.calculateClusterReputationScore();
+							.getReputationScore();
 					newEmail.setTextClusterId(bestMatchCluster.getId());
 					
 					newEmail.setContentReputationScore(clusterRepuScore);
@@ -314,7 +314,7 @@ public class KMeansClustering {
                         logger.info("Adding the email to the newly added content cluster  " + bestMatchCluster.getId());
     					bestMatchCluster.addEmail(messageId, newEmail);
     					double clusterRepuScore = bestMatchCluster
-    							.calculateClusterReputationScore();
+    							.getReputationScore();
     					newEmail.setTextClusterId(bestMatchCluster.getId());
     					newEmail.setContentReputationScore(clusterRepuScore);
                         contentClusters.add(bestMatchCluster);
@@ -358,7 +358,7 @@ public class KMeansClustering {
 							+ bestMatchCluster.getId() +  " similarity : " + maxSimilarity);
 					bestMatchCluster.addEmail(messageId, newEmail);
 					double clusterRepuScore = bestMatchCluster
-							.calculateClusterReputationScore();
+							.getReputationScore();
 					
 					newEmail.setPeopleClusterId(bestMatchCluster.getId());
 					newEmail.setRecipientReputationScore(clusterRepuScore);
@@ -376,7 +376,7 @@ public class KMeansClustering {
                         bestMatchCluster = new EmailRecipientCluster("p" + String.valueOf(recipientClusters.size()));
                         bestMatchCluster.addEmail(messageId, newEmail);
                     	double clusterRepuScore = bestMatchCluster
-    							.calculateClusterReputationScore();
+    							.getReputationScore();
                     	logger.info("Adding the email to the newly added recipient cluster  " + bestMatchCluster.getId());
     					newEmail.setPeopleClusterId(bestMatchCluster.getId());
     					newEmail.setRecipientReputationScore(clusterRepuScore);
@@ -422,8 +422,8 @@ public class KMeansClustering {
 					
 					bestMatchCluster.addEmail(messageId, newEmail);
 					double clusterRepuScore = bestMatchCluster
-							.calculateClusterReputationScore();
-					//newEmail.setTextClusterId(bestMatchCluster.getId());
+							.getReputationScore();
+					newEmail.setTextClusterId(bestMatchCluster.getId());
 					newEmail.setWeightedSubjectBodyClusterId(bestMatchCluster.getId());
 					newEmail.setContentReputationScore(clusterRepuScore);
 					
@@ -441,8 +441,8 @@ public class KMeansClustering {
                         logger.info("Adding the email to the newly added content cluster  " + bestMatchCluster.getId());
     					bestMatchCluster.addEmail(messageId, newEmail);
     					double clusterRepuScore = bestMatchCluster
-    							.calculateClusterReputationScore();
-    					//newEmail.setTextClusterId(bestMatchCluster.getId());
+    							.getReputationScore();
+    					newEmail.setTextClusterId(bestMatchCluster.getId());
     					newEmail.setWeightedSubjectBodyClusterId(bestMatchCluster.getId());
     					newEmail.setContentReputationScore(clusterRepuScore);
                         contentClusters.add(bestMatchCluster);

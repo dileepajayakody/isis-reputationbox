@@ -186,10 +186,10 @@ public class EmailAnalysisService {
 		email.setBodyContextVector(emailBodyTextContextVector);
 		
 		//processing NLP text contextvector
-		if(email.getKeywordMatrix() != null){
-			double[] nlpKeywordVector = textSemantics.processWords(email.getKeywordMatrix());
-			email.setNlpKeywordsVector(nlpKeywordVector);
-		}
+//		if(email.getKeywordMatrix() != null){
+//			double[] nlpKeywordVector = textSemantics.processWords(email.getKeywordMatrix());
+//			email.setNlpKeywordsVector(nlpKeywordVector);
+//		}
 		
 		return textSemantics;
 	}
