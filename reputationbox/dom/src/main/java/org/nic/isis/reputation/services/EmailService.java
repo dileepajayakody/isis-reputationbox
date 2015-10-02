@@ -63,6 +63,9 @@ public class EmailService {
 	
 	private final static String CONTENT_VECTOR_FILE = "contentvectors.csv";
 	private final static String RECIPIENT_VECTOR_FILE = "recipientvectors.csv";
+	private final static String MAILBOX_PROPERTIES_FILE = "mailbox.properties";
+	private final static int DEFAULT_FROM_DATE = -7;
+	private final static int DEFAULT_TO_DATE = -2;		
 	
 	//current session's emailboxes
 	private List<UserMailBox> mailBoxes;
@@ -114,10 +117,24 @@ public class EmailService {
 					}	
 				}
 				
+				//starting the email retrieval from beginning
 				//set the modelSize by calculating the no.of emails to retrieve for the time-period
 				if(!mailBox.isUpdatingModel() && mailBox.isRequireNewModel() && mailBox.getCurrentModelSize() == 0){
-					Properties props = new Properties();
+					Properties props = loadMailBoxProperties();
+					if(props == null){
+						props = new Properties();		
+					}
 					props.setProperty("mail.store.protocol", "imaps");
+					//loading dates
+					String fromStr = props.getProperty("from");
+					String toStr = props.getProperty("to");
+					int fromDate = DEFAULT_FROM_DATE;
+					int toDate = DEFAULT_TO_DATE;
+					if(fromStr != null && toStr != null){
+						fromDate = Integer.parseInt(fromStr);
+						toDate = Integer.parseInt(toStr);
+					}
+						
 					Message[] modelMessages = null;		
 					Session session = null;
 					Store store = null;
@@ -129,12 +146,12 @@ public class EmailService {
 						Folder inbox = store.getFolder("INBOX");
 						//Folder inbox = store.getFolder("[Gmail]/Important");
 						inbox.open(Folder.READ_ONLY);
-						Message[] totalMessagesForPeriod = javaMailService.getModelEmailSetForPeriod(inbox, -28, 0);
+						Message[] totalMessagesForPeriod = javaMailService.getModelEmailSetForPeriod(inbox, fromDate, 0);
+						modelMessages = javaMailService.getModelEmailSetForPeriod(inbox, fromDate, toDate);
 						
-						modelMessages = javaMailService.getModelEmailSetForPeriod(inbox, -28, -2);
-						logger.info("Total number of messages to retrieve for the past 4 weeks : " + totalMessagesForPeriod.length);
+						logger.info("Total number of messages to retrieve for the past " + (-fromDate)+ "  days : " + totalMessagesForPeriod.length);
 						mailBox.setMailToRetrieveForPeriod(totalMessagesForPeriod.length);
-						logger.info("Setting model size for the model period : " + modelMessages.length);
+						logger.info("Setting model size for the model period : " + modelMessages.length + " model start day : " + fromDate + "; to day: " + toDate) ;
 						mailBox.setCurrentModelSize(modelMessages.length);
 						logger.info("set mailbox model size : " + mailBox.getCurrentModelSize());
 						
@@ -152,7 +169,6 @@ public class EmailService {
 				//int modelSize = 1200;
 				int modelSize = mailBox.getCurrentModelSize();
 				
-				//if(!mailBox.isUpdatingModel() && (mailBox.getAllEmails().size() == 0)){
 				if(!mailBox.isUpdatingModel() && mailBox.isRequireNewModel() && (mailBox.getAllEmails().size() < modelSize)){
 					
 					logger.info("Loading mailbox : " + mailBox.getEmailId());	
@@ -163,28 +179,9 @@ public class EmailService {
 					//at the end of the model email retrieval
 					if(mailBox.getAllEmails().size() >= modelSize){
 						
-						logger.info("Updating profile vector indexes ..");
+						logger.info("Updating importance model indexes ..");
 						mailBox = EmailUtils.calculateImportanceModel(mailBox, mailBox.getAllEmails());
-						
-//						logger.info("Creating topic clusters for the mailbox emails ..");
-//						EmailReputationDataModel model = mailBox.getReputationDataModel();
-//						logger.info("Creating the content and people clusters from training dataset");	
-//						List<Email> allEmails = mailBox.getAllEmails();
-//						List<EmailContentCluster> contentClusters = EmailAnalysisService.kMeansClusterText(allEmails);
-//						List<EmailRecipientCluster> recipientClusters = EmailAnalysisService.kMeansClusterRecipients(allEmails);
-//						List<EmailWeightedSubjectBodyContentCluster> weightedSubjectBodyClusters = EmailAnalysisService.kMeansClusterWeightedSubjectBodyContent(allEmails);
-//						model.setContentClusters(contentClusters);
-//						model.setRecipientClusters(recipientClusters);
-//						model.setWeightedSubjectBodyClusters(weightedSubjectBodyClusters);
-//						
-//						logger.info("Dunn index for content clusters : " + model.calculateDunnIndexForContentClusters());
-//						logger.info("Dunn index for recipient clusters : " + model.calculateDunnIndexForRecipientClusters());
-//						logger.info("Avg dunn index for weighted subject-body clusters : " + model.calculateDunnIndexForSubjectBodyClusters());
-//						
-//						mailBox.setReputationDataModel(model);			
-						//mailBox = EmailUtils.updateAverageImportanceVectors(mailBox);
-						//setting the average profiles for direct replied, flagged, seen and list replied, flagged, seen
-				
+							
 						//since the model has sufficient model data
 						mailBox.setRequireNewModel(false);
 						
@@ -194,13 +191,10 @@ public class EmailService {
 					//still the model is not set hence setting the model
 					logger.info("Updating profile vector indexes ..");
 					mailBox = EmailUtils.calculateImportanceModel(mailBox, mailBox.getAllEmails());
-					//generate clusters
-					//mailBox = EmailUtils.generateEmailClusters(mailBox);	
 					
 					//since the model has sufficient model data
 					mailBox.setRequireNewModel(false);
 				} else if(!mailBox.isUpdatingModel() && !mailBox.isRequireNewModel() && (mailBox.getAllEmails().size() >= modelSize)){
-					//mailBox.setEmailId("dileepajayakody@gmail.com");
 					logger.info("Loading mailbox : " + mailBox.getEmailId());			
 					logger.info("Updaing mailbox and predicting email importance for emails for mailbox : " + mailBox.getEmailId() + " since email count: " + mailBox.getAllEmails().size()
 							+ " last indexed email  UID : " + mailBox.getLastIndexedMsgUid());
@@ -219,48 +213,7 @@ public class EmailService {
 					double[] spamPeopleVector = mailBox.getReputationDataModel().getSpamPeopleVector();
 					
 					
-//					logger.info("Printing the repmodel replied profile content clusters");
-//					for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedContentClusters){
-//						List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
-//						
-//						double[] subjectCentroid = contentCluster.getSubjectCentroid();
-//						double[] bodyCentroid = contentCluster.getBodyCentroid();
-//						double subjectTotal = EmailUtils.getVectorTotal(subjectCentroid);
-//						double bodyTotal = EmailUtils.getVectorTotal(bodyCentroid);
-//						String clusterId = contentCluster.getId();
-//						
-//						logger.info(clusterId + " subject vector total : " + subjectTotal + " body total : " + bodyTotal);
-//						
-//						for(Email email : repliedClusterEmails){
-//							logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
-//						}
-//					}
-//					logger.info("Printing the repmodel replied people clusters");
-//					for(EmailRecipientCluster repliedCluster : repliedPeopleClusters){
-//						List<Email> pplMails = repliedCluster.getRecipientEmails();
-//						double centroidTotal = EmailUtils.getVectorTotal(repliedCluster.getCentroid());
-//						logger.info(repliedCluster.getId() + " : centroid vec.total : " + centroidTotal);
-//						String clusterId = repliedCluster.getId();
-//						for(Email email : pplMails){
-//							logger.info(clusterId + " : " + email.getMsgUid() + " from : " + email.getFromAddress());
-//						}
-//					}
-//					
-//					logger.info("Printing the repmodel replied list profile content clusters");
-//					for(EmailWeightedSubjectBodyContentCluster contentCluster : repliedListContentClusters){
-//						List<Email> repliedClusterEmails = contentCluster.getSubjectBodyContentEmails();
-//						double[] subjectCentroid = contentCluster.getSubjectCentroid();
-//						double[] bodyCentroid = contentCluster.getBodyCentroid();
-//						double subjectTotal = EmailUtils.getVectorTotal(subjectCentroid);
-//						double bodyTotal = EmailUtils.getVectorTotal(bodyCentroid);
-//						String clusterId = contentCluster.getId();
-//						
-//						logger.info(clusterId + " subject vector total : " + subjectTotal + " body total : " + bodyTotal);
-//						for(Email email : repliedClusterEmails){
-//							logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
-//						}
-//					}
-					
+		
 					
 					//seen profiles
 					//printing the repmodel profile content clusters
@@ -273,11 +226,7 @@ public class EmailService {
 						double subjectTotal = EmailUtils.getVectorTotal(subjectCentroid);
 						double bodyTotal = EmailUtils.getVectorTotal(bodyCentroid);
 						String clusterId = contentCluster.getId();
-//						
-//						logger.info(clusterId + " subject vector total : " + subjectTotal + " body total : " + bodyTotal);						
-//						for(Email email : repliedClusterEmails){
-//							logger.info(clusterId + " : " + email.getMsgUid() + " subject : " + email.getSubject());
-//						}
+
 					}
 //					
 //					logger.info("Printing the repmodel replied list profile content clusters");
@@ -318,7 +267,7 @@ public class EmailService {
 				else{
 					logger.info("something wrong with if condition :  isUpdatingModel: " + mailBox.isUpdatingModel() 
 							+ " require new model : " + mailBox.isRequireNewModel() + " mailBox.size(): " + mailBox.getAllEmails().size());
-					//mailBox.setUpdatingModel(false);
+					mailBox.setUpdatingModel(false);
 					
 				}	
 				//mailbox needs to be persisted.
@@ -344,38 +293,6 @@ public class EmailService {
 	}
 
 	
-//	@Named("Update MailBoxes")
-//	@Hidden
-//	public synchronized List<UserMailBox> updateMailBoxes(){
-//		
-//		List<UserMailBox> mailBoxes = listAllMailBoxes();	
-//		if (mailBoxes == null || mailBoxes.isEmpty()) {
-//			//logger.info("There is no mailboxes in test-datastore. creating test mailboxes for connected accounts in contextio");
-//			//mailBoxes = new ArrayList<UserMailBox>();
-//			//mailBoxes.add(createSample());
-//			logger.info("No mail-box added to the application. Please add a new mailbox via the web console");
-//		}else {
-//			for (UserMailBox mailBox : mailBoxes) {
-//				logger.info("Updaing mailbox : " + mailBox.getEmailId() + " since email count: " + mailBox.getAllEmails().size()
-//						+ " last indexed email  UID : " + mailBox.getLastIndexedMsgUid());
-//				try {
-//						javaMailService.updateMailBox(mailBox);
-//						logger.info("updated the mailBox: " + mailBox.getEmailId()
-//								+ " with " + mailBox.getAllEmails().size() + " emails");
-//				
-//				//printing mb cluster results..
-//				//printClusters(mailBox);
-//				
-//				} catch (Exception e) {
-//					logger.error("Error occurred  ", e);
-//				}
-//				//mailbox needs to be persisted.
-//				//container.persist(mailBox);
-//			}	
-//		}
-//		container.flush();
-//		return mailBoxes;
-//	}
 	
 	@Hidden
 	public void updateEmailModels(){
@@ -410,7 +327,6 @@ public class EmailService {
 		container.flush();
 	}
 
-	@Hidden
 	@Named("Cluster all emails for topics and people")
 	public void batchClusterEmails(){
 		List<UserMailBox> mailBoxes = listAllMailBoxes();
@@ -862,12 +778,41 @@ public class EmailService {
 	}
 	
 	@Programmatic
+	private Properties loadMailBoxProperties(){
+		Properties prop = new Properties();
+		File propFile = new File(MAILBOX_PROPERTIES_FILE);
+		if(propFile.exists()){
+			InputStream input = null;
+			try {
+				input = new FileInputStream(propFile);
+				// load a properties file
+				prop.load(input);
+			} catch (Exception e) {
+				logger.error("Error occurred when loading mailbox properties", e);
+				return null;
+			}finally {
+				if (input != null) {
+					try {
+						input.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			return prop;		
+		} else {
+			logger.info("No mailbox.properties file configured in app-root. Please add mailbox.properties file");
+			return null;
+		}	
+	}
+	
+	@Programmatic
 	private UserMailBox createMailBoxFromFile(){
-		String mailBoxPropFileName = "mailbox.properties";
+		
 		Properties prop = new Properties();
 		InputStream input = null;
 		UserMailBox mb = null;	
-		File propFile = new File(mailBoxPropFileName);
+		File propFile = new File(MAILBOX_PROPERTIES_FILE);
 		if(propFile.exists()){
 			try {	 
 				mb = container.newTransientInstance(UserMailBox.class);
@@ -1122,10 +1067,7 @@ public class EmailService {
 						modelEmailWriter.println(record);
 					}
 					count++;
-//					if(count > 5){
-//						break;
-//					}
-						
+					
 				}			
 				modelEmailWriter.close();	
 				predictedEmailWriter.close();
@@ -1374,9 +1316,6 @@ public class EmailService {
 			}
 			mb.setLastPredictedMsgUidSentToClient(lastPredictedMsgUid);
 		}		
-//		for(Email mail : matchedEmails){
-//			logger.info("email uid : "+ mail.getMsgUid());
-//		}
 		
 		root.put("reputation", resultsArray);
 		String reputationResultString = root.toString();
@@ -1384,37 +1323,9 @@ public class EmailService {
 	}
 	
 	
-	@Named("Process Predictions with Cluster Results")
-	public void processPredictionsWithClusterResults(){
-		mailBoxes = listAllMailBoxes();	
-		for(UserMailBox mb : mailBoxes){
-//			List<Email> modelEmails = getEmailsForTimePeriod(0, 168400);
-//			List<Email> predictEmails = getEmailsForTimePeriod(168400, 170000);
-			//int mailsToPredict = mb.getAllEmails().size() - 2995;
-			int testSize = mb.getAllEmails().size()/5;
-			int mailsToPredict = mb.getAllEmails().size() - testSize;
-			
-			//int mailsToPredict = mb.getAllEmails().size() - mb.getCurrentModelSize();
-			logger.info("no of emails to predict based on parameters : " + mailsToPredict);
-			long modelLimitUid = mb.getLastIndexedMsgUid() - mailsToPredict;
-			List<Email> modelEmails = getEmailsForTimePeriod(0, modelLimitUid);
-			List<Email> predictEmails = getEmailsForTimePeriod(modelLimitUid, mb.getLastIndexedMsgUid());
-			logger.info("mailbox size : " + mb.getAllEmails().size() + " processing model emails : " + modelEmails.size() + " emails to predict : " + predictEmails.size());
-			List<Email> resultEmails = new ArrayList<Email>();
-			mb = EmailUtils.calculateImportanceModel(mb, modelEmails);
-			for(Email emailToPredict : predictEmails){
-				Email predictedEmail = mb.predictImportanceFromEmailUserProfile(emailToPredict);
-				predictedEmail = mb.predictImportanceBasedOnProfileSubClusterSimilarity(emailToPredict);
-				predictedEmail = mb.classifyEmailBasedOnContentAndRecipients(emailToPredict);
-				resultEmails.add(predictedEmail);
-			}
-			createResultFileWithProfileAndSubClusterResults(mb.getEmailId(), resultEmails);
-		}
-	}
 
-	@Hidden
-	@Named("Process Predictions with Email Profiles")
-	public void processPredictionsFromEmailProfiles(){
+	@Named("Recalculate Importance models and Predict Emails")
+	public void recalculateModelAndProcessPredictions(){
 		mailBoxes = listAllMailBoxes();	
 		for(UserMailBox mb : mailBoxes){
 			logger.info("mailbox : " + mb.getEmailId() + " loaded with "+ mb.getAllEmails().size() + " model size: " + mb.getCurrentModelSize());
@@ -1497,7 +1408,7 @@ public class EmailService {
 				 String toAddrs = "";
 		    		if(mail.getToAddresses() != null && mail.getToAddresses().size() > 0){
 		    			for(String toAdd : mail.getToAddresses()){
-			    			toAddrs += toAdd + " | ";
+			    			toAddrs += toAdd + " : ";
 			    		}	
 		    		}
 		    		
@@ -1506,7 +1417,7 @@ public class EmailService {
 		    		String ccAddr = "";
 		    		if(mail.getCcAddresses() != null && mail.getCcAddresses().size() > 0){
 		    			for(String ccAdd : mail.getCcAddresses()){
-			    			ccAddr += ccAdd + " | ";
+			    			ccAddr += ccAdd + " : ";
 			    		}	
 		    		}
 		    

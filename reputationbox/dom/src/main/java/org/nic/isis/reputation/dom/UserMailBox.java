@@ -886,15 +886,8 @@ public class UserMailBox {
 			//List<EmailContentCluster> contentClusters = new ArrayList<EmailContentCluster>();
 			List<EmailWeightedSubjectBodyContentCluster> subjectBodyClusters = new ArrayList<EmailWeightedSubjectBodyContentCluster>();
 			List<EmailRecipientCluster> recipientClusters = new ArrayList<EmailRecipientCluster>();
-			/*
-			 * List<Email> contentClusterEmails = new ArrayList<Email>();
-			 * List<Email> recipientClusterEmails = new ArrayList<Email>();
-			 * List<String> contentEmailIds = new ArrayList<String>();
-			 * List<String> recipientEmailIds = new ArrayList<String>();
-			 */
+		
 
-//			EmailContentCluster contentCluster = new EmailContentCluster("c"
-//					+ String.valueOf(0));
 			EmailWeightedSubjectBodyContentCluster contentCluster = new EmailWeightedSubjectBodyContentCluster("sb"+String.valueOf(0));
 			contentCluster.addEmail(email.getMessageId(), email);
 			subjectBodyClusters.add(contentCluster);
