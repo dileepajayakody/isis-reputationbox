@@ -44,7 +44,6 @@ import org.scribe.oauth.OAuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import sun.security.pkcs.ContentInfo;
 import at.tomtasche.contextio.ContextIOApi;
 import at.tomtasche.contextio.ContextIOResponse;
 import at.tomtasche.contextio.ContextIO_V11;
