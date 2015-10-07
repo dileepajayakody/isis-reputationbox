@@ -1007,7 +1007,7 @@ public class EmailService {
 					 String toAddrs = "";
 			    		if(mail.getToAddresses() != null && mail.getToAddresses().size() > 0){
 			    			for(String toAdd : mail.getToAddresses()){
-				    			toAddrs += toAdd + " | ";
+				    			toAddrs += toAdd + " : ";
 				    		}	
 			    		}
 			    		
@@ -1016,7 +1016,7 @@ public class EmailService {
 			    		String ccAddr = "";
 			    		if(mail.getCcAddresses() != null && mail.getCcAddresses().size() > 0){
 			    			for(String ccAdd : mail.getCcAddresses()){
-				    			ccAddr += ccAdd + " | ";
+				    			ccAddr += ccAdd + " : ";
 				    		}	
 			    		}
 //			    	String keywords = "";
