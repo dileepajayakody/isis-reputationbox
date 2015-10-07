@@ -25,7 +25,7 @@ http://www.quartz-scheduler.org/xml/job_scheduling_data_1_8.xsd"
 	version="1.8">
 
 	<schedule>
-		<!--job>
+		<job>
 			<name>EmailSyncServiceJob</name>
 			<group>Isis</group>
 			<description>Poll and execute email getEmails action</description>
@@ -40,24 +40,23 @@ http://www.quartz-scheduler.org/xml/job_scheduling_data_1_8.xsd"
 					<value>admin_role</value>
 				</entry>
 			</job-data-map>
-		</job-->
+		</job>
 		
 		<!--
 		cron format: 
 		http://quartz-scheduler.org/documentation/quartz-2.x/tutorials/tutorial-lesson-06
 	 	-->
-		<!--trigger>
+		<trigger>
 			<cron>
 				<name>EmailSyncServiceJobEveryTenSeconds</name>
 				<job-name>EmailSyncServiceJob</job-name>
 				<job-group>Isis</job-group>
-				<cron-expression>*/59 * * * * ?</cron-expression-->
-				<!--cron-expression>*/59 */2 * * * ?</cron-expression-->
-			<!--/cron>
-		</trigger-->
+				<cron-expression>5 0,10,20,30,40,50 * * * ?</cron-expression>
+			</cron>
+		</trigger>
 	</schedule>
 	<schedule>
-		<!--job>
+		<job>
 			<name>EmailModelUpdateServiceJob</name>
 			<group>Isis</group>
 			<description>Update the email data model for mailboxes</description>
@@ -72,14 +71,15 @@ http://www.quartz-scheduler.org/xml/job_scheduling_data_1_8.xsd"
 					<value>admin_role</value>
 				</entry>
 			</job-data-map>
-		</job-->
-		<!--trigger>
+		</job>
+		<trigger>
 			<cron>
 				<name>EmailModelUpdateServiceJobEveryMonth</name>
 				<job-name>EmailModelUpdateServiceJob</job-name>
 				<job-group>Isis</job-group>
-				<cron-expression>0 12 1 * * ?</cron-expression>
+				<cron-expression>0 1 12 7,14,21,28 * ?</cron-expression>
+				<!--every 7,14,21,28 day of month at 12th hour 1st minute  -->
 			</cron>
-		</trigger-->
+		</trigger>
 	</schedule>
 </job-scheduling-data>

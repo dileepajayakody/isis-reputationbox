@@ -695,7 +695,7 @@ public class RandomIndexing implements SemanticSpace {
 				if(wordDocumentFrequencies.get(word) != null){
 					riVector.setWordDocFrequency(wordDocumentFrequencies.get(word));
 				}else {
-					logger.info("the freq is not defined for word : " + word + " from indexVector");
+					//logger.info("the freq is not defined for word : " + word + " from indexVector");
 					//this word is there, so adding atleast one
 					riVector.setWordDocFrequency(1);
 				}	

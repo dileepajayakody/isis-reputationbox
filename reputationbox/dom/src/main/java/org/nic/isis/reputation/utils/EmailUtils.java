@@ -745,21 +745,21 @@ public final class EmailUtils {
 		reputationObj.put("emailintent",intentString);
 	
 
-		String replyScore =  String.format("%.4f",email.getTotalSubClusterBasedReplyScore());
+		String replyScore =  String.format("%.4f",email.getTotalProfileBasedReplyScore());
 		reputationObj.put("replyscore",replyScore);
 		//logger.info(email.getMsgUid()+ " subject : " + email.getSubject() + " : sending reply score (people + (subject+body)/2)/2:" + replyScore + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2)/2 : " + totalReplySeparateScore);
 		
-		String flagScore = String.format("%.4f", email.getTotalSubClusterBasedFlagScore());
+		String flagScore = String.format("%.4f", email.getTotalProfileBasedFlagScore());
 		reputationObj.put("flagscore", flagScore);
 		//logger.info(email.getMsgUid()+ " subject : " + email.getSubject() + " : sending flagged score  (people+ (subject+body)/2)/2 :" + flagScore + " separetly aggregated score ((from,to,cc)/3, (body+subject)/2)/2 : " + totalFlaggedSeparateScore);		
 			
-		String seeScore = String.format("%.4f", email.getTotalSubClusterBasedReadScore());
+		String seeScore = String.format("%.4f", email.getTotalProfileBasedReadScore());
 		reputationObj.put("seescore", seeScore);
 		//logger.info(email.getMsgUid()+ " subject : " + email.getSubject() + " : sending seen score (people+ (subject+body)/2)/2 :" + seeScore + " combined score ((from,to,cc)/3, (body.subject)/2)/2 : " + totalSeenSeparateScore);		
 		
 		logger.info(email.getMsgUid() + " : " + email.getSubject() + 
-				"\n The scores in results email to be sent : "+" total contentscore : " + email.getContentReputationScore()
-				+ " total people score : " + email.getRecipientReputationScore() + " content cluster : " + email.getTextClusterId()  
+				"\n The scores in results email to be sent : "+" total cluster based contentscore : " + email.getContentReputationScore()
+				+ " total cluster based people score : " + email.getRecipientReputationScore() + " content cluster : " + email.getTextClusterId()  
 				+ " people cluster : " + email.getPeopleClusterId()
 				+  " email intent : " + intentString + " reply-score : " + replyScore 
 				+ " flag score : " + flagScore + " see score: " + seeScore

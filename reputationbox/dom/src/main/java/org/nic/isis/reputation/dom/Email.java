@@ -31,7 +31,7 @@ import edu.ucla.sspace.vector.Vector;
 		value = "SELECT FROM org.nic.isis.reputation.dom.Email WHERE "
 				+ "msgUid > fromUid && isPredicted==true "
 				+ "PARAMETERS long fromUid "
-				+ "ORDER BY msgUid ASC"), 			
+				+ "ORDER BY msgUid ASC LIMIT 50"), 			
 	@javax.jdo.annotations.Query(
 		name = "findSenderReputation", 
 		language = "JDOQL", 

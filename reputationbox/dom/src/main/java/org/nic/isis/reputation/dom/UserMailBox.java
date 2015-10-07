@@ -621,15 +621,15 @@ public class UserMailBox {
 			logger.info("new email's textcontent vector : " + EmailUtils.getVectorTotal(newEmail.getTextContextVector()));
 			double spamTopicSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamVector(), newEmail.getTextContextVector());
 			double spamPeopleSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamPeopleVector(), newEmail.getRecipientContextVector()); 
-			double spamNLPKeywordSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamNLPKeywordVector(), newEmail.getNlpKeywordsVector());
+			//double spamNLPKeywordSimilarity = EmailUtils.calculateCosineSimilarity(repModel.getSpamNLPKeywordVector(), newEmail.getNlpKeywordsVector());
 				
 			newEmail.setSpamTopicScore(spamTopicSimilarity);
 			newEmail.setSpamPeopleScore(spamPeopleSimilarity);
-			newEmail.setSpamKeywordscore(spamNLPKeywordSimilarity);
+			//newEmail.setSpamKeywordscore(spamNLPKeywordSimilarity);
 			
 			logger.info("The similarity of the email with SPAM emails in the model \n:"
 			+" spam topic similarity : " + spamTopicSimilarity 
-			+ " spam NLP keyword similarity : " + spamNLPKeywordSimilarity 			
+			//+ " spam NLP keyword similarity : " + spamNLPKeywordSimilarity 			
 			+ " spam people similarity : " + spamPeopleSimilarity);
 			
 		}
