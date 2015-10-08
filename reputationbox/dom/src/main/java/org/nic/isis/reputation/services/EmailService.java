@@ -64,7 +64,7 @@ public class EmailService {
 	private final static String CONTENT_VECTOR_FILE = "contentvectors.csv";
 	private final static String RECIPIENT_VECTOR_FILE = "recipientvectors.csv";
 	private final static String MAILBOX_PROPERTIES_FILE = "mailbox.properties";
-	private final static int DEFAULT_FROM_DATE = -7;
+	private final static int DEFAULT_FROM_DATE = -28;
 	private final static int DEFAULT_TO_DATE = -2;		
 	
 	//current session's emailboxes
