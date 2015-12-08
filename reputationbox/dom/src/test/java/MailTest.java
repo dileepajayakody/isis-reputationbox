@@ -99,7 +99,7 @@ public class MailTest {
 		 root.put("reputation", resultsArray);
 		 
 		
-		 System.out.print(root.toString());
+		 System.out.print("result : " + root.toString());
 	}
 	
 	public static void main(String[] args) {
